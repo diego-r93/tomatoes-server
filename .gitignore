@@ -26,6 +26,5 @@ pnpm-debug.log*
 *.db
 
 # Local Mosquitto Configurations
-/mosquitto/log/
-/mosquitto/data/
+*.log
 passwd
