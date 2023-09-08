@@ -15,6 +15,10 @@
       </v-btn>
 
       <v-btn icon>
+        <v-icon>mdi-content-save-outline</v-icon>
+      </v-btn>
+
+      <v-btn icon>
         <v-icon>mdi-cog-outline</v-icon>
       </v-btn>
 
