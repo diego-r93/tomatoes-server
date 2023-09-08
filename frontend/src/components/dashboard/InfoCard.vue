@@ -1,197 +1,249 @@
 <template>
-  <v-container class="py-8 px-6" fluid>
-    <v-row>
-      <v-col cols="12">
-        <v-card class="mx-auto" prepend-icon="mdi-home">
-          <template v-slot:title>
-            DashBoard
-          </template>
-          <v-card-text>
-            content
-          </v-card-text>
-        </v-card>
-      </v-col>
+  <v-container class="py-2 px-2" fluid>
 
-      <v-col cols="6">
-        <v-card class="mx-auto">
-          <v-card-title>Photos</v-card-title>
-          <v-container fluid>
-            <v-row dense>
-              <v-col v-for="card in secondCards" :key="card.title" :cols="card.flex">
-                <v-card>
-                  <v-img
-                    :src="card.src"
-                    class="align-begin"
-                    gradient="to top, rgba(0,0,0,.1), rgba(0,0,0,.5)"
-                    height="200px"
-                    cover
-                  >
-                    <v-card-title class="text-white" v-text="card.title"></v-card-title>
-                  </v-img>
+    <v-app-bar color="#121212" flat>
 
-                  <v-card-actions>
-                    <v-spacer></v-spacer>
+      <template v-slot:prepend>
+        <v-icon>mdi-view-dashboard</v-icon>
+      </template>
 
-                    <v-btn size="small" color="surface-variant" variant="text" icon="mdi-heart"></v-btn>
+      <v-app-bar-title>DashBoard / Home</v-app-bar-title>
 
-                    <v-btn size="small" color="surface-variant" variant="text" icon="mdi-bookmark"></v-btn>
+      <v-spacer></v-spacer>
+      <v-btn icon>
+        <v-icon>mdi-view-grid-plus</v-icon>
+      </v-btn>
 
-                    <v-btn size="small" color="surface-variant" variant="text" icon="mdi-share-variant"></v-btn>
-                  </v-card-actions>
-                </v-card>
-              </v-col>
-            </v-row>
-          </v-container>
-        </v-card>
-      </v-col>
+      <v-btn icon>
+        <v-icon>mdi-cog-outline</v-icon>
+      </v-btn>
 
-      <v-col cols="6">
-        <v-card class="mx-auto">
-          <v-card-item title="Historical Data">
-            <template v-slot:subtitle>
-              <v-icon
-                icon="mdi-alert"
-                size="18"
-                color="error"
-                class="me-1 pb-1"
-              ></v-icon>
+      <v-btn icon>
+        <v-icon>mdi-clock-outline</v-icon>        
+      </v-btn>
 
-              Extreme Weather Alert
-            </template>
-          </v-card-item>
+      <v-btn icon>
+        <v-icon>mdi-update</v-icon>
+      </v-btn>
+    </v-app-bar>    
 
-          <v-card-text class="py-0">
-            <v-row align="center" no-gutters>
-              <v-col
-                class="text-h2"
-                cols="6"
-              >
-                64&deg;F
-              </v-col>
+    <grid-layout :layout="layout" @update:layout="layout = $event" :col-num="12" :row-height="30"
+      :is-draggable="draggable" :is-resizable="resizable" :vertical-compact="true" :use-css-transforms="true">
+      <grid-item v-for="item in layout" :key="item.i" :static="item.static" :x="item.x" :y="item.y" :w="item.w"
+        :h="item.h" :i="item.i">
+        <LineChart :data="chartData[item.i]" :options="chartOptions" />
+      </grid-item>
+    </grid-layout>
 
-              <v-col cols="6" class="text-right">
-                <v-icon
-                  color="error"
-                  icon="mdi-weather-hurricane"
-                  size="88"
-                ></v-icon>
-              </v-col>
-            </v-row>
-          </v-card-text>
-
-          <div class="d-flex py-3 justify-space-between">
-            <v-list-item
-              density="compact"
-              prepend-icon="mdi-weather-windy"
-            >
-              <v-list-item-subtitle>123 km/h</v-list-item-subtitle>
-            </v-list-item>
-
-            <v-list-item
-              density="compact"
-              prepend-icon="mdi-weather-pouring"
-            >
-              <v-list-item-subtitle>48%</v-list-item-subtitle>
-            </v-list-item>
-          </div>
-
-          <v-expand-transition>
-            <div v-if="expand">
-              <div class="py-2">
-                <v-slider
-                  v-model="time"
-                  :max="6"
-                  :step="1"
-                  :ticks="labels"
-                  class="mx-4"
-                  color="primary"
-                  density="compact"
-                  hide-details
-                  show-ticks="always"
-                  thumb-size="10"
-                ></v-slider>
-              </div>
-
-              <v-list class="bg-transparent">
-                <v-list-item
-                  v-for="item in forecast"
-                  :key="item.day"
-                  :title="item.day"
-                  :append-icon="item.icon"
-                  :subtitle="item.temp"
-                >
-                </v-list-item>
-              </v-list>
-            </div>
-          </v-expand-transition>
-
-          <v-divider></v-divider>
-
-          <v-card-actions>
-            <v-btn @click="expand = !expand">
-              {{ !expand ? 'Full Report' : 'Hide Report' }}
-            </v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-col>
-      
-      <v-col v-for="card in firstCards" :key="card" :cols="card.flex">
-        <v-card>
-          <v-list lines="two">
-            <v-list-subheader>{{ card }}</v-list-subheader>
-            <template v-for="n in 6" :key="n">
-              <v-list-item>
-                <template v-slot:prepend>
-                  <v-avatar color="grey-darken-1"></v-avatar>
-                </template>
-
-                <v-list-item-title>Message {{ n }}</v-list-item-title>
-
-                <v-list-item-subtitle>
-                  Lorem ipsum dolor sit amet, consectetur adipisicing elit. Nihil repellendus distinctio similique
-                </v-list-item-subtitle>
-              </v-list-item>
-
-              <v-divider v-if="n !== 6" :key="`divider-${n}`" inset></v-divider>
-            </template>
-          </v-list>
-        </v-card>
-      </v-col>
-      
-    </v-row>
   </v-container>
 </template>
 
-
-
 <script>
+import { GridLayout, GridItem } from "vue-grid-layout"
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js'
+import { Line as LineChart } from 'vue-chartjs'
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+)
+
 export default {
-  
-  data: () => ({
-
-    firstCards: [
-      { title: 'Texto 1 exemplo', src: '   ', flex: 3 },
-      { title: 'Texto 2 exemplo', src: 'IASNIAN', flex: 3 },
-      { title: 'Texto 3 exemplo', src: 'SOIFNSDF', flex: 3 },
-    ],
-
-    secondCards: [
-      { title: 'Image 1', src: 'src/assets/template/tomatoes.jpg', flex: 6 },
-      { title: 'Image 2', src: 'src/assets/template/hydroponic.jpg', flex: 6 },
-      { title: 'Image 3', src: 'src/assets/template/rosemary.jpg', flex: 6 },
-      { title: 'Image 4', src: 'src/assets/template/hydroponic2.jpg', flex: 6 },
-    ],
-
-    thirdCards: [],
-
-    labels: { 0: 'SU', 1: 'MO', 2: 'TU', 3: 'WED', 4: 'TH', 5: 'FR', 6: 'SA' },
-    expand: false,
-    time: 0,
-    forecast: [
-      { day: 'Tuesday', icon: 'mdi-white-balance-sunny', temp: '24\xB0/12\xB0' },
-      { day: 'Wednesday', icon: 'mdi-white-balance-sunny', temp: '22\xB0/14\xB0' },
-      { day: 'Thursday', icon: 'mdi-cloud', temp: '25\xB0/15\xB0' },
-    ],
-  }),
+  components: {
+    GridLayout,
+    GridItem,
+    LineChart
+  },
+  data() {
+    return {
+      layout: [
+        { "x": 0, "y": 0, "w": 4, "h": 8, "i": "0", static: false },
+        { "x": 4, "y": 0, "w": 4, "h": 8, "i": "1", static: false },
+        { "x": 4, "y": 0, "w": 3, "h": 6, "i": "2", static: false },
+        { "x": 7, "y": 0, "w": 4, "h": 8, "i": "3", static: false },
+        { "x": 8, "y": 0, "w": 3, "h": 6, "i": "4", static: false },
+      ],
+      draggable: true,
+      resizable: true,
+      index: 0,
+      chartData: {
+        '0': {
+          labels: ['00:00:00', '01:00:00', '02:00:00', '03:00:00', '04:00:00', '05:00:00'],
+          datasets: [{
+            label: 'Data One',
+            data: [40, 39, 10, 40, 39, 80],
+            backgroundColor: '#5794F2',
+            borderColor: '#5794F2',
+            borderWidth: 1,
+            fill: true,
+          }]
+        },
+        '1': {
+          labels: ['00:00:00', '01:00:00', '02:00:00', '03:00:00', '04:00:00', '05:00:00'],
+          datasets: [{
+            label: 'Temperature',
+            data: [23, 25, 22, 21, 20, 19],
+            backgroundColor: '#FF6384',
+            borderColor: '#FF6384',
+            borderWidth: 1,
+            fill: true,
+          }]
+        },
+        '2': {
+          labels: ['00:00:00', '01:00:00', '02:00:00', '03:00:00', '04:00:00', '05:00:00'],
+          datasets: [{
+            label: 'Humidity',
+            data: [45, 50, 55, 60, 65, 70],
+            backgroundColor: '#FFCE56',
+            borderColor: '#FFCE56',
+            borderWidth: 1,
+            fill: true,
+          }]
+        },
+        '3': {
+          labels: ['00:00:00', '01:00:00', '02:00:00', '03:00:00', '04:00:00', '05:00:00'],
+          datasets: [{
+            label: 'pH',
+            data: [6.8, 7.0, 6.7, 6.5, 6.4, 6.3],
+            backgroundColor: '#36A2EB',
+            borderColor: '#36A2EB',
+            borderWidth: 1,
+            fill: true,
+          }]
+        },
+        '4': {
+          labels: ['00:00:00', '01:00:00', '02:00:00', '03:00:00', '04:00:00', '05:00:00'],
+          datasets: [{
+            label: 'Luminosity',
+            data: [1000, 1100, 1050, 1200, 1300, 1400],
+            backgroundColor: '#4BC0C0',
+            borderColor: '#4BC0C0',
+            borderWidth: 1,
+            fill: true,
+          }]
+        },
+      },
+      chartOptions: {
+        scales: {
+          x: {
+            ticks: {
+              color: 'white'
+            },
+            grid: {
+              color: '#3c3c3c'
+            }
+          },
+          y: {
+            border: {
+              display: true,
+            },
+            ticks: {
+              color: 'white'
+            },
+            grid: {
+              color: '#3c3c3c'
+            },
+            beginAtZero: true
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+            align: 'center',
+            labels: {
+              font: {
+                size: 12,
+              },
+              color: 'white'
+            },
+            padding: {
+              top: 10,
+              bottom: 10
+            },
+          },
+        },
+        responsive: true,
+        maintainAspectRatio: false
+      }
+    }
+  },
+  methods: {
+    itemTitle(item) {
+      let result = item.i;
+      if (item.static) {
+        result += " - Static";
+      }
+      return result;
+    }
+  }
 }
 </script>
+
+<style>
+.vue-grid-item:hover {
+  opacity: 0.7;
+}
+
+.vue-grid-layout {
+  background: #121212;
+}
+
+.vue-grid-item.vue-grid-placeholder {
+  background: rgb(60, 190, 160);
+}
+
+.vue-grid-item:not(.vue-grid-placeholder) {
+  background: #3f51b5;
+  background: #212121;
+  border: 1px solid #3c3c3c;
+  border-radius: 3px;
+}
+
+.vue-grid-item.resizing {
+  opacity: 0.9;
+}
+
+.vue-grid-item.static {
+  background: #cce;
+}
+
+.vue-grid-item .text {
+  font-size: 24px;
+  text-align: center;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: auto;
+  height: 100%;
+  width: 100%;
+}
+
+.vue-grid-item .no-drag {
+  height: 100%;
+  width: 100%;
+}
+
+.vue-grid-item .minMax {
+  font-size: 12px;
+}
+
+.vue-grid-item .add {
+  cursor: pointer;
+}
+</style>

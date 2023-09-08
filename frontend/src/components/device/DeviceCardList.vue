@@ -1,9 +1,9 @@
 <template>
-  <v-container class="py-16 px-16" fluid>
-    <v-row>
+  <v-container class="py-16 px-16 d-flex fill-height" fluid>
+    <v-row class="align-center justify-center fill-height">
       <v-col v-if="loading">
-        <div class="text-center pt-16">
-          <v-progress-circular :size="80" color="primary" indeterminate margin="auto"></v-progress-circular>
+        <div class="text-center">
+          <v-progress-circular :size="80" color="primary" indeterminate></v-progress-circular>
         </div>
       </v-col>
       <v-col v-else-if="!loading" v-for="device in devices" :key="device" cols="3">
