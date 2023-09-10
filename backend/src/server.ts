@@ -11,8 +11,8 @@ import path from 'path';
 import setupUsersRoutes from './routes/users-routes';
 import setupMqttRoutes from './routes/mqtt-routes';
 
-const host: string = process.env.HOST || '192.168.1.10';
-const port: number = Number(process.env.PORT) || 3333;
+const host: string = process.env.BACKEND_HOST || '127.0.0.0';
+const port: number = Number(process.env.BACKEND_PORT) || 3333;
 
 const corsOptions = {
   origin: `http://${host}`
@@ -51,9 +51,6 @@ setupUsersRoutes(app)
 setupMqttRoutes(app)
 
 // Listen the server
-// app.listen(port, host, () => {
-//   console.log('Server listening on ' + host + ':' + port)
-// })
-app.listen(3333, '0.0.0.0', () => {
-  console.log('Server running on http://0.0.0.0:3333');
-});
+app.listen(port, host, () => {
+  console.log('Server listening on ' + host + ':' + port)
+})

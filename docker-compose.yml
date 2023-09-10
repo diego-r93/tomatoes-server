@@ -6,11 +6,13 @@ services:
     container_name: backend
     volumes:
       - ./backend:/backend
-    ports:
-      - 3333:3333
+    networks:
+      - backend_network
+      - nginx_network
+      - influxdb_network
+      - mosquitto_network
     env_file:
       - .env
-
     command: bash -c "cd /backend && yarn install && yarn start"
 
   frontend:
@@ -18,11 +20,32 @@ services:
     container_name: frontend
     volumes:
       - ./frontend:/frontend
-    ports:
-      - 80:80
+    networks:
+      - frontend_network
+      - nginx_network
     depends_on:
       - backend
     command: bash -c "cd /frontend && yarn install && yarn dev"
+
+  nginx:
+    image: nginx:1.25
+    container_name: nginx_proxy
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - 80:80
+    networks:
+      - nginx_network
+      - frontend_network
+      - backend_network
+      - influxdb_network
+    env_file:
+      - .env
+    depends_on:
+      - frontend
+      - backend
+      - grafana
+      - influxdb
 
   mosquitto:
     image: eclipse-mosquitto:2.0.17
@@ -34,6 +57,8 @@ services:
     ports:
       - 1883:1883
       - 9001:9001
+    networks:
+      - mosquitto_network
 
   influxdb:
     image: influxdb:2.7
@@ -41,8 +66,10 @@ services:
     restart: on-failure:10
     volumes:
       - influxdb_data:/var/lib/influxdb:rw
+    networks:
+      - influxdb_network
     ports:
-      - ${DOCKER_INFLUXDB_INIT_PORT}:8086    
+      - 8086:8086
     env_file:
       - .env
     entrypoint: [ "./entrypoint.sh" ]
@@ -53,6 +80,8 @@ services:
     restart: unless-stopped
     volumes:
       - ${TELEGRAF_CFG_PATH}:/etc/telegraf/telegraf.conf:rw
+    networks:
+      - influxdb_network
     env_file:
       - .env
     depends_on:
@@ -63,11 +92,21 @@ services:
     container_name: grafana
     volumes:
       - grafana_data:/var/lib/grafana:rw
-    ports:
-      - ${GRAFANA_PORT}:3000 
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+    networks:
+      - influxdb_network   
+    env_file:
+      - .env
     depends_on:
       - influxdb
 
 volumes:
   influxdb_data:
   grafana_data:
+
+networks:
+  frontend_network:
+  backend_network:
+  nginx_network:
+  influxdb_network:
+  mosquitto_network:
