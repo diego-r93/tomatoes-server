@@ -6,10 +6,11 @@ services:
     container_name: backend
     volumes:
       - ./backend:/backend
-    env_file:
-      - .env
     ports:
       - 3333:3333
+    env_file:
+      - .env
+
     command: bash -c "cd /backend && yarn install && yarn start"
 
   frontend:
@@ -19,6 +20,8 @@ services:
       - ./frontend:/frontend
     ports:
       - 80:80
+    depends_on:
+      - backend
     command: bash -c "cd /frontend && yarn install && yarn dev"
 
   mosquitto:
@@ -31,22 +34,22 @@ services:
     ports:
       - 1883:1883
       - 9001:9001
-  
+
   influxdb:
     image: influxdb:2.7
     container_name: influxdb
-    ports:
-      - ${DOCKER_INFLUXDB_INIT_PORT}:8086
+    restart: on-failure:10
     volumes:
       - influxdb_data:/var/lib/influxdb:rw
+    ports:
+      - ${DOCKER_INFLUXDB_INIT_PORT}:8086    
     env_file:
       - .env
-    entrypoint: ["./entrypoint.sh"]
-    restart: on-failure:10
+    entrypoint: [ "./entrypoint.sh" ]
 
   telegraf:
     image: telegraf:1.25
-    container_name: telegraf   
+    container_name: telegraf
     restart: unless-stopped
     volumes:
       - ${TELEGRAF_CFG_PATH}:/etc/telegraf/telegraf.conf:rw
@@ -57,14 +60,14 @@ services:
 
   grafana:
     image: grafana/grafana-oss:8.4.3
-    container_name: grafana   
+    container_name: grafana
     volumes:
       - grafana_data:/var/lib/grafana:rw
+    ports:
+      - ${GRAFANA_PORT}:3000 
     depends_on:
       - influxdb
-    ports:
-      - ${GRAFANA_PORT}:3000
 
 volumes:
-  influxdb_data:  
+  influxdb_data:
   grafana_data:
