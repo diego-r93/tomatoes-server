@@ -4,6 +4,7 @@ services:
   backend:
     image: node:18.17.1
     container_name: backend
+    restart: unless-stopped
     volumes:
       - ./backend:/backend
     networks:
@@ -18,6 +19,7 @@ services:
   frontend:
     image: node:18.17.1
     container_name: frontend
+    restart: unless-stopped
     volumes:
       - ./frontend:/frontend
     networks:
@@ -30,6 +32,7 @@ services:
   nginx:
     image: nginx:1.25
     container_name: nginx_proxy
+    restart: unless-stopped
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
@@ -50,6 +53,7 @@ services:
   mosquitto:
     image: eclipse-mosquitto:2.0.17
     container_name: mosquitto
+    restart: unless-stopped
     volumes:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
@@ -68,7 +72,7 @@ services:
   influxdb:
     image: influxdb:2.7
     container_name: influxdb
-    restart: on-failure:10
+    restart: unless-stopped
     volumes:
       - influxdb_data:/var/lib/influxdb:rw
     networks:
@@ -95,6 +99,7 @@ services:
   grafana:
     image: grafana/grafana-oss:8.4.3
     container_name: grafana
+    restart: unless-stopped
     volumes:
       - grafana_data:/var/lib/grafana:rw
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
