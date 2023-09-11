@@ -74,7 +74,7 @@ services:
     networks:
       - influxdb_network
     ports:
-      - 8086:8086
+      - ${DOCKER_INFLUXDB_INIT_PORT}:${DOCKER_INFLUXDB_INIT_PORT}
     env_file:
       - .env
     entrypoint: [ "./entrypoint.sh" ]
