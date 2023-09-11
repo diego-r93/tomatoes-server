@@ -54,11 +54,16 @@ services:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
+      - ./mosquitto.sh:/mosquitto.sh
     ports:
       - 1883:1883
       - 9001:9001
     networks:
       - mosquitto_network
+    environment:
+      - MQTT_USER_NAME=${MQTT_USER_NAME}
+      - MQTT_PASSWORD=${MQTT_PASSWORD}
+    entrypoint: [ "./mosquitto.sh" ]
 
   influxdb:
     image: influxdb:2.7
