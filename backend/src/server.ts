@@ -10,6 +10,7 @@ import cors from 'cors';
 import path from 'path';
 import setupUsersRoutes from './routes/users-routes';
 import setupMqttRoutes from './routes/mqtt-routes';
+import setupInfluxRoutes from './routes/influxdb-routes';
 
 const host: string = process.env.BACKEND_HOST || '127.0.0.0';
 const port: number = Number(process.env.BACKEND_PORT) || 3333;
@@ -28,29 +29,32 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 route.get('/', (req: Request, res: Response) => {
-  res.json({ message: 'hello world with Typescript' })
+  res.json({ message: 'hello world with Typescript' });
 })
 
 // Serve Vue.js as SPA in production
-app.use(express.static('public'))
+app.use(express.static('public'));
 
 app.get('/', (req, res, next) => {
-  res.sendFile(path.resolve(__dirname, './public/index.html'))
+  res.sendFile(path.resolve(__dirname, './public/index.html'));
 })
 
 // app.get('*', (req, res, next) => {
-//   res.sendFile(path.resolve(__dirname, './public/index.html'))
+//   res.sendFile(path.resolve(__dirname, './public/index.html'));
 // })
 
 app.use(route);
 
 // Users
-setupUsersRoutes(app)
+setupUsersRoutes(app);
 
 // MQTT
-setupMqttRoutes(app)
+setupMqttRoutes(app);
+
+// InfluxDB
+setupInfluxRoutes(app);
 
 // Listen the server
 app.listen(port, host, () => {
-  console.log('Server listening on ' + host + ':' + port)
-})
+  console.log('Server listening on ' + host + ':' + port);
+});
