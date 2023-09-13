@@ -4,32 +4,33 @@
     <v-app-bar color="#121212" flat>
 
       <template v-slot:prepend>
-        <v-icon>mdi-view-dashboard</v-icon>
+        <v-icon icon="mdi-view-dashboard" size="small"></v-icon>
       </template>
 
-      <v-app-bar-title>DashBoard / Home</v-app-bar-title>
+      <v-app-bar-title class="text-h6">DashBoard / Home</v-app-bar-title>
 
       <v-spacer></v-spacer>
-      <v-btn icon>
-        <v-icon>mdi-view-grid-plus</v-icon>
+      <v-btn class="me-1 text-none rounded-xs" size="small" variant="flat">
+        <v-icon color="#bdbdbd" icon="mdi-view-grid-plus">
+        </v-icon>
       </v-btn>
-
-      <v-btn icon>
-        <v-icon>mdi-content-save-outline</v-icon>
+      <v-btn class="me-1 text-none rounded-xs" size="small" variant="flat">
+        <v-icon color="#bdbdbd" icon="mdi-content-save-outline">
+        </v-icon>
       </v-btn>
-
-      <v-btn icon>
-        <v-icon>mdi-cog-outline</v-icon>
+      <v-btn class="me-1 text-none rounded-xs" size="small" variant="flat">
+        <v-icon color="#bdbdbd" icon="mdi-cog-outline">
+        </v-icon>
       </v-btn>
-
-      <v-btn icon>
-        <v-icon>mdi-clock-outline</v-icon>        
+      <v-btn class="me-1 text-none rounded-xs" size="small" variant="flat">
+        <v-icon color="#bdbdbd" icon="mdi-clock-outline">
+        </v-icon>
       </v-btn>
-
-      <v-btn icon>
-        <v-icon>mdi-update</v-icon>
+      <v-btn class="me-1 text-none rounded-xs" size="small" variant="flat">
+        <v-icon color="#bdbdbd" icon="mdi-update">
+        </v-icon>
       </v-btn>
-    </v-app-bar>    
+    </v-app-bar>
 
     <grid-layout :layout="layout" @update:layout="layout = $event" :col-num="12" :row-height="30"
       :is-draggable="draggable" :is-resizable="resizable" :vertical-compact="true" :use-css-transforms="true">
@@ -43,6 +44,7 @@
 </template>
 
 <script>
+import mqttDataService from '@/services/influxdbDataService'
 import { GridLayout, GridItem } from "vue-grid-layout"
 import {
   Chart as ChartJS,
@@ -71,6 +73,9 @@ export default {
     GridLayout,
     GridItem,
     LineChart
+  },
+  mounted() {
+    this.fetchChartData();
   },
   data() {
     return {
@@ -156,12 +161,12 @@ export default {
               display: true,
             },
             ticks: {
-              color: 'white'
+              color: 'white',
             },
             grid: {
               color: '#3c3c3c'
             },
-            beginAtZero: true
+            beginAtZero: true,
           }
         },
         plugins: {
@@ -192,6 +197,31 @@ export default {
         result += " - Static";
       }
       return result;
+    },
+    async fetchChartData() {
+      try {
+        const response = await mqttDataService.getData();
+        const influxData = response.data;
+        this.updateChartData(influxData);
+      } catch (error) {
+        console.error("Erro ao buscar os dados do InfluxDB:", error);
+      }
+    },
+    updateChartData(influxData) {
+      const labels = influxData.map(data => new Date(data._time).toLocaleTimeString());
+      const values = influxData.map(data => data._value);
+
+      this.chartData['0'] = {
+        labels: labels,
+        datasets: [{
+          label: 'CPU Temperature',
+          data: values,
+          backgroundColor: '#5794F2',
+          borderColor: '#5794F2',
+          borderWidth: 1,
+          fill: true,
+        }]
+      };
     }
   }
 }

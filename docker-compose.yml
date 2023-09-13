@@ -74,7 +74,7 @@ services:
     container_name: influxdb
     restart: unless-stopped
     volumes:
-      - influxdb_data:/var/lib/influxdb:rw
+      - ./influxdb/data:/var/lib/influxdb2:rw
     networks:
       - influxdb_network
     ports:

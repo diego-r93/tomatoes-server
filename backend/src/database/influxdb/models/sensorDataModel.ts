@@ -11,9 +11,8 @@ class SensorDataModel {
     public getSensorData(): Promise<any[]> {
         const fluxQuery = `
             from(bucket: "${bucket}")
-            |> range(start: -10m)
-            |> filter(fn: (r) => r._measurement == "cpu_temperature")
-            |> mean()
+            |> range(start: -5m)
+            |> filter(fn: (r) => r._measurement == "cpu_temperature")            
         `;
 
         return new Promise((resolve, reject) => {

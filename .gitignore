@@ -1,3 +1,7 @@
+# Local InfluxDB Data
+/influxdb/data/
+/grafana-data/
+
 .DS_Store
 node_modules
 dist
