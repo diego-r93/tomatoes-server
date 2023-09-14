@@ -4,7 +4,7 @@ import * as sensorDataController from '../database/influxdb/controllers/sensorDa
 const influxRoutes = (app: Express) => {
     const router = Router();
 
-    router.get("/", sensorDataController.fetchData);    
+    router.post("/", sensorDataController.fetchData);    
 
     app.use("/influx", router);
 };

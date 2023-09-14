@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Protects script from continuing with an error
-set -eu -o pipefail
+# set -eu -o pipefail
+set -euxo pipefail
 
 # Ensures environment variables are set
 export DOCKER_INFLUXDB_INIT_MODE=$DOCKER_INFLUXDB_INIT_MODE

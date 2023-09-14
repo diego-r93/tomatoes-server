@@ -10,23 +10,34 @@
       <v-app-bar-title class="text-h6">DashBoard / Home</v-app-bar-title>
 
       <v-spacer></v-spacer>
-      <v-btn class="me-1 text-none rounded-xs" size="small" variant="flat">
+      <v-btn class="me-1 text-none rounded-xs" variant="flat">
         <v-icon color="#bdbdbd" icon="mdi-view-grid-plus">
         </v-icon>
       </v-btn>
-      <v-btn class="me-1 text-none rounded-xs" size="small" variant="flat">
+      <v-btn class="me-1 text-none rounded-xs" variant="flat">
         <v-icon color="#bdbdbd" icon="mdi-content-save-outline">
         </v-icon>
       </v-btn>
-      <v-btn class="me-1 text-none rounded-xs" size="small" variant="flat">
+      <v-btn class="me-1 text-none rounded-xs" variant="flat">
         <v-icon color="#bdbdbd" icon="mdi-cog-outline">
         </v-icon>
       </v-btn>
-      <v-btn class="me-1 text-none rounded-xs" size="small" variant="flat">
-        <v-icon color="#bdbdbd" icon="mdi-clock-outline">
-        </v-icon>
-      </v-btn>
-      <v-btn class="me-1 text-none rounded-xs" size="small" variant="flat">
+
+      <v-menu>
+        <template v-slot:activator="{ props }">
+          <v-btn v-bind="props" v-on="on" class="me-1 text-none rounded-xs" variant="flat">
+            <v-icon color="#bdbdbd" icon="mdi-clock-outline"></v-icon>
+          </v-btn>
+        </template>
+        <v-list>
+          <v-list-item v-for="(item, index) in timeOptions" :key="index" :value="item.value"
+            @click="updateQueryRange(item.value)">
+            <v-list-item-title>{{ item.label }}</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
+
+      <v-btn class="me-1 text-none rounded-xs" variant="flat" @click="fetchChartData">
         <v-icon color="#bdbdbd" icon="mdi-update">
         </v-icon>
       </v-btn>
@@ -44,7 +55,8 @@
 </template>
 
 <script>
-import mqttDataService from '@/services/influxdbDataService'
+import { reactive, ref, toRefs, onMounted } from 'vue';
+import influxdbDataService from '@/services/influxdbDataService'
 import { GridLayout, GridItem } from "vue-grid-layout"
 import {
   Chart as ChartJS,
@@ -74,78 +86,85 @@ export default {
     GridItem,
     LineChart
   },
-  mounted() {
-    this.fetchChartData();
-  },
-  data() {
-    return {
-      layout: [
-        { "x": 0, "y": 0, "w": 4, "h": 8, "i": "0", static: false },
-        { "x": 4, "y": 0, "w": 4, "h": 8, "i": "1", static: false },
-        { "x": 4, "y": 0, "w": 3, "h": 6, "i": "2", static: false },
-        { "x": 7, "y": 0, "w": 4, "h": 8, "i": "3", static: false },
-        { "x": 8, "y": 0, "w": 3, "h": 6, "i": "4", static: false },
-      ],
+  setup() {
+    const chartData = ref({
+      '0': {
+        bucket: "tomatoes",
+        query: "|> range(start: -5m) |> filter(fn: (r) => r._measurement == \"cpu_temperature\")",
+        datasets: [{
+          label: 'CPU Temperature',
+          backgroundColor: '#5794F2',
+          borderColor: '#5794F2',
+          borderWidth: 1,
+          fill: true,
+        }]
+      },
+      '1': {
+        bucket: "tomatoes",
+        query: "|> range(start: -5m) |> filter(fn: (r) => r._measurement == \"cpu\") |> filter(fn: (r) => r[\"_field\"] == \"usage_user\") |> filter(fn: (r) => r[\"cpu\"] == \"cpu-total\")",
+        datasets: [{
+          label: 'CPU Usage',
+          backgroundColor: '#FF6384',
+          borderColor: '#FF6384',
+          borderWidth: 1,
+          fill: true,
+        }]
+      },
+      '2': {
+        bucket: "tomatoes",
+        query: "|> range(start: -5m) |> filter(fn: (r) => r[\"_measurement\"] == \"mem\") |> filter(fn: (r) => r[\"_field\"] == \"used\")",
+        datasets: [{
+          label: 'RAM Usage',
+          backgroundColor: '#FFCE56',
+          borderColor: '#FFCE56',
+          borderWidth: 1,
+          fill: true,
+        }]
+      },
+      '3': {
+        bucket: "tomatoes",
+        query: "|> range(start: -5m) |> filter(fn: (r) => r._measurement == \"cpu_temperature\")",
+        datasets: [{
+          label: 'pH',
+          backgroundColor: '#36A2EB',
+          borderColor: '#36A2EB',
+          borderWidth: 1,
+          fill: true,
+        }]
+      },
+      '4': {
+        bucket: "tomatoes",
+        query: "|> range(start: -5m) |> filter(fn: (r) => r._measurement == \"cpu_temperature\")",
+        datasets: [{
+          label: 'Luminosity',
+          backgroundColor: '#4BC0C0',
+          borderColor: '#4BC0C0',
+          borderWidth: 1,
+          fill: true,
+        }]
+      },
+    });
+    const timeRange = ref('-5m');
+
+    const state = reactive({
       draggable: true,
       resizable: true,
       index: 0,
-      chartData: {
-        '0': {
-          labels: ['00:00:00', '01:00:00', '02:00:00', '03:00:00', '04:00:00', '05:00:00'],
-          datasets: [{
-            label: 'Data One',
-            data: [40, 39, 10, 40, 39, 80],
-            backgroundColor: '#5794F2',
-            borderColor: '#5794F2',
-            borderWidth: 1,
-            fill: true,
-          }]
-        },
-        '1': {
-          labels: ['00:00:00', '01:00:00', '02:00:00', '03:00:00', '04:00:00', '05:00:00'],
-          datasets: [{
-            label: 'Temperature',
-            data: [23, 25, 22, 21, 20, 19],
-            backgroundColor: '#FF6384',
-            borderColor: '#FF6384',
-            borderWidth: 1,
-            fill: true,
-          }]
-        },
-        '2': {
-          labels: ['00:00:00', '01:00:00', '02:00:00', '03:00:00', '04:00:00', '05:00:00'],
-          datasets: [{
-            label: 'Humidity',
-            data: [45, 50, 55, 60, 65, 70],
-            backgroundColor: '#FFCE56',
-            borderColor: '#FFCE56',
-            borderWidth: 1,
-            fill: true,
-          }]
-        },
-        '3': {
-          labels: ['00:00:00', '01:00:00', '02:00:00', '03:00:00', '04:00:00', '05:00:00'],
-          datasets: [{
-            label: 'pH',
-            data: [6.8, 7.0, 6.7, 6.5, 6.4, 6.3],
-            backgroundColor: '#36A2EB',
-            borderColor: '#36A2EB',
-            borderWidth: 1,
-            fill: true,
-          }]
-        },
-        '4': {
-          labels: ['00:00:00', '01:00:00', '02:00:00', '03:00:00', '04:00:00', '05:00:00'],
-          datasets: [{
-            label: 'Luminosity',
-            data: [1000, 1100, 1050, 1200, 1300, 1400],
-            backgroundColor: '#4BC0C0',
-            borderColor: '#4BC0C0',
-            borderWidth: 1,
-            fill: true,
-          }]
-        },
-      },
+      timeOptions: [
+        { label: '5 min', value: '-5m' },
+        { label: '10 min', value: '-10m' },
+        { label: '30 min', value: '-30m' },
+        { label: '1 hour', value: '-1h' },
+        { label: '3 hours', value: '-3h' },
+      ],
+      layout: [
+        { "x": 0, "y": 0, "w": 4, "h": 8, "i": "0", static: false },
+        { "x": 4, "y": 0, "w": 4, "h": 8, "i": "1", static: false },
+        { "x": 8, "y": 0, "w": 4, "h": 8, "i": "2", static: false },
+        { "x": 3, "y": 0, "w": 4, "h": 8, "i": "3", static: false },
+        { "x": 7, "y": 0, "w": 4, "h": 8, "i": "4", static: false },
+      ],
+
       chartOptions: {
         scales: {
           x: {
@@ -185,43 +204,87 @@ export default {
             },
           },
         },
+        elements: {
+          point: {
+            radius: 2
+          }
+        },
         responsive: true,
         maintainAspectRatio: false
       }
+    });
+
+    const fetchChartData = async () => {
+      for (let chartIndex in chartData.value) {
+        const bucket = chartData.value[chartIndex].bucket
+        const query = chartData.value[chartIndex].query
+        if (!bucket || !query) {
+          console.error(`Dados ausentes para o gráfico ${chartIndex}`);
+          continue;
+        }
+        try {
+          const response = await influxdbDataService.getData({
+            bucket,
+            query
+          });
+          const influxData = response.data;
+          updateChartData(influxData, chartIndex);
+        } catch (error) {
+          console.error(`Erro ao buscar os dados do InfluxDB para o gráfico ${chartIndex}:`, error);
+        }
+      }
     }
-  },
-  methods: {
-    itemTitle(item) {
-      let result = item.i;
-      if (item.static) {
-        result += " - Static";
-      }
-      return result;
-    },
-    async fetchChartData() {
-      try {
-        const response = await mqttDataService.getData();
-        const influxData = response.data;
-        this.updateChartData(influxData);
-      } catch (error) {
-        console.error("Erro ao buscar os dados do InfluxDB:", error);
-      }
-    },
-    updateChartData(influxData) {
+
+    const updateChartData = (influxData, chartIndex) => {
       const labels = influxData.map(data => new Date(data._time).toLocaleTimeString());
       const values = influxData.map(data => data._value);
-
-      this.chartData['0'] = {
+      chartData.value[chartIndex] = {
+        ...chartData.value[chartIndex],
         labels: labels,
         datasets: [{
-          label: 'CPU Temperature',
+          label: chartData.value[chartIndex].datasets[0].label,
           data: values,
-          backgroundColor: '#5794F2',
-          borderColor: '#5794F2',
-          borderWidth: 1,
-          fill: true,
         }]
       };
+    }
+    onMounted(() => {
+      updateQueriesWithTimeRange();
+      fetchChartData();
+    });
+
+    const updateQueriesWithTimeRange = () => {
+      for (let chartIndex in chartData.value) {
+        let query = chartData.value[chartIndex].query;
+        query = query.replace(/(\|> range\(start: )[^\)]+\)/, `$1${timeRange.value})`);
+        chartData.value[chartIndex].query = query;
+      }
+    };
+
+    const updateQueryRange = (value) => {
+      timeRange.value = value;
+
+      if (value === '-5m') {
+        state.chartOptions.elements.point.radius = 2;  // Mostra o ponto se for '-5m'
+      } else {
+        state.chartOptions.elements.point.radius = 0;  // Oculta o ponto para outros valores
+      }
+      updateQueriesWithTimeRange();
+      fetchChartData();
+    };
+
+    return {
+      ...toRefs(state),
+      chartData,
+      updateQueryRange,
+      fetchChartData,
+
+      itemTitle(item) {
+        let result = item.i;
+        if (item.static) {
+          result += " - Static";
+        }
+        return result;
+      },
     }
   }
 }
@@ -279,5 +342,20 @@ export default {
 
 .vue-grid-item .add {
   cursor: pointer;
+}
+
+.canvas-wrapper {
+    position: relative;
+}
+
+.canvas-wrapper::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.8));
+    pointer-events: none;
 }
 </style>

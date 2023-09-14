@@ -8,11 +8,10 @@ class SensorDataModel {
         this.queryApi = client.getQueryApi(org);
     }
 
-    public getSensorData(): Promise<any[]> {
+    public getSensorData(bucket: string, query: string): Promise<any[]> {
         const fluxQuery = `
             from(bucket: "${bucket}")
-            |> range(start: -5m)
-            |> filter(fn: (r) => r._measurement == "cpu_temperature")            
+            ${query}       
         `;
 
         return new Promise((resolve, reject) => {
