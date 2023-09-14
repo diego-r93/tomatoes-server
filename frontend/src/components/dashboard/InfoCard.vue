@@ -37,10 +37,11 @@
         </v-list>
       </v-menu>
 
-      <v-btn class="me-1 text-none rounded-xs" variant="flat" @click="fetchChartData">
-        <v-icon color="#bdbdbd" icon="mdi-update">
-        </v-icon>
-      </v-btn>
+      <div class="pr-5">
+        <v-btn class="text-none rounded-xs" variant="flat" @click="fetchChartData">
+          <v-icon color="#bdbdbd" icon="mdi-sync"></v-icon>
+        </v-btn>
+      </div>
     </v-app-bar>
 
     <grid-layout :layout="layout" @update:layout="layout = $event" :col-num="12" :row-height="30"
@@ -345,17 +346,17 @@ export default {
 }
 
 .canvas-wrapper {
-    position: relative;
+  position: relative;
 }
 
 .canvas-wrapper::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.8));
-    pointer-events: none;
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.8));
+  pointer-events: none;
 }
 </style>

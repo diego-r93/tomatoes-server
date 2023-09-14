@@ -41,3 +41,16 @@ const currentLayout = computed(() => {
   return layouts[layoutName]
 })
 </script>
+
+<style>
+body::-webkit-scrollbar {
+  display: none;
+  /* Oculta a barra de rolagem para navegadores WebKit como Chrome e Safari */
+}
+
+body {
+  -ms-overflow-style: none;
+  /* Oculta a barra de rolagem para IE e Edge */
+  scrollbar-width: none;
+  /* Oculta a barra de rolagem para Firefox */
+}</style>
