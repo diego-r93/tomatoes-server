@@ -3,40 +3,37 @@
     <v-list-item prepend-avatar="@/assets/images/hydroponic.png" title="Home" value="home" href="/" nav></v-list-item>
 
     <v-list density="compact" nav>
-      <v-list-item v-for="item in items" :key="item.value" :prepend-icon="item.icon" :title="item.title"
-        :value="item.value" :to="item.path" @click="selectItem(item.value)"></v-list-item>
+      <v-tooltip v-for="item in items" :key="item.value">
+        <template v-slot:activator="{ props }">
+          <v-list-item v-bind="props" :key="item.value" :prepend-icon="item.icon" :title="item.title" :value="item.value"
+            :to="item.path" @click="selectItem(item.value)"></v-list-item>
+        </template>
+        <span>{{ item.title }}</span>
+      </v-tooltip>
     </v-list>
 
-    <v-list-item class="drawer-toggle-button">
-      <template v-slot:append>
-        <v-btn v-if="rail === true" variant="text" icon="mdi-chevron-right" @click.stop="rail = !rail"></v-btn>
-        <v-btn v-else-if="rail !== true" variant="text" icon="mdi-chevron-left" @click.stop="rail = !rail"></v-btn>
-      </template>
-    </v-list-item>
+    <template v-slot:append>
+      <v-menu open-on-hover location="right">
+        <template v-slot:activator="{ props }">
+          <v-list-item prepend-icon="mdi-help-circle-outline" title="Help" value="help" to="/help" v-bind="props">
+          </v-list-item>
+        </template>
+        <v-list>
+          <v-list-item v-for="(item, index) in itemsHelp" :key="index">
+            <a :href="item.url" target="_blank">
+              <v-btn :prepend-icon=item.icon> {{ item.title }}
+              </v-btn>
+            </a>
+          </v-list-item>
+        </v-list>
+      </v-menu>
 
-    <template v-slot:append>      
-        <v-list-item prepend-icon="mdi-cog-outline" title="Configuration" value="configuration"
-          to="/configuration"></v-list-item>
-
-        <v-menu open-on-hover location="end">
-          <template v-slot:activator="{ props }">
-            <v-list-item prepend-icon="mdi-help-circle-outline" title="Help" value="help" to="/help" v-bind="props">
-            </v-list-item>
-          </template>
-          <v-list>
-            <v-list-item v-for="(item, index) in itemsHelp" :key="index">
-              <a :href="item.url" target="_blank">
-                <v-btn :prepend-icon=item.icon> {{ item.title }} 
-                </v-btn>
-              </a>
-            </v-list-item>
-          </v-list>
-        </v-menu>
-        
-        <v-list-item prepend-icon="mdi mdi-logout" title="Logout" value="logout" 
-          @click.stop="logoutUser"></v-list-item>     
+      <v-tooltip text="Logout">
+        <template v-slot:activator="{ props }">
+          <v-list-item v-bind="props" prepend-icon="mdi mdi-logout" title="Logout" value="logout" @click.stop="logoutUser"></v-list-item>
+        </template>
+      </v-tooltip>
     </template>
-
   </v-navigation-drawer>
 </template>
 
@@ -52,7 +49,10 @@ export default {
         { title: 'DashBoards', icon: 'mdi-view-dashboard', value: "dashboards", path: '/dashboard' },
         { title: 'Device configuration', icon: 'mdi-chip', value: "device", path: '/device' },
         { title: 'Database configuration', icon: 'mdi-database', value: "database", path: '/database' },
+        { title: 'Alerting', icon: 'mdi-bell', value: "alerting", path: '/alert' },
+        { title: 'Lan Configuration', icon: 'mdi mdi-lan', value: "lan", path: '/lan' },
         { title: 'My Account', icon: 'mdi-account', value: "account", path: '/account' },
+        { title: 'Configuration', icon: 'mdi-cog', value: "configuration", path: '/configuration' },
       ],
 
       itemsHelp: [
@@ -72,7 +72,7 @@ export default {
     selectItem(itemValue) {
       this.selectedItem = itemValue
     },
-    logoutUser() {      
+    logoutUser() {
       Authentication.logout()
       router.push('/login')
     },
@@ -81,18 +81,4 @@ export default {
 }
 </script>
 
-<style scoped>
-.drawer-toggle-button {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  right: -16px;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-</style>
+<style></style>
