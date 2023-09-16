@@ -14,14 +14,12 @@ import AuthLayout from "@/layouts/AuthLayout.vue"
 import UserInterfaceLayout from "@/layouts/UserInterfaceLayout.vue"
 
 // Importado do Pinia
-import { useAuthStore } from '@/store/userConfiguration'
+import { useAppStore } from '@/store/appConfiguration'
 
 // Importado do Pinia
-const authStore = useAuthStore()
-let theme = authStore.theme
-
-const route = useRoute();
-
+const userTheme = useAppStore()
+const theme = computed(() => userTheme.theme)
+const route = useRoute()
 
 const isRouterLoaded = computed(() => {
   return route.name !== null ? true : false
@@ -53,4 +51,5 @@ body {
   /* Oculta a barra de rolagem para IE e Edge */
   scrollbar-width: none;
   /* Oculta a barra de rolagem para Firefox */
-}</style>
+}
+</style>

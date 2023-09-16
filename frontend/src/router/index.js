@@ -32,6 +32,22 @@ const routes = [
     component: () => import("@/views/DatabaseConfiguration.vue"),
   },
   {
+    path: "/alert",
+    meta: {
+      requiresAuth: true,
+      layout: "ui",
+    },
+    component: () => import("@/views/AlertConfiguration.vue"),
+  },
+  {
+    path: "/network",
+    meta: {
+      requiresAuth: true,
+      layout: "ui",
+    },
+    component: () => import("@/views/NetworkConfiguration.vue"),
+  },
+  {
     path: "/account",
     meta: {
       requiresAuth: true,

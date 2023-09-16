@@ -17,7 +17,7 @@
         <template v-slot:activator="{ props }">
           <v-list-item prepend-icon="mdi-help-circle-outline" title="Help" value="help" to="/help" v-bind="props">
           </v-list-item>
-        </template>
+        </template>        
         <v-list>
           <v-list-item v-for="(item, index) in itemsHelp" :key="index">
             <a :href="item.url" target="_blank">
@@ -50,7 +50,7 @@ export default {
         { title: 'Device configuration', icon: 'mdi-chip', value: "device", path: '/device' },
         { title: 'Database configuration', icon: 'mdi-database', value: "database", path: '/database' },
         { title: 'Alerting', icon: 'mdi-bell', value: "alerting", path: '/alert' },
-        { title: 'Lan Configuration', icon: 'mdi mdi-lan', value: "lan", path: '/lan' },
+        { title: 'Network Configuration', icon: 'mdi mdi-lan', value: "network", path: '/network' },
         { title: 'My Account', icon: 'mdi-account', value: "account", path: '/account' },
         { title: 'Configuration', icon: 'mdi-cog', value: "configuration", path: '/configuration' },
       ],

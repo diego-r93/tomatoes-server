@@ -4,29 +4,33 @@
     <v-app-bar color="#121212" flat>
 
       <template v-slot:prepend>
-        <v-icon icon="mdi-view-dashboard" size="small"></v-icon>
+        <v-icon color="#bdbdbd" icon="mdi-view-dashboard" size="small"></v-icon>
       </template>
 
-      <v-app-bar-title class="text-h6">DashBoard / Home</v-app-bar-title>
+      <v-app-bar-title class="text-h6">
+        <span style="color: #bdbdbd">
+          DashBoard / Home
+        </span>
+      </v-app-bar-title>
 
-      <v-spacer></v-spacer>
-      <v-btn class="me-1 text-none rounded-xs" variant="flat">
+      <v-btn class="me-2 text-none rounded-xs" variant="flat">
         <v-icon color="#bdbdbd" icon="mdi-view-grid-plus">
         </v-icon>
       </v-btn>
-      <v-btn class="me-1 text-none rounded-xs" variant="flat">
+      <v-btn class="me-2 text-none rounded-xs" variant="flat">
         <v-icon color="#bdbdbd" icon="mdi-content-save-outline">
         </v-icon>
       </v-btn>
-      <v-btn class="me-1 text-none rounded-xs" variant="flat">
+      <v-btn class="me-2 text-none rounded-xs" variant="flat">
         <v-icon color="#bdbdbd" icon="mdi-cog-outline">
         </v-icon>
       </v-btn>
 
       <v-menu>
         <template v-slot:activator="{ props }">
-          <v-btn v-bind="props" v-on="on" class="me-1 text-none rounded-xs" variant="flat">
-            <v-icon color="#bdbdbd" icon="mdi-clock-outline"></v-icon>
+          <v-btn v-bind="props" v-on="on" class="me-2 text-none rounded-xs" variant="flat">
+            <v-icon class="mr-2" color="#bdbdbd" icon="mdi-clock-outline"></v-icon>
+            <span style="color: #bdbdbd">{{ selectedLabel }}</span>
           </v-btn>
         </template>
         <v-list>
@@ -151,6 +155,7 @@ export default {
       draggable: true,
       resizable: true,
       index: 0,
+      selectedLabel: '5min',
       timeOptions: [
         { label: '5 min', value: '-5m' },
         { label: '10 min', value: '-10m' },
@@ -271,6 +276,11 @@ export default {
       }
       updateQueriesWithTimeRange();
       fetchChartData();
+
+      const selectedOption = state.timeOptions.find(item => item.value === value);
+      if (selectedOption) {
+        state.selectedLabel = selectedOption.label;
+      }
     };
 
     return {
@@ -287,7 +297,7 @@ export default {
         return result;
       },
     }
-  }
+  },
 }
 </script>
 
