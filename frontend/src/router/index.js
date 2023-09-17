@@ -1,97 +1,38 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Authentication from '@/services/auth'
 
+import DashboardRoutes from "@/router/dashboard.routes"
+import DeviceRoutes from "@/router/device.routes"
+import DatabaseRoutes from "@/router/database.routes"
+import AlertRoutes from "@/router/alert.routes"
+import NetworkRoutes from "@/router/network.routes"
+import AccountRoutes from "@/router/account.routes"
+import ConfigurationRoutes from "@/router/configuration.routes"
+import AuthRoutes from "@/router/auth.routes"
+import helpRoutes from "@/router/configuration.routes"
+
 const routes = [
   {
     path: '/',
     redirect: "/dashboard",
     meta: {},
-  },
+  },  
   {
-    path: "/dashboard",
-    meta: {
-      requiresAuth: true,
-      layout: "ui",
-    },
-    component: () => import("@/views/DashBoard.vue"),
+    path: "/:pathMatch(.*)*",
+    name: "error",
+    component: () =>
+      import(/* webpackChunkName: "error" */ "@/views/errors/NotFoundPage.vue"),
   },
-  {
-    path: "/device",
-    meta: {
-      requiresAuth: true,
-      layout: "ui",
-    },
-    component: () => import("@/views/DeviceConfiguration.vue"),
-  },
-  {
-    path: "/database",
-    meta: {
-      requiresAuth: true,
-      layout: "ui",
-    },
-    component: () => import("@/views/DatabaseConfiguration.vue"),
-  },
-  {
-    path: "/alert",
-    meta: {
-      requiresAuth: true,
-      layout: "ui",
-    },
-    component: () => import("@/views/AlertConfiguration.vue"),
-  },
-  {
-    path: "/network",
-    meta: {
-      requiresAuth: true,
-      layout: "ui",
-    },
-    component: () => import("@/views/NetworkConfiguration.vue"),
-  },
-  {
-    path: "/account",
-    meta: {
-      requiresAuth: true,
-      layout: "ui",
-    },
-    component: () => import("@/views/MyAccount.vue"),
-  },
-  {
-    path: "/configuration",
-    meta: {
-      requiresAuth: true,
-      layout: "ui",
-    },
-    component: () => import("@/views/PageConfiguration.vue"),
-  },
-  {
-    path: "/help",
-    meta: {
-      requiresAuth: true,
-      layout: "ui",
-    },
-    component: () => import("@/views/HelpMenu.vue"),
-  },
-  {
-    path: '/login',
-    meta: {
-      layout: "auth",
-    },
-    component: () => import("@/views/LoginPage.vue"),
-  },
-  {
-    path: '/signup',
-    meta: {
-      layout: "auth",
-    },
-    component: () => import("@/views/SignUpPage.vue"),
-  },
-  {
-    path: '/resetpassword',
-    meta: {
-      layout: "auth",
-    },
-    component: () => import("@/views/SendPasswordResetEmail.vue"),
-  },
+  
+  ...DashboardRoutes,
+  ...DeviceRoutes,
+  ...DatabaseRoutes,
+  ...AlertRoutes,
+  ...NetworkRoutes,
+  ...AccountRoutes,
+  ...ConfigurationRoutes,
+  ...AuthRoutes,
+  ...helpRoutes,
 ]
 
 const router = createRouter({

@@ -20,9 +20,12 @@ import mqttDataService from '@/services/mqttDataService'
 export default {
   name: "DeviceCardList",
   data: () => ({
-    loading: true,
-    devices: [],
-  }),  
+    loading: false,
+    devices: [
+      { host: "Host1", ip: "192.168.0.1", mac: "AA:BB:CC:DD:EE:01", rssi: -60 },
+      { host: "Host2", ip: "192.168.0.2", mac: "AA:BB:CC:DD:EE:02", rssi: -62 },
+    ],
+  }),
   created() {
     try {
       mqttDataService.getAll().then((response) => {
