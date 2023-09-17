@@ -15,7 +15,7 @@
       </v-tab>
     </v-tabs>
 
-    <v-card flat>
+    <v-card>
       <router-view></router-view>
     </v-card>
   </v-card>
