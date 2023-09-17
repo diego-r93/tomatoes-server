@@ -1,32 +1,58 @@
 <template>
-  <v-container class="fill-height">
-    <v-responsive class="d-flex align-center text-center fill-height">
-      <v-tabs v-model="tab" color="deep-purple-accent-4" align-tabs="center">
-        <v-tab :value="1">Landscape</v-tab>
-        <v-tab :value="2">City</v-tab>
-        <v-tab :value="3">Abstract</v-tab>
-      </v-tabs>
-      <v-window v-model="tab">
-        <v-window-item v-for="n in 3" :key="n" :value="n">
-          <v-container fluid>
-            <v-row>
-              <v-col v-for="i in 6" :key="i" cols="12" md="4">
-                <v-img :src="`https://picsum.photos/500/300?image=${i * n * 5 + 10}`"
-                  :lazy-src="`https://picsum.photos/10/6?image=${i * n * 5 + 10}`" aspect-ratio="1"></v-img>
-              </v-col>
-            </v-row>
-          </v-container>
-        </v-window-item>
-      </v-window>
-    </v-responsive>
-  </v-container>
+  <v-card class="mt-4 mx-auto" color="#121212" max-width="400" variant="flat">
+    <template v-slot:title>
+      <v-icon color="#bdbdbd" icon="mdi-lan" size="x-large"></v-icon>
+      <span class="ml-4 text-h5" style="color: #bdbdbd">
+          Network Configuration
+        </span>
+    </template>
+  </v-card>
+  
+  <v-card class="mt-4 mx-auto" max-width="1000" flat>
+    <v-tabs v-model="tab" bg-color="#121212" color="basil" grow>
+      <v-tab v-for="item in items" :key="item.id" :to="item.route">
+        {{ item.name }}
+      </v-tab>
+    </v-tabs>
+
+    <v-card flat>
+      <router-view></router-view>
+    </v-card>
+  </v-card>
 </template>
 
-
 <script>
+import { ref, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+
 export default {
-  data: () => ({
-    tab: null,
-  }),
+  name: 'NetworkConfig',
+  setup() {
+    const router = useRouter()
+    const route = useRoute()
+
+    const tab = ref(route.path)  // inicia a tab com a rota atual
+
+    const items = [
+      { id: 1, name: 'Lan', route: '/network/lan' },
+      { id: 2, name: 'DNS', route: '/network/dns' },
+      { id: 3, name: 'WPA Supplicant', route: '/network/wpa' },
+      { id: 4, name: 'DHCP', route: '/network/dhcp' },
+    ]
+
+    const navigateTo = route => {
+      router.push(route)
+    }
+
+    watch(() => route.path, newPath => {
+      tab.value = newPath
+    })
+
+    return {
+      items,
+      tab,
+      navigateTo
+    }
+  }
 }
 </script>
