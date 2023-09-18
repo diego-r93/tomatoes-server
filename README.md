@@ -45,7 +45,12 @@ docker-compose --version
 ```
 
 #### Configuração
-##### 1. Clonando o repositório
+##### 1. Instalando o Git
+```bash
+sudo apt update
+sudo apt install git
+```
+##### 2. Clonando o repositório
 
 ```bash
 git clone git@github.com:diego-r93/tomatoes-server.git
@@ -53,13 +58,13 @@ cd tomatoes-server
 ```
 Lembre-se de substituir URL_DO_REPOSITÓRIO_DO_GITHUB pelo URL do seu repositório e NOME_DO_REPOSITÓRIO pelo nome do diretório do projeto clonado.
 
-##### 2. Configurando o projeto
+##### 3. Configurando o projeto
 
 Certifique-se de verificar qualquer arquivo de configuração específico ou variáveis de ambiente que precisem ser ajustadas antes de prosseguir.
 
-##### 3. Executando o projeto
+##### 4. Executando o projeto
 
-Com o Docker e o Docker-Compose instalados e o projeto clonado e configurado, você pode iniciar o projeto com:
+*Com o Docker e o Docker-Compose instalados e o projeto clonado e configurado, você pode iniciar o projeto com:*
 
 ```bash
 sudo docker-compose up
@@ -69,7 +74,7 @@ ou
 sudo docker-compose up -d
 ```
 
-##### 4. Interromper o projeto
+##### 5. Interromper o projeto
 
 Para interromper um projeto em execução digite:
 
@@ -79,8 +84,35 @@ sudo docker-compose down
 
 ## Comandos Principais do Docker-Compose
 
-Iniciar o projeto: ``docker-compose up``
-Iniciar o projeto em background: ``docker-compose up -d``
-Parar o projeto: ``docker-compose down``
-Visualizar logs: ``docker container logs`` ou ``docker container logs -f`` para seguir os logs em tempo real.
-Executar um serviço específico: ``docker-compose run NOME_DO_SERVIÇO COMANDO``
+- **Iniciar o projeto:** 
+
+  ```bash
+  docker-compose up
+  ```
+- **Iniciar o projeto em background:** 
+
+  ```bash 
+  docker-compose up -d
+  ```
+- **Parar o projeto:** 
+
+  ```bash
+  docker-compose down
+  ```
+- **Visualizar logs:** 
+
+  ```bash
+  docker container logs
+  ``` 
+  *para seguir os logs em tempo real.*
+
+  ```bash
+  docker container logs -f
+  ``` 
+  
+
+- **Executar um serviço específico:** 
+
+  ```bash
+  docker-compose run NOME_DO_SERVIÇO COMANDO
+  ```
