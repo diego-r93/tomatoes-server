@@ -11,6 +11,7 @@ import path from 'path';
 import setupUsersRoutes from './routes/users-routes';
 import setupMqttRoutes from './routes/mqtt-routes';
 import setupInfluxRoutes from './routes/influxdb-routes';
+import setupNetworkRoutes from './routes/network-routes';
 
 const host: string = process.env.BACKEND_HOST || '127.0.0.0';
 const port: number = Number(process.env.BACKEND_PORT) || 3333;
@@ -53,6 +54,9 @@ setupMqttRoutes(app);
 
 // InfluxDB
 setupInfluxRoutes(app);
+
+// Network
+setupNetworkRoutes(app);
 
 // Listen the server
 app.listen(port, host, () => {

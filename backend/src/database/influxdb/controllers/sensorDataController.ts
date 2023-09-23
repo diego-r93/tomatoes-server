@@ -12,7 +12,7 @@ export const fetchData = async (req: Request, res: Response) => {
 
     try {
         const data = await sensorDataModel.getSensorData(bucket, query);
-        console.log(data);
+        // console.log(data);
         res.json(data);
     } catch (error) {
         console.error(error);
