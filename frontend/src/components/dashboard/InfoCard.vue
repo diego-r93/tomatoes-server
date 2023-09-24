@@ -28,7 +28,7 @@
 
       <v-menu>
         <template v-slot:activator="{ props }">
-          <v-btn v-bind="props" v-on="on" class="me-2 text-none rounded-xs" variant="flat">
+          <v-btn v-bind="props" class="me-2 text-none rounded-xs" variant="flat">
             <v-icon class="mr-2" color="#bdbdbd" icon="mdi-clock-outline"></v-icon>
             <span style="color: #bdbdbd">{{ selectedLabel }}</span>
           </v-btn>
@@ -50,9 +50,10 @@
 
     <grid-layout :layout="layout" @update:layout="layout = $event" :col-num="12" :row-height="30"
       :is-draggable="draggable" :is-resizable="resizable" :vertical-compact="true" :use-css-transforms="true">
-      <grid-item v-for="item in layout" :key="item.i" :static="item.static" :x="item.x" :y="item.y" :w="item.w"
-        :h="item.h" :i="item.i">
-        <LineChart :data="chartData[item.i]" :options="chartOptions" />
+      <grid-item v-for="chart in charts" :key="chart.id" :x="chart.layout.x" :y="chart.layout.y" :w="chart.layout.w"
+        :h="chart.layout.h" :i="chart.id.toString()" :ref="el => registerRef(chart.id, el)">
+        <Chart :chartOptions="chart.options" :chartData="chart.data"
+          :key="chart.id + '-' + chart.options.width + '-' + chart.options.height" />
       </grid-item>
     </grid-layout>
 
@@ -60,96 +61,215 @@
 </template>
 
 <script>
-import { reactive, ref, toRefs, onMounted } from 'vue';
-import influxdbDataService from '@/services/influxdbDataService'
+import { reactive, ref, toRefs, onMounted } from 'vue'
 import { GridLayout, GridItem } from "vue-grid-layout"
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-} from 'chart.js'
-import { Line as LineChart } from 'vue-chartjs'
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-)
+import Chart from '@/components/dashboard/Chart.vue'
+import influxdbDataService from '@/services/influxdbDataService'
 
 export default {
-  components: {
-    GridLayout,
-    GridItem,
-    LineChart
-  },
+  components: { GridLayout, GridItem, Chart },
   setup() {
-    const chartData = ref({
-      '0': {
+    const gridItemsRefs = ref({});
+    const timeRange = ref('-5m');
+
+    // Método para registrar os elementos DOM dos grid-items.
+    const registerRef = (id, el) => {
+      if (el?.$el) {
+        // Se el for um componente Vue, registre seu elemento raiz.
+        gridItemsRefs.value[id] = el.$el;
+      } else {
+        gridItemsRefs.value[id] = el;
+      }
+      updateChartsSize();
+    };
+
+    // Método para obter o tamanho do grid-item pelo ID.
+    const getChartSize = (id) => {
+      const gridItem = gridItemsRefs.value[id];
+      if (gridItem) {
+        return {
+          width: gridItem.clientWidth,
+          height: gridItem.clientHeight,
+        };
+      }
+      return { width: 300, height: 300 }; // Padrão
+    };
+
+    // Método para atualizar o tamanho de todos os charts.
+    const updateChartsSize = () => {
+      charts.value.forEach(chart => {
+        const size = getChartSize(chart.id);
+        // Aqui, atualize as dimensões do componente Chart conforme necessário.
+        // Se o componente Chart tem um método ou propriedades para atualizar
+        // seu tamanho, você pode chamar ou modificar aqui.
+
+        // Subtrair o espaço necessário para outras divs aqui
+        const titleHeight = 27;
+        const xAxisHeight = 50;
+        const legendHeight = 31;
+        chart.options.width = size.width;
+        chart.options.height = size.height - xAxisHeight - legendHeight + titleHeight;
+      });
+    };
+
+    const charts = ref([
+      {
+        id: 0,
+        options: {
+          title: "cpu_temperature", ...getChartSize(0),
+          padding: [null, null, null, 15],
+          series: [
+            {
+              label: "Date",
+            },
+            {
+              label: "",
+              scale: "C",
+              points: {
+                show: true,
+                fill: "rgb(255, 152, 48)",
+              },
+              stroke: "rgb(255, 152, 48)",
+              fill: "rgba(255, 152, 48, 0.1)",
+            },
+          ],
+          scales: {
+            x: { time: true },
+            y: {
+              auto: true,
+              range: [],
+            },
+          },
+          axes: [
+            {
+              stroke: "#bdbdbd",
+              grid: {
+                stroke: '#2C3033',
+                width: 1
+              }
+            },
+            {
+              scale: "C",
+              values: (self, ticks) => ticks.map(rawValue => (rawValue / 1000).toFixed(2) + "° C"),
+              stroke: "#bdbdbd",
+              grid: {
+                stroke: '#2C3033',
+                width: 1
+              }
+            },
+          ],
+        },
+        data: [],
+        layout: { x: 0, y: 0, w: 6, h: 10, i: "0" },
         bucket: "tomatoes",
         query: "|> range(start: -5m) |> filter(fn: (r) => r._measurement == \"cpu_temperature\")",
-        datasets: [{
-          label: 'CPU Temperature',
-          backgroundColor: '#5794F2',
-          borderColor: '#5794F2',
-          borderWidth: 1,
-          fill: true,
-        }]
       },
-      '1': {
+      {
+        id: 1,
+        options: {
+          title: "cpu_total", ...getChartSize(1),
+          series: [
+            {
+              label: "Date",
+            },
+            {
+              label: "",
+              points: {
+                show: true,
+                fill: "rgb(87, 148, 242)",
+              },
+              stroke: "rgb(87, 148, 242)",
+              fill: "rgba(87, 148, 242, 0.1)",
+            },
+          ],
+          scales: {
+            x: { time: true }, y: {
+              auto: true,
+              range: [],
+            },
+          },
+          axes: [
+            {
+              stroke: "#bdbdbd",
+              grid: {
+                stroke: '#2C3033',
+                width: 1
+              }
+            },
+            {
+              stroke: "#bdbdbd",
+              grid: {
+                stroke: '#2C3033',
+                width: 1
+              }
+            },
+          ],
+        },
+        data: [],
+        layout: { x: 6, y: 0, w: 6, h: 10, i: "1" },
         bucket: "tomatoes",
         query: "|> range(start: -5m) |> filter(fn: (r) => r._measurement == \"cpu\") |> filter(fn: (r) => r[\"_field\"] == \"usage_user\") |> filter(fn: (r) => r[\"cpu\"] == \"cpu-total\")",
-        datasets: [{
-          label: 'CPU Usage',
-          backgroundColor: '#FF6384',
-          borderColor: '#FF6384',
-          borderWidth: 1,
-          fill: true,
-        }]
       },
-      '2': {
+      {
+        id: 2,
+        options: {
+          title: "mem_used", ...getChartSize(2),
+          padding: [null, null, null, 12],
+          series: [
+            {
+              label: "Date",
+            },
+            {
+              label: "",
+              scale: "gb",
+              points: {
+                show: true,
+                fill: "rgb(115, 191, 105)",
+              },
+              stroke: "rgb(115, 191, 105)",
+              fill: "rgba(115, 191, 105, 0.1)",
+            },
+          ],
+          scales: {
+            x: { time: true }, y: {
+              auto: true,
+              range: [],
+            },
+          },
+          axes: [
+            {
+              stroke: "#bdbdbd",
+              grid: {
+                stroke: '#2C3033',
+                width: 1
+              }
+            },
+            {
+              scale: "gb",
+              values: (self, ticks) => ticks.map(rawValue => (rawValue / 10 ** 9).toFixed(2) + "GB"),
+              stroke: "#bdbdbd",
+              grid: {
+                stroke: '#2C3033',
+                width: 1
+              }
+            },
+          ],
+        },
+        data: [],
+        layout: { x: 6, y: 0, w: 6, h: 10, i: "2" },
         bucket: "tomatoes",
         query: "|> range(start: -5m) |> filter(fn: (r) => r[\"_measurement\"] == \"mem\") |> filter(fn: (r) => r[\"_field\"] == \"used\")",
-        datasets: [{
-          label: 'RAM Usage',
-          backgroundColor: '#FFCE56',
-          borderColor: '#FFCE56',
-          borderWidth: 1,
-          fill: true,
-        }]
       },
-      '3': {
-        bucket: "tomatoes",
-        query: "|> range(start: -5m) |> filter(fn: (r) => r._measurement == \"cpu_temperature\")",
-        datasets: [{
-          label: 'pH',
-          backgroundColor: '#36A2EB',
-          borderColor: '#36A2EB',
-          borderWidth: 1,
-          fill: true,
-        }]
-      },
-      '4': {
-        bucket: "tomatoes",
-        query: "|> range(start: -5m) |> filter(fn: (r) => r._measurement == \"cpu_temperature\")",
-        datasets: [{
-          label: 'Luminosity',
-          backgroundColor: '#4BC0C0',
-          borderColor: '#4BC0C0',
-          borderWidth: 1,
-          fill: true,
-        }]
-      },
-    });
-    const timeRange = ref('-5m');
+    ]);
+
+    const layout = ref(charts.value.map(chart => chart.layout));
+
+    const updateLayout = (newLayout) => {
+      newLayout.forEach((layoutItem) => {
+        const chart = charts.value.find(c => c.id.toString() === layoutItem.i);
+        if (chart) chart.layout = layoutItem;
+      });
+    };
 
     const state = reactive({
       draggable: true,
@@ -163,76 +283,17 @@ export default {
         { label: '1 hour', value: '-1h' },
         { label: '3 hours', value: '-3h' },
       ],
-      layout: [
-        { "x": 0, "y": 0, "w": 4, "h": 8, "i": "0", static: false },
-        { "x": 4, "y": 0, "w": 4, "h": 8, "i": "1", static: false },
-        { "x": 8, "y": 0, "w": 4, "h": 8, "i": "2", static: false },
-        { "x": 3, "y": 0, "w": 4, "h": 8, "i": "3", static: false },
-        { "x": 7, "y": 0, "w": 4, "h": 8, "i": "4", static: false },
-      ],
-
-      chartOptions: {
-        scales: {
-          x: {
-            ticks: {
-              color: 'white'
-            },
-            grid: {
-              color: '#3c3c3c'
-            }
-          },
-          y: {
-            border: {
-              display: true,
-            },
-            ticks: {
-              color: 'white',
-            },
-            grid: {
-              color: '#3c3c3c'
-            },
-            beginAtZero: true,
-          }
-        },
-        plugins: {
-          legend: {
-            position: 'top',
-            align: 'center',
-            labels: {
-              font: {
-                size: 12,
-              },
-              color: 'white'
-            },
-            padding: {
-              top: 10,
-              bottom: 10
-            },
-          },
-        },
-        elements: {
-          point: {
-            radius: 2
-          }
-        },
-        responsive: true,
-        maintainAspectRatio: false
-      }
     });
 
     const fetchChartData = async () => {
-      for (let chartIndex in chartData.value) {
-        const bucket = chartData.value[chartIndex].bucket
-        const query = chartData.value[chartIndex].query
+      for (let chartIndex in charts.value) {
+        const { bucket, query } = charts.value[chartIndex];
         if (!bucket || !query) {
           console.error(`Dados ausentes para o gráfico ${chartIndex}`);
           continue;
         }
         try {
-          const response = await influxdbDataService.getData({
-            bucket,
-            query
-          });
+          const response = await influxdbDataService.getData({ bucket, query });
           const influxData = response.data;
           updateChartData(influxData, chartIndex);
         } catch (error) {
@@ -242,38 +303,42 @@ export default {
     }
 
     const updateChartData = (influxData, chartIndex) => {
-      const labels = influxData.map(data => new Date(data._time).toLocaleTimeString());
+      const timestamps = influxData.map(data => +new Date(data._time));
       const values = influxData.map(data => data._value);
-      chartData.value[chartIndex] = {
-        ...chartData.value[chartIndex],
-        labels: labels,
-        datasets: [{
-          label: chartData.value[chartIndex].datasets[0].label,
-          data: values,
-        }]
-      };
-    }
+
+      charts.value[chartIndex].data = [
+        timestamps,
+        values
+      ];
+    };
+
     onMounted(() => {
-      updateQueriesWithTimeRange();
+      // Busca os dados do gráfico assim que o componente é montado
       fetchChartData();
+
+      window.addEventListener('resize', () => {
+        updateChartsSize();
+        updateQueriesWithTimeRange();
+      });
     });
 
     const updateQueriesWithTimeRange = () => {
-      for (let chartIndex in chartData.value) {
-        let query = chartData.value[chartIndex].query;
-        query = query.replace(/(\|> range\(start: )[^\)]+\)/, `$1${timeRange.value})`);
-        chartData.value[chartIndex].query = query;
+      for (let chartIndex in charts.value) {
+        let query = charts.value[chartIndex].query;
+        query = query.replace(/(\|> range\(start: )[^)]+\)/, `$1${timeRange.value})`);
+        charts.value[chartIndex].query = query;
       }
     };
 
     const updateQueryRange = (value) => {
       timeRange.value = value;
 
-      if (value === '-5m') {
-        state.chartOptions.elements.point.radius = 2;  // Mostra o ponto se for '-5m'
-      } else {
-        state.chartOptions.elements.point.radius = 0;  // Oculta o ponto para outros valores
+      for (let chartIndex in charts.value) {
+        const series = charts.value[chartIndex].options.series;
+        series[1].points.show = value === '-5m';
+        charts.value[chartIndex].options.series = series;
       }
+
       updateQueriesWithTimeRange();
       fetchChartData();
 
@@ -285,17 +350,12 @@ export default {
 
     return {
       ...toRefs(state),
-      chartData,
+      charts,
+      layout,
+      registerRef,
+      updateLayout,
       updateQueryRange,
       fetchChartData,
-
-      itemTitle(item) {
-        let result = item.i;
-        if (item.static) {
-          result += " - Static";
-        }
-        return result;
-      },
     }
   },
 }
@@ -355,18 +415,17 @@ export default {
   cursor: pointer;
 }
 
-.canvas-wrapper {
-  position: relative;
+.u-title {
+  color: #bdbdbd;
 }
 
-.canvas-wrapper::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.8));
-  pointer-events: none;
+.u-label {
+  color: #bdbdbd;
+}
+
+.u-container,
+.u-plot {
+  width: 100%;
+  height: 100%;
 }
 </style>
