@@ -52,4 +52,8 @@ body {
   scrollbar-width: none;
   /* Oculta a barra de rolagem para Firefox */
 }
+
+.custom-border {
+  border: 1px solid #3c3c3c;
+}
 </style>

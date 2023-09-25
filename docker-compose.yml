@@ -7,6 +7,9 @@ services:
     restart: unless-stopped
     volumes:
       - ./backend:/backend
+      - /etc/dhcpcd.conf:/etc/dhcpcd.conf
+      - /etc/dnsmasq.conf:/etc/dnsmasq.conf
+      - /etc/wpa_supplicant/wpa_supplicant.conf:/etc/wpa_supplicant/wpa_supplicant.conf
     networks:
       - backend_network
       - nginx_network

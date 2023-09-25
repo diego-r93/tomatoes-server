@@ -26,7 +26,7 @@ export default defineComponent({
     const { chartOptions, chartData } = toRefs(props);
 
     const options = ref({...chartOptions.value});
-    const data = ref([...chartData.value]);
+    const data = ref([...(chartData.value || [])]);
 
     watch(chartOptions, (newVal) => {
       options.value = {...newVal};

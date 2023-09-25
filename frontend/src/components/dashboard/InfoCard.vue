@@ -1,6 +1,5 @@
 <template>
   <v-container class="py-2 px-2" fluid>
-
     <v-app-bar color="#121212" flat>
 
       <template v-slot:prepend>
@@ -13,22 +12,23 @@
         </span>
       </v-app-bar-title>
 
-      <v-btn class="me-2 text-none rounded-xs" variant="flat">
-        <v-icon color="#bdbdbd" icon="mdi-view-grid-plus">
+      <v-btn class="me-2 text-none rounded-xs custom-border" variant="flat" @click="addItem">
+        <v-icon color="#bdbdbd" icon="mdi-view-grid-plus" size="small">
         </v-icon>
       </v-btn>
-      <v-btn class="me-2 text-none rounded-xs" variant="flat">
+
+      <v-btn class="me-2 text-none rounded-xs custom-border" variant="flat">
         <v-icon color="#bdbdbd" icon="mdi-content-save-outline">
         </v-icon>
       </v-btn>
-      <v-btn class="me-2 text-none rounded-xs" variant="flat">
+      <v-btn class="me-2 text-none rounded-xs custom-border" variant="flat">
         <v-icon color="#bdbdbd" icon="mdi-cog-outline">
         </v-icon>
       </v-btn>
 
       <v-menu>
         <template v-slot:activator="{ props }">
-          <v-btn v-bind="props" class="me-2 text-none rounded-xs" variant="flat">
+          <v-btn v-bind="props" class="me-2 text-none rounded-xs custom-border" variant="flat">
             <v-icon class="mr-2" color="#bdbdbd" icon="mdi-clock-outline"></v-icon>
             <span style="color: #bdbdbd">{{ selectedLabel }}</span>
           </v-btn>
@@ -42,7 +42,7 @@
       </v-menu>
 
       <div class="pr-5">
-        <v-btn class="text-none rounded-xs" variant="flat" @click="fetchChartData">
+        <v-btn class="text-none rounded-xs custom-border" variant="flat" @click="fetchChartData">
           <v-icon color="#bdbdbd" icon="mdi-sync"></v-icon>
         </v-btn>
       </div>
@@ -51,12 +51,19 @@
     <grid-layout :layout="layout" @update:layout="layout = $event" :col-num="12" :row-height="30"
       :is-draggable="draggable" :is-resizable="resizable" :vertical-compact="true" :use-css-transforms="true">
       <grid-item v-for="chart in charts" :key="chart.id" :x="chart.layout.x" :y="chart.layout.y" :w="chart.layout.w"
-        :h="chart.layout.h" :i="chart.id.toString()" :ref="el => registerRef(chart.id, el)">
-        <Chart :chartOptions="chart.options" :chartData="chart.data"
+        :h="chart.layout.h" :i="chart.id.toString()" :ref="el => registerRef(chart.id, el)" drag-ignore-from=".no-drag">
+        <v-hover>
+          <template v-slot:default="{ isHovering, props }">
+            <v-card :color="isHovering ? '#3c3c3c' : undefined" v-bind="props"
+              class="py-1 text-none rounded-xs text-center" variant="flat">
+              <span style="color: #bdbdbd">{{ chart.options.chartTitle }}</span>
+            </v-card>
+          </template>
+        </v-hover>
+        <Chart class="no-drag" :chartOptions="chart.options" :chartData="chart.data"
           :key="chart.id + '-' + chart.options.width + '-' + chart.options.height" />
       </grid-item>
     </grid-layout>
-
   </v-container>
 </template>
 
@@ -97,14 +104,9 @@ export default {
 
     // Método para atualizar o tamanho de todos os charts.
     const updateChartsSize = () => {
-      charts.value.forEach(chart => {
+      charts.forEach(chart => {
         const size = getChartSize(chart.id);
-        // Aqui, atualize as dimensões do componente Chart conforme necessário.
-        // Se o componente Chart tem um método ou propriedades para atualizar
-        // seu tamanho, você pode chamar ou modificar aqui.
-
-        // Subtrair o espaço necessário para outras divs aqui
-        const titleHeight = 27;
+        const titleHeight = 20;
         const xAxisHeight = 50;
         const legendHeight = 31;
         chart.options.width = size.width;
@@ -112,11 +114,12 @@ export default {
       });
     };
 
-    const charts = ref([
+    const charts = reactive([
       {
         id: 0,
+        draggable: false,
         options: {
-          title: "cpu_temperature", ...getChartSize(0),
+          chartTitle: "cpu_temperature",
           padding: [null, null, null, 15],
           series: [
             {
@@ -160,14 +163,15 @@ export default {
           ],
         },
         data: [],
-        layout: { x: 0, y: 0, w: 6, h: 10, i: "0" },
+        layout: { x: 0, y: 0, w: 4, h: 10, i: "0" },
         bucket: "tomatoes",
         query: "|> range(start: -5m) |> filter(fn: (r) => r._measurement == \"cpu_temperature\")",
       },
       {
         id: 1,
+        draggable: false,
         options: {
-          title: "cpu_total", ...getChartSize(1),
+          chartTitle: "cpu_total",
           series: [
             {
               label: "Date",
@@ -206,14 +210,14 @@ export default {
           ],
         },
         data: [],
-        layout: { x: 6, y: 0, w: 6, h: 10, i: "1" },
+        layout: { x: 4, y: 0, w: 4, h: 10, i: "1" },
         bucket: "tomatoes",
         query: "|> range(start: -5m) |> filter(fn: (r) => r._measurement == \"cpu\") |> filter(fn: (r) => r[\"_field\"] == \"usage_user\") |> filter(fn: (r) => r[\"cpu\"] == \"cpu-total\")",
       },
       {
         id: 2,
         options: {
-          title: "mem_used", ...getChartSize(2),
+          chartTitle: "mem_used",
           padding: [null, null, null, 12],
           series: [
             {
@@ -221,7 +225,7 @@ export default {
             },
             {
               label: "",
-              scale: "gb",
+              scale: "mb",
               points: {
                 show: true,
                 fill: "rgb(115, 191, 105)",
@@ -245,8 +249,8 @@ export default {
               }
             },
             {
-              scale: "gb",
-              values: (self, ticks) => ticks.map(rawValue => (rawValue / 10 ** 9).toFixed(2) + "GB"),
+              scale: "mb",
+              values: (self, ticks) => ticks.map(rawValue => (rawValue / 10 ** 6).toFixed(0) + "MB"),
               stroke: "#bdbdbd",
               grid: {
                 stroke: '#2C3033',
@@ -256,25 +260,16 @@ export default {
           ],
         },
         data: [],
-        layout: { x: 6, y: 0, w: 6, h: 10, i: "2" },
+        layout: { x: 8, y: 0, w: 4, h: 10, i: "2" },
         bucket: "tomatoes",
         query: "|> range(start: -5m) |> filter(fn: (r) => r[\"_measurement\"] == \"mem\") |> filter(fn: (r) => r[\"_field\"] == \"used\")",
       },
     ]);
 
-    const layout = ref(charts.value.map(chart => chart.layout));
-
-    const updateLayout = (newLayout) => {
-      newLayout.forEach((layoutItem) => {
-        const chart = charts.value.find(c => c.id.toString() === layoutItem.i);
-        if (chart) chart.layout = layoutItem;
-      });
-    };
-
     const state = reactive({
       draggable: true,
       resizable: true,
-      index: 0,
+      index: 3,
       selectedLabel: '5min',
       timeOptions: [
         { label: '5 min', value: '-5m' },
@@ -285,9 +280,18 @@ export default {
       ],
     });
 
+    const layout = ref(charts.map(chart => chart.layout));
+
+    const updateLayout = (newLayout) => {
+      newLayout.forEach((layoutItem) => {
+        const chart = charts.find(c => c.id.toString() === layoutItem.i);
+        if (chart) chart.layout = layoutItem;
+      });
+    };
+
     const fetchChartData = async () => {
-      for (let chartIndex in charts.value) {
-        const { bucket, query } = charts.value[chartIndex];
+      for (let chartIndex in charts) {
+        const { bucket, query } = charts[chartIndex];
         if (!bucket || !query) {
           console.error(`Dados ausentes para o gráfico ${chartIndex}`);
           continue;
@@ -303,18 +307,122 @@ export default {
     }
 
     const updateChartData = (influxData, chartIndex) => {
-      const timestamps = influxData.map(data => +new Date(data._time));
+      const timestamps = influxData.map(data => Math.floor(+new Date(data._time) / 1000));
       const values = influxData.map(data => data._value);
 
-      charts.value[chartIndex].data = [
+      charts[chartIndex].data = [
         timestamps,
         values
       ];
     };
 
+
+    const updateQueriesWithTimeRange = () => {
+      for (let chartIndex in charts) {
+        let query = charts[chartIndex].query;
+        query = query.replace(/(\|> range\(start: )[^)]+\)/, `$1${timeRange.value})`);
+        charts[chartIndex].query = query;
+      }
+    };
+
+    const updateQueryRange = (value) => {
+      timeRange.value = value;
+
+      for (let chartIndex in charts) {
+        const chart = charts[chartIndex];
+        chart.options = {
+          ...chart.options,
+          series: [
+            chart.options.series[0],
+            {
+              ...chart.options.series[1],
+              points: {
+                ...chart.options.series[1].points,
+                show: timeRange.value === '-5m'
+              }
+            }
+          ]
+        };
+      }
+
+      updateQueriesWithTimeRange();
+      fetchChartData();
+    };
+
+    const addItem = () => {
+      const newId = charts.length;
+
+      // Criar um novo objeto de layout
+      const newLayout = {
+        x: 0,
+        y: 0,
+        w: 4,
+        h: 10,
+        i: newId.toString(),
+      };
+
+      // Adicionar novo chart com o novo layout
+      charts.push({
+        id: newId,
+        options: {
+          chartTitle: "mem_used",
+          padding: [null, null, null, 12],
+          series: [
+            {
+              label: "Date",
+            },
+            {
+              label: "",
+              scale: "mb",
+              points: {
+                show: true,
+                fill: "rgb(115, 191, 105)",
+              },
+              stroke: "rgb(115, 191, 105)",
+              fill: "rgba(115, 191, 105, 0.1)",
+            },
+          ],
+          scales: {
+            x: { time: true }, y: {
+              auto: true,
+              range: [],
+            },
+          },
+          axes: [
+            {
+              stroke: "#bdbdbd",
+              grid: {
+                stroke: '#2C3033',
+                width: 1
+              }
+            },
+            {
+              scale: "mb",
+              values: (self, ticks) => ticks.map(rawValue => (rawValue / 10 ** 6).toFixed(0) + "MB"),
+              stroke: "#bdbdbd",
+              grid: {
+                stroke: '#2C3033',
+                width: 1
+              }
+            },
+          ],
+        },
+        data: [],
+        layout: newLayout,
+        bucket: "tomatoes",
+        query: "|> range(start: -5m) |> filter(fn: (r) => r[\"_measurement\"] == \"mem\") |> filter(fn: (r) => r[\"_field\"] == \"used\")",
+      });
+    };
+
+
+    const removeItem = (val) => {
+      const index = this.layout.map(item => item.i).indexOf(val);
+      this.layout.splice(index, 1);
+    };
+
     onMounted(() => {
       // Busca os dados do gráfico assim que o componente é montado
-      fetchChartData();
+      fetchChartData();      
 
       window.addEventListener('resize', () => {
         updateChartsSize();
@@ -322,31 +430,7 @@ export default {
       });
     });
 
-    const updateQueriesWithTimeRange = () => {
-      for (let chartIndex in charts.value) {
-        let query = charts.value[chartIndex].query;
-        query = query.replace(/(\|> range\(start: )[^)]+\)/, `$1${timeRange.value})`);
-        charts.value[chartIndex].query = query;
-      }
-    };
 
-    const updateQueryRange = (value) => {
-      timeRange.value = value;
-
-      for (let chartIndex in charts.value) {
-        const series = charts.value[chartIndex].options.series;
-        series[1].points.show = value === '-5m';
-        charts.value[chartIndex].options.series = series;
-      }
-
-      updateQueriesWithTimeRange();
-      fetchChartData();
-
-      const selectedOption = state.timeOptions.find(item => item.value === value);
-      if (selectedOption) {
-        state.selectedLabel = selectedOption.label;
-      }
-    };
 
     return {
       ...toRefs(state),
@@ -356,6 +440,8 @@ export default {
       updateLayout,
       updateQueryRange,
       fetchChartData,
+      addItem,
+      removeItem,
     }
   },
 }
@@ -366,8 +452,8 @@ export default {
   opacity: 0.7;
 }
 
-.vue-grid-layout {
-  background: #121212;
+.vue-grid-item.resizing {
+  opacity: 0.9;
 }
 
 .vue-grid-item.vue-grid-placeholder {
@@ -375,57 +461,12 @@ export default {
 }
 
 .vue-grid-item:not(.vue-grid-placeholder) {
-  background: #3f51b5;
   background: #212121;
   border: 1px solid #3c3c3c;
   border-radius: 3px;
 }
 
-.vue-grid-item.resizing {
-  opacity: 0.9;
-}
-
-.vue-grid-item.static {
-  background: #cce;
-}
-
-.vue-grid-item .text {
-  font-size: 24px;
-  text-align: center;
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  margin: auto;
-  height: 100%;
-  width: 100%;
-}
-
-.vue-grid-item .no-drag {
-  height: 100%;
-  width: 100%;
-}
-
-.vue-grid-item .minMax {
-  font-size: 12px;
-}
-
-.vue-grid-item .add {
-  cursor: pointer;
-}
-
-.u-title {
-  color: #bdbdbd;
-}
-
 .u-label {
   color: #bdbdbd;
-}
-
-.u-container,
-.u-plot {
-  width: 100%;
-  height: 100%;
 }
 </style>
