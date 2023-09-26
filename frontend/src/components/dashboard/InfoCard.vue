@@ -48,27 +48,29 @@
       </div>
     </v-app-bar>
 
-    <grid-layout :layout="layout" @update:layout="layout = $event" :col-num="12" :row-height="30"
+    <grid-layout :layout="layout" @update:modelValue="updateLayout" :col-num="12" :row-height="30"
       :is-draggable="draggable" :is-resizable="resizable" :vertical-compact="true" :use-css-transforms="true">
-      <grid-item v-for="chart in charts" :key="chart.id" :x="chart.layout.x" :y="chart.layout.y" :w="chart.layout.w"
-        :h="chart.layout.h" :i="chart.id.toString()" :ref="el => registerRef(chart.id, el)" drag-ignore-from=".no-drag">
-        <v-hover>
-          <template v-slot:default="{ isHovering, props }">
-            <v-card :color="isHovering ? '#3c3c3c' : undefined" v-bind="props"
-              class="py-1 text-none rounded-xs text-center" variant="flat">
-              <span style="color: #bdbdbd">{{ chart.options.chartTitle }}</span>
-            </v-card>
-          </template>
-        </v-hover>
-        <Chart class="no-drag" :chartOptions="chart.options" :chartData="chart.data"
-          :key="chart.id + '-' + chart.options.width + '-' + chart.options.height" />
+      <grid-item v-for="chart in layout" :key="chart.i" :x="chart.x" :y="chart.y" :w="chart.w" :h="chart.h" :i="chart.i"
+        :ref="el => registerRef(Number(chart.i), el)" drag-ignore-from=".no-drag">
+        <template v-if="getChartById(chart.i)">
+          <v-hover>
+            <template v-slot:default="{ isHovering, props }">
+              <v-card :color="isHovering ? '#3c3c3c' : undefined" v-bind="props"
+                class="py-1 text-none rounded-xs text-center" variant="flat">
+                <span style="color: #bdbdbd">{{ getChartById(chart.i).options.chartTitle }}</span>
+              </v-card>
+            </template>
+          </v-hover>
+          <Chart class="no-drag" :chartOptions="getChartById(chart.i).options" :chartData="getChartById(chart.i).data"
+            :key="chart.i + '-' + getChartById(chart.i).options.width + '-' + getChartById(chart.i).options.height" />
+        </template>
       </grid-item>
     </grid-layout>
   </v-container>
 </template>
 
 <script>
-import { reactive, ref, toRefs, onMounted } from 'vue'
+import { reactive, ref, toRefs, onMounted, nextTick } from 'vue'
 import { GridLayout, GridItem } from "vue-grid-layout"
 import Chart from '@/components/dashboard/Chart.vue'
 import influxdbDataService from '@/services/influxdbDataService'
@@ -77,43 +79,6 @@ export default {
   components: { GridLayout, GridItem, Chart },
   setup() {
     const gridItemsRefs = ref({});
-    const timeRange = ref('-5m');
-
-    // Método para registrar os elementos DOM dos grid-items.
-    const registerRef = (id, el) => {
-      if (el?.$el) {
-        // Se el for um componente Vue, registre seu elemento raiz.
-        gridItemsRefs.value[id] = el.$el;
-      } else {
-        gridItemsRefs.value[id] = el;
-      }
-      updateChartsSize();
-    };
-
-    // Método para obter o tamanho do grid-item pelo ID.
-    const getChartSize = (id) => {
-      const gridItem = gridItemsRefs.value[id];
-      if (gridItem) {
-        return {
-          width: gridItem.clientWidth,
-          height: gridItem.clientHeight,
-        };
-      }
-      return { width: 300, height: 300 }; // Padrão
-    };
-
-    // Método para atualizar o tamanho de todos os charts.
-    const updateChartsSize = () => {
-      charts.forEach(chart => {
-        const size = getChartSize(chart.id);
-        const titleHeight = 20;
-        const xAxisHeight = 50;
-        const legendHeight = 31;
-        chart.options.width = size.width;
-        chart.options.height = size.height - xAxisHeight - legendHeight + titleHeight;
-      });
-    };
-
     const charts = reactive([
       {
         id: 0,
@@ -281,11 +246,42 @@ export default {
     });
 
     const layout = ref(charts.map(chart => chart.layout));
+    const index = ref(layout.value.length);
 
-    const updateLayout = (newLayout) => {
-      newLayout.forEach((layoutItem) => {
-        const chart = charts.find(c => c.id.toString() === layoutItem.i);
-        if (chart) chart.layout = layoutItem;
+    const timeRange = ref('-5m');
+
+    // Método para registrar os elementos DOM dos grid-items.
+    const registerRef = (id, el) => {
+      if (el?.$el) {
+        // Se el for um componente Vue, registre seu elemento raiz.
+        gridItemsRefs.value[id] = el.$el;
+      } else {
+        gridItemsRefs.value[id] = el;
+      }
+      updateChartsSize();
+    };
+
+    // Método para obter o tamanho do grid-item pelo ID.
+    const getChartSize = (id) => {
+      const gridItem = gridItemsRefs.value[id];
+      if (gridItem) {
+        return {
+          width: gridItem.clientWidth,
+          height: gridItem.clientHeight,
+        };
+      }
+      return { width: 300, height: 300 }; // Padrão
+    };
+
+    // Método para atualizar o tamanho de todos os charts.
+    const updateChartsSize = () => {
+      charts.forEach(chart => {
+        const size = getChartSize(chart.id);
+        const titleHeight = 20;
+        const xAxisHeight = 50;
+        const legendHeight = 31;
+        chart.options.width = size.width;
+        chart.options.height = size.height - xAxisHeight - legendHeight + titleHeight;
       });
     };
 
@@ -328,6 +324,11 @@ export default {
     const updateQueryRange = (value) => {
       timeRange.value = value;
 
+      const selectedItem = state.timeOptions.find(item => item.value === value);
+      if (selectedItem) {
+        state.selectedLabel = selectedItem.label;
+      }
+
       for (let chartIndex in charts) {
         const chart = charts[chartIndex];
         chart.options = {
@@ -343,10 +344,20 @@ export default {
             }
           ]
         };
-      }
-
+      }      
       updateQueriesWithTimeRange();
       fetchChartData();
+    };
+
+    const updateLayout = (newLayout) => {
+      newLayout.forEach((layoutItem) => {
+        const chart = charts.find(c => c.id.toString() === layoutItem.i);
+        if (chart) chart.layout = layoutItem;
+      });
+    };
+
+    const getChartById = (id) => {
+      return charts.find(c => c.id === Number(id));
     };
 
     const addItem = () => {
@@ -361,9 +372,12 @@ export default {
         i: newId.toString(),
       };
 
+      layout.value.push(newLayout);
+
       // Adicionar novo chart com o novo layout
       charts.push({
         id: newId,
+        data: [],
         options: {
           chartTitle: "mem_used",
           padding: [null, null, null, 12],
@@ -407,22 +421,30 @@ export default {
             },
           ],
         },
-        data: [],
         layout: newLayout,
         bucket: "tomatoes",
         query: "|> range(start: -5m) |> filter(fn: (r) => r[\"_measurement\"] == \"mem\") |> filter(fn: (r) => r[\"_field\"] == \"used\")",
       });
+
+      index.value++;
+
+      nextTick(() => {
+        updateChartsSize();
+        fetchChartData();
+      });
     };
 
-
-    const removeItem = (val) => {
-      const index = this.layout.map(item => item.i).indexOf(val);
-      this.layout.splice(index, 1);
+    const removeItem = (id) => {
+      const index = charts.value.findIndex(c => c.id === id);
+      if (index > -1) {
+        charts.splice(index, 1);
+        layout.value.splice(index, 1);
+      }
     };
 
     onMounted(() => {
       // Busca os dados do gráfico assim que o componente é montado
-      fetchChartData();      
+      fetchChartData();
 
       window.addEventListener('resize', () => {
         updateChartsSize();
@@ -430,12 +452,11 @@ export default {
       });
     });
 
-
-
     return {
       ...toRefs(state),
       charts,
       layout,
+      getChartById,
       registerRef,
       updateLayout,
       updateQueryRange,
