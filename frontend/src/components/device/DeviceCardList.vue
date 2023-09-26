@@ -54,7 +54,7 @@ export default {
         }));
       } catch (error) {
         console.error(error);
-        alert('Houve um erro ao carregar os dispositivos.');
+        // alert('Houve um erro ao carregar os dispositivos.');
       } finally {
         loading.value = false;
       }

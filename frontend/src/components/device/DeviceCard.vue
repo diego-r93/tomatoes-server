@@ -9,8 +9,8 @@
           {{ cardData.host }}
         </v-col>
         <v-col cols="2" class="align-self-center">
-        <v-btn density="comfortable" icon="mdi-information-outline" color="#99deaa" variant="flat"></v-btn>
-      </v-col>
+          <v-btn density="comfortable" icon="mdi-information-outline" color="#99deaa" variant="flat"></v-btn>
+        </v-col>
       </v-row>
     </v-container>
 
@@ -77,14 +77,14 @@ watchEffect(() => {
 
 function updateGpio(gpioData) {
   const payload = {}
-  
+
   for (const key in gpioData) {
     const gpioValue = gpioData[key]
     const gpioNumber = gpioMapping[key]
-    
+
     payload[gpioNumber] = gpioValue
   }
-  
+
   mqttDataService.updateGpio(props.cardData.host, payload)
     .then(() => {
       // Lógica adicional após a atualização do GPIO, se necessário
