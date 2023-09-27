@@ -1,29 +1,44 @@
 <template>
-  <v-card class="mt-4 mx-auto" color="#121212" max-width="400" variant="flat">
-    <template v-slot:title>
-      <v-icon color="#bdbdbd" icon="mdi-lan" size="x-large"></v-icon>
-      <span class="ml-4 text-h5" style="color: #bdbdbd">
+  <v-container class="py-6 px-2" fluid>
+    <v-card class="mt-4 mx-auto" color="#121212" max-width="400" variant="flat">
+      <template v-slot:title>
+        <v-icon color="#bdbdbd" icon="mdi-lan" size="x-large"></v-icon>
+        <span class="ml-4 text-h5" style="color: #bdbdbd">
           Network Configuration
         </span>
-    </template>
-  </v-card>
-  
-  <v-card class="mt-4 mx-auto" max-width="1000" flat>
-    <v-tabs v-model="tab" bg-color="#121212" color="basil" grow>
-      <v-tab v-for="item in items" :key="item.id" :to="item.route">
-        {{ item.name }}
-      </v-tab>
-    </v-tabs>
-
-    <v-card>
-      <router-view></router-view>
+      </template>
     </v-card>
-  </v-card>
+
+    <v-card class="mt-4 mx-auto" max-width="1400" flat>
+      <v-tabs v-model="tab" bg-color="#121212" slider-color="teal-lighten-3" align-tabs="start">
+        <v-tab v-for="item in items" :key="item.id" :to="item.route">
+          <span style="color: #bdbdbd">
+            {{ item.name }}
+          </span>
+        </v-tab>
+      </v-tabs>
+
+      <v-card class="custom-border" min-height="600">
+        <!-- <v-card-title>Edit File</v-card-title> -->
+        <v-card-text>
+          <v-textarea v-model="configContent" variant="solo" bg-color="#3c3c3c" rows="20" auto-grow>
+          </v-textarea>
+          <router-view></router-view>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn color="error" @click="cancel">Cancel</v-btn>
+          <v-btn color="primary" @click="saveChanges">Save</v-btn>
+        </v-card-actions>
+
+      </v-card>
+    </v-card>
+  </v-container>
 </template>
 
 <script>
 import { ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import networkDataService from '@/services/networkDataService'
 
 export default {
   name: 'NetworkConfig',

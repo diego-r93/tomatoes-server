@@ -49,7 +49,7 @@ export default {
         { title: 'DashBoards', icon: 'mdi-view-dashboard', value: "dashboards", path: '/dashboard' },
         { title: 'Device configuration', icon: 'mdi-chip', value: "device", path: '/device' },
         { title: 'Database configuration', icon: 'mdi-database', value: "database", path: '/database' },
-        { title: 'Alerting', icon: 'mdi-bell', value: "alerting", path: '/alert' },
+        { title: 'Alerting', icon: 'mdi-bell', value: "alerting", path: '/alerting' },
         { title: 'Network Configuration', icon: 'mdi mdi-lan', value: "network", path: '/network' },
         { title: 'My Account', icon: 'mdi-account', value: "account", path: '/account' },
         { title: 'Configuration', icon: 'mdi-cog', value: "configuration", path: '/configuration' },

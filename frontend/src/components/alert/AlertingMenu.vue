@@ -1,89 +1,61 @@
 <template>
-  <v-container class="py-16 px-16">
-    <v-row justify="center">
-      <v-col cols="12" sm="8" md="6">
-        <v-card class="mx-auto" max-width="600">
-          <v-toolbar color="dark">
-            <v-toolbar-title>Settings</v-toolbar-title>
-            <v-spacer></v-spacer>
-          </v-toolbar>
+  <v-container class="py-6 px-2" fluid>
+    <v-card class="mt-4 mx-auto" color="#121212" max-width="400" variant="flat">
+      <template v-slot:title>
+        <v-icon color="#bdbdbd" icon="mdi-bell" size="x-large"></v-icon>
+        <span class="ml-4 text-h5" style="color: #bdbdbd">
+          Alerting
+        </span>
+      </template>
+    </v-card>
 
-          <v-list lines="three" select-strategy="classic">
-            <v-list-subheader>General</v-list-subheader>
-
-            <v-list-item value="theme">
-              <p>Current theme: {{ theme }}</p>
-              <v-btn prepend-icon="mdi-circle-half-full" variant="tonal" @click="changeTheme"> 
-                Change Theme
-              </v-btn>            
-            </v-list-item>
-
-            <v-list-item value="timezone">
-              <v-select :items="locations"  label="Timezone"></v-select>
-            </v-list-item>
-  
-            <v-list-item value="sidebar">
-              <template v-slot:prepend="{ isActive }">
-
-                <v-list-item-action start>
-                  <v-checkbox-btn :model-value="isActive"></v-checkbox-btn>
-                </v-list-item-action>
-              </template>
-
-              <v-list-item-title>Hide sidebar</v-list-item-title>
-
-              <v-list-item-subtitle>
-                Hide or show items on sidebar menu 
-              </v-list-item-subtitle>
-            </v-list-item>
-
-            <v-list-item value="sound">
-              <template v-slot:prepend="{ isActive }">
-                <v-list-item-action start>
-                  <v-checkbox-btn :model-value="isActive"></v-checkbox-btn>
-                </v-list-item-action>
-              </template>
-
-              <v-list-item-title>Sound On</v-list-item-title>
-
-              <v-list-item-subtitle>
-                Turn on/off sound effects in application
-              </v-list-item-subtitle>
-            </v-list-item>
-          </v-list>
-        </v-card>
-      </v-col>
-    </v-row>
+    <v-card class="mt-4 mx-auto" max-width="1400" flat>
+      <v-tabs v-model="tab" bg-color="#121212" slider-color="teal-lighten-3" align-tabs="start">
+        <v-tab v-for="item in items" :key="item.id" :to="item.route">
+          <span style="color: #bdbdbd">
+            {{ item.name }}
+          </span>
+        </v-tab>
+      </v-tabs>
+      <v-card class="custom-border" min-height="600">
+        <router-view></router-view>
+      </v-card>
+    </v-card>
   </v-container>
 </template>
 
-
 <script>
-import { useAuthStore } from '@/store/userConfiguration'
+import { ref, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
 export default {
-  data: () => ({
-    locations: [
-      'GMT-03:00',
-      'GMT-02:00',
-      'GMT-01:00',
-      'GMT+00:00',
-      'GMT+01:00',
-      'GMT+02:00',
-      'GMT+03:00',
-    ]  
-  }),
-  computed: {
-    theme() {
-      return useAuthStore().theme;
+  name: 'AlertingConfiguration',
+  setup() {
+    const router = useRouter()
+    const route = useRoute()
+
+    const tab = ref(route.path)  // inicia a tab com a rota atual
+
+    const items = [
+      { id: 1, name: 'Alert rules', route: '/alerting/rules' },
+      { id: 2, name: 'Contact modes', route: '/alerting/modes' },
+      { id: 3, name: 'Silences', route: '/alerting/silences' },
+      { id: 4, name: 'Configuration', route: '/alerting/config' },
+    ]
+
+    const navigateTo = route => {
+      router.push(route)
     }
-  },
-  methods: {
-    changeTheme() {
-      const store = useAuthStore();
-      store.theme = store.theme === 'dark' ? 'light' : 'dark';     
-      localStorage.setItem('theme', store.theme);
+
+    watch(() => route.path, newPath => {
+      tab.value = newPath
+    })
+
+    return {
+      items,
+      tab,
+      navigateTo
     }
-  },    
+  }
 }
 </script>

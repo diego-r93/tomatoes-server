@@ -229,6 +229,64 @@ export default {
         bucket: "tomatoes",
         query: "|> range(start: -5m) |> filter(fn: (r) => r[\"_measurement\"] == \"mem\") |> filter(fn: (r) => r[\"_field\"] == \"used\")",
       },
+      {
+        id: 3,
+        options: {
+          chartTitle: "disk_used",
+          padding: [null, null, null, 12],
+          series: [
+            {
+              label: "Date",
+            },
+            {
+              label: "",
+              scale: "gb",
+              points: {
+                show: true,
+                fill: "rgb(184, 119, 217)",
+              },
+              stroke: "rgb(184, 119, 217)",
+              fill: "rgba(184, 119, 217, 0.1)",
+            },
+          ],
+          scales: {
+            x: { time: true }, y: {
+              auto: true,
+              range: [],
+            },
+          },
+          axes: [
+            {
+              stroke: "#bdbdbd",
+              grid: {
+                stroke: '#2C3033',
+                width: 1
+              }
+            },
+            {
+              scale: "gb",
+              values: (self, ticks) => ticks.map(rawValue => (rawValue / 10 ** 9).toFixed(2) + "GB"),
+              stroke: "#bdbdbd",
+              grid: {
+                stroke: '#2C3033',
+                width: 1
+              }
+            },
+          ],
+        },
+        data: [],
+        layout: { x: 0, y: 10, w: 4, h: 10, i: "3" },
+        bucket: "tomatoes",
+        query: `|> range(start: -5m)
+                |> filter(fn: (r) => r["_measurement"] == "disk")
+                |> filter(fn: (r) => r["_field"] == "used")
+                |> filter(fn: (r) => r["device"] == "mmcblk0p2")
+                |> filter(fn: (r) => r["fstype"] == "ext4")
+                |> filter(fn: (r) => r["host"] == "raspberrypi")
+                |> filter(fn: (r) => r["mode"] == "rw")
+                |> filter(fn: (r) => r["path"] == "/etc/hostname")                
+                |> yield(name: "mean")`,
+      },
     ]);
 
     const state = reactive({
@@ -344,7 +402,7 @@ export default {
             }
           ]
         };
-      }      
+      }
       updateQueriesWithTimeRange();
       fetchChartData();
     };
