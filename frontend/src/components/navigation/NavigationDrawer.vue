@@ -57,11 +57,11 @@ export default {
 
       itemsHelp: [
         { title: 'Vue.js', icon: 'mdi-open-in-new', url: 'https://vuejs.org/' },
+        { title: 'Vuetify', icon: 'mdi-open-in-new', url: 'https://vuetifyjs.com/' },
         { title: 'Node.js', icon: 'mdi-open-in-new', url: 'https://nodejs.org/' },
         { title: 'Express.js', icon: 'mdi-open-in-new', url: 'https://expressjs.com/' },
-        { title: 'Vuetify', icon: 'mdi-open-in-new', url: 'https://vuetifyjs.com/' },
         { title: 'MongoDB', icon: 'mdi-open-in-new', url: 'https://www.mongodb.com/' },
-        { title: 'Documentation', icon: 'mdi-open-in-new', url: 'https://github.com/diego-r93/pa-trabalho1' },
+        { title: 'Documentation', icon: 'mdi-open-in-new', url: 'https://github.com/diego-r93/tomatoes-server' },
       ],
 
       rail: true,

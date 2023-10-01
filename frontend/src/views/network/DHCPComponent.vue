@@ -1,11 +1,34 @@
 <template>
   <v-card-text>
-    DHCP Configuration: Ullamco laboris nisi ut aliquip ex ea commodo consequat.
+    <pre>{{ networkConfig }}</pre>
   </v-card-text>
 </template>
 
 <script>
+import { ref, onMounted } from 'vue';
+import networkDataService from '@/services/networkDataService';
+
 export default {
-  name: "DHCPComponent"
+  name: "DHCPComponent",
+  setup() {
+    const networkConfig = ref('');
+    
+    const loadNetworkConfig = async () => {
+      try {
+        const response = await networkDataService.getConfigFile('dhcp');
+        if (response && response.data) {
+          networkConfig.value = response.data.data;
+        }
+      } catch (error) {
+        console.error('Erro ao buscar configuração de rede', error);
+      }
+    }
+    
+    onMounted(loadNetworkConfig);
+    
+    return {
+      networkConfig
+    }
+  }
 };
 </script>

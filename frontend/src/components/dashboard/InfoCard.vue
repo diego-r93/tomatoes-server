@@ -293,13 +293,16 @@ export default {
       draggable: true,
       resizable: true,
       index: 3,
-      selectedLabel: '5min',
+      selectedLabel: '5 minutes',
       timeOptions: [
-        { label: '5 min', value: '-5m' },
-        { label: '10 min', value: '-10m' },
-        { label: '30 min', value: '-30m' },
+        { label: '5 minutes', value: '-5m' },
+        { label: '10 minutes', value: '-10m' },
+        { label: '15 minutes', value: '-15m' },
+        { label: '30 minutes', value: '-30m' },
         { label: '1 hour', value: '-1h' },
         { label: '3 hours', value: '-3h' },
+        { label: '6 hours', value: '-6h' },
+        { label: '12 hours', value: '-12h' },
       ],
     });
 
@@ -547,5 +550,13 @@ export default {
 
 .u-label {
   color: #bdbdbd;
+}
+
+.v-btn--size-default {
+    --v-btn-size: 0.875rem;
+    --v-btn-height: 32px;
+    font-size: var(--v-btn-size);
+    min-width: 36px;
+    padding: 0 8px;
 }
 </style>

@@ -9,7 +9,7 @@ import NetworkRoutes from "@/router/network.routes"
 import AccountRoutes from "@/router/account.routes"
 import ConfigurationRoutes from "@/router/configuration.routes"
 import AuthRoutes from "@/router/auth.routes"
-import helpRoutes from "@/router/configuration.routes"
+import HelpRoutes from "@/router/help.routes"
 
 const routes = [
   {
@@ -32,7 +32,7 @@ const routes = [
   ...AccountRoutes,
   ...ConfigurationRoutes,
   ...AuthRoutes,
-  ...helpRoutes,
+  ...HelpRoutes,
 ]
 
 const router = createRouter({

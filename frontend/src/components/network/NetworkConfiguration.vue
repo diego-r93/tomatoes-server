@@ -18,16 +18,13 @@
         </v-tab>
       </v-tabs>
 
-      <v-card class="custom-border" min-height="600">
-        <!-- <v-card-title>Edit File</v-card-title> -->
-        <v-card-text>
-          <v-textarea v-model="configContent" variant="solo" bg-color="#3c3c3c" rows="20" auto-grow>
-          </v-textarea>
+      <v-card class="custom-border">
+        <v-card-text>          
           <router-view></router-view>
         </v-card-text>
         <v-card-actions>
-          <v-btn color="error" @click="cancel">Cancel</v-btn>
-          <v-btn color="primary" @click="saveChanges">Save</v-btn>
+          <v-btn color="indigo" variant="flat" @click="saveChanges">Save</v-btn>
+          <v-btn color="red" variant="flat" @click="cancel">Cancel</v-btn>
         </v-card-actions>
 
       </v-card>
@@ -38,7 +35,6 @@
 <script>
 import { ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import networkDataService from '@/services/networkDataService'
 
 export default {
   name: 'NetworkConfig',
@@ -46,7 +42,7 @@ export default {
     const router = useRouter()
     const route = useRoute()
 
-    const tab = ref(route.path)  // inicia a tab com a rota atual
+    const tab = ref(route.path)
 
     const items = [
       { id: 1, name: 'Lan', route: '/network/lan' },
