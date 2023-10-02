@@ -51,7 +51,7 @@ export default {
         { title: 'Database configuration', icon: 'mdi-database', value: "database", path: '/database' },
         { title: 'Alerting', icon: 'mdi-bell', value: "alerting", path: '/alerting' },
         { title: 'Network Configuration', icon: 'mdi mdi-lan', value: "network", path: '/network' },
-        { title: 'My Account', icon: 'mdi-account', value: "account", path: '/account' },
+        { title: 'Users', icon: 'mdi-account', value: "users", path: '/users' },
         { title: 'Configuration', icon: 'mdi-cog', value: "configuration", path: '/configuration' },
       ],
 
