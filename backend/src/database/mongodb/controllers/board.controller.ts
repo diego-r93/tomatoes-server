@@ -3,16 +3,20 @@ import Board from '../models/board.model';
 
 // Create and Save a new Board
 export const create = async (req: Request, res: Response) => {
-  if (!req.body.pumperCode) {
-    res.status(400).send({ message: "Content can not be empty!" });
-    return;
+  const requiredProperties = ['pumperCode', 'pumperName', 'pulseDuration', 'driveTimes'];
+
+  for (const prop of requiredProperties) {
+    if (!req.body[prop]) {
+      res.status(400).send({ message: `${prop} can not be empty!` });
+      return;
+    }
   }
 
   const board = new Board({
     pumperCode: req.body.pumperCode,
-    pumperName: req.body.pumperName || '',
-    pulseDuration: req.body.pulseDuration || '',
-    driveTimes: req.body.driveTimes || '',
+    pumperName: req.body.pumperName,
+    pulseDuration: req.body.pulseDuration,
+    driveTimes: req.body.driveTimes,
   });
 
   try {

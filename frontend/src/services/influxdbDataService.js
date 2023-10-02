@@ -1,4 +1,4 @@
-import { http, httpWithAuthorization, setAuthorizationHeader } from "./http-common"
+import { http } from "./http-common"
 
 class MqttDataService {
   getData(data) {

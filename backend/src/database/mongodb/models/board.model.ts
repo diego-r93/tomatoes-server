@@ -1,22 +1,32 @@
 import mongoose, { Document, Schema, Model } from 'mongoose';
 
+interface IDriveTime {
+  time: string;
+  state: boolean;
+}
+
 export interface IBoard extends Document {
   pumperCode: string;
   pumperName: string;
   pulseDuration: number;
-  driveTimes: any[]; // Ajuste para o tipo correto se driveTimes não for um array de any
+  driveTimes: IDriveTime[];
 }
 
 class BoardModel {
   private model: Model<IBoard>;
 
   constructor() {
+    const driveTimeSchema = new Schema<IDriveTime>({
+      time: { type: String, required: true },
+      state: { type: Boolean, required: true }
+    }, { _id: false }); // _id: false é opcional, use se você não quiser ids para subdocumentos
+    
     const schema = new Schema<IBoard>(
       {
-        pumperCode: String,
-        pumperName: String,
-        pulseDuration: Number,
-        driveTimes: Array,       
+        pumperCode: { type: String, required: true },
+        pumperName: { type: String, required: true },
+        pulseDuration: { type: Number, required: true },
+        driveTimes: { type: [driveTimeSchema], required: true },       
       },
       { timestamps: true }
     );

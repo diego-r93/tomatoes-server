@@ -130,7 +130,8 @@ export default {
         data: [],
         layout: { x: 0, y: 0, w: 4, h: 10, i: "0" },
         bucket: "tomatoes",
-        query: "|> range(start: -5m) |> filter(fn: (r) => r._measurement == \"cpu_temperature\")",
+        query: `|> range(start: -5m) 
+                |> filter(fn: (r) => r._measurement == "cpu_temperature")`,
       },
       {
         id: 1,
@@ -177,7 +178,10 @@ export default {
         data: [],
         layout: { x: 4, y: 0, w: 4, h: 10, i: "1" },
         bucket: "tomatoes",
-        query: "|> range(start: -5m) |> filter(fn: (r) => r._measurement == \"cpu\") |> filter(fn: (r) => r[\"_field\"] == \"usage_user\") |> filter(fn: (r) => r[\"cpu\"] == \"cpu-total\")",
+        query: `|> range(start: -5m) 
+                |> filter(fn: (r) => r._measurement == "cpu") 
+                |> filter(fn: (r) => r["_field"] == "usage_user") 
+                |> filter(fn: (r) => r["cpu"] == "cpu-total")`,
       },
       {
         id: 2,
@@ -227,7 +231,9 @@ export default {
         data: [],
         layout: { x: 8, y: 0, w: 4, h: 10, i: "2" },
         bucket: "tomatoes",
-        query: "|> range(start: -5m) |> filter(fn: (r) => r[\"_measurement\"] == \"mem\") |> filter(fn: (r) => r[\"_field\"] == \"used\")",
+        query: `|> range(start: -5m) 
+                |> filter(fn: (r) => r["_measurement"] == "mem") 
+                |> filter(fn: (r) => r["_field"] == "used")`,
       },
       {
         id: 3,
@@ -484,7 +490,9 @@ export default {
         },
         layout: newLayout,
         bucket: "tomatoes",
-        query: "|> range(start: -5m) |> filter(fn: (r) => r[\"_measurement\"] == \"mem\") |> filter(fn: (r) => r[\"_field\"] == \"used\")",
+        query: `|> range(start: -5m) 
+                |> filter(fn: (r) => r["_measurement"] == "mem") 
+                |> filter(fn: (r) => r["_field"] == "used")`,
       });
 
       index.value++;

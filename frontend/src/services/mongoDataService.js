@@ -1,32 +1,24 @@
-import { httpWithAuthorization, setAuthorizationHeader } from "./http-common"
+import { http } from "./http-common"
 
 class MongoDataService {
-  getAllBoards(token) {
-    console.log('getAllBoards')
-    console.log(token)
-    console.log('getAllBoards')
-    setAuthorizationHeader(token)
-    return httpWithAuthorization.get("/api/boards")
+  getAllBoards() {
+    return http.get("/boards")
   }
 
-  getBoard(id, token) {
-    setAuthorizationHeader(token)
-    return httpWithAuthorization.get(`/api/boards/${id}`)
+  getBoard(id) {
+    return http.get(`/boards/${id}`)
   }
 
-  createBoard(data, token) {
-    setAuthorizationHeader(token)
-    return httpWithAuthorization.post("/api/boards", data)
+  createBoard(data) {
+    return http.post("/boards", data)
   }
 
-  updateBoard(id, data, token) {
-    setAuthorizationHeader(token)
-    return httpWithAuthorization.put(`/api/boards/${id}`, data)
+  updateBoard(id, data) {
+    return http.put(`/boards/${id}`, data)
   }
 
-  deleteBoard(id, token) {
-    setAuthorizationHeader(token)
-    return httpWithAuthorization.delete(`/api/boards/${id}`)
+  deleteBoard(id) {
+    return http.delete(`/boards/${id}`)
   }
 }
 
