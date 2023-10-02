@@ -95,10 +95,10 @@ export default {
               scale: "C",
               points: {
                 show: true,
-                fill: "rgb(255, 152, 48)",
+                fill: "rgb(242, 73, 92)",
               },
-              stroke: "rgb(255, 152, 48)",
-              fill: "rgba(255, 152, 48, 0.1)",
+              stroke: "rgb(242, 73, 92)",
+              fill: "rgba(242, 73, 92, 0.1)",
             },
           ],
           scales: {
@@ -291,6 +291,61 @@ export default {
                 |> filter(fn: (r) => r["host"] == "raspberrypi")
                 |> filter(fn: (r) => r["mode"] == "rw")
                 |> filter(fn: (r) => r["path"] == "/etc/hostname")                
+                |> yield(name: "mean")`,
+      },
+      {
+        id: 4,
+        draggable: false,
+        options: {
+          chartTitle: "swap",
+          padding: [null, null, null, 15],
+          series: [
+            {
+              label: "Date",
+            },
+            {
+              label: "",
+              scale: "mb",
+              points: {
+                show: true,
+                fill: "rgb(255, 152, 48)",
+              },
+              stroke: "rgb(255, 152, 48)",
+              fill: "rgba(255, 152, 48, 0.1)",
+            },
+          ],
+          scales: {
+            x: { time: true }, y: {
+              auto: true,
+              range: [],
+            },
+          },
+          axes: [
+            {
+              stroke: "#bdbdbd",
+              grid: {
+                stroke: '#2C3033',
+                width: 1
+              }
+            },
+            {
+              scale: "mb",
+              values: (self, ticks) => ticks.map(rawValue => (rawValue / 10 ** 6).toFixed(0) + "MB"),
+              stroke: "#bdbdbd",
+              grid: {
+                stroke: '#2C3033',
+                width: 1
+              }
+            },
+          ],
+        },
+        data: [],
+        layout: { x: 4, y: 10, w: 4, h: 10, i: "4" },
+        bucket: "tomatoes",
+        query: `|> range(start: -5m) 
+                |> filter(fn: (r) => r["_measurement"] == "swap")
+                |> filter(fn: (r) => r["_field"] == "used")
+                |> filter(fn: (r) => r["host"] == "raspberrypi")
                 |> yield(name: "mean")`,
       },
     ]);
@@ -561,10 +616,10 @@ export default {
 }
 
 .v-btn--size-default {
-    --v-btn-size: 0.875rem;
-    --v-btn-height: 32px;
-    font-size: var(--v-btn-size);
-    min-width: 36px;
-    padding: 0 8px;
+  --v-btn-size: 0.875rem;
+  --v-btn-height: 32px;
+  font-size: var(--v-btn-size);
+  min-width: 36px;
+  padding: 0 8px;
 }
 </style>
