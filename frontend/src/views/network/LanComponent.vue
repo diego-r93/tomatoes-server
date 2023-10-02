@@ -1,7 +1,5 @@
 <template>
-  <v-card-text>
-    {{ networkConfig }}
-  </v-card-text>
+  {{ networkConfig }}
 </template>
 
 <script>
@@ -12,7 +10,7 @@ export default {
   name: "NetworkComponent",
   setup() {
     const networkConfig = ref('');
-    
+
     const loadNetworkConfig = async () => {
       try {
         const response = await networkDataService.getConfigFile('someType'); // Colocar as configurações
@@ -23,9 +21,9 @@ export default {
         console.error('Erro ao buscar configuração de rede', error);
       }
     }
-    
+
     onMounted(loadNetworkConfig);
-    
+
     return {
       networkConfig
     }

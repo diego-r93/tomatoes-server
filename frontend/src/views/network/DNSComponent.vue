@@ -1,7 +1,5 @@
 <template>
-  <v-card-text>
-    <pre>{{ networkConfig }}</pre>
-  </v-card-text>
+  <pre>{{ networkConfig }}</pre>
 </template>
 
 <script>
@@ -12,7 +10,7 @@ export default {
   name: "DnsComponent",
   setup() {
     const networkConfig = ref('');
-    
+
     const loadNetworkConfig = async () => {
       try {
         const response = await networkDataService.getConfigFile('dns');
@@ -23,9 +21,9 @@ export default {
         console.error('Erro ao buscar configuração de rede', error);
       }
     }
-    
+
     onMounted(loadNetworkConfig);
-    
+
     return {
       networkConfig
     }

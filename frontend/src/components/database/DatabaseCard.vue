@@ -7,7 +7,7 @@
       <div class="py-2">Pumper Name: {{ pumperName }}</div>
       <v-divider></v-divider>
       <div v-if="hasDriveTimes">
-        <v-virtual-scroll class="virtual-scroll-container" :items="driveTimes" height="250" item-height="50" :bench="keepAliveAmount">
+        <v-virtual-scroll class="scroll-container" :items="driveTimes" height="250" item-height="50" :bench="keepAliveAmount">
           <template v-slot:default="{ item }">
             <v-row class="align-center">
               <v-col class="flex-grow-1 text-start">
@@ -77,20 +77,21 @@ const deleteBoard = async () => {
 
 
 <style scoped>
-.virtual-scroll-container {
+.scroll-container {
+  overflow-y: auto;
   overflow-x: hidden;
 }
 
-.virtual-scroll-container::-webkit-scrollbar {
+.scroll-container::-webkit-scrollbar {
   width: 3px;
 }
 
-.virtual-scroll-container::-webkit-scrollbar-thumb {
+.scroll-container::-webkit-scrollbar-thumb {
   background-color: #bdbdbd;
   border-radius: 4px;
 }
 
-.virtual-scroll-container::-webkit-scrollbar-track {
+.scroll-container::-webkit-scrollbar-track {
   background: transparent;
 }
 </style>

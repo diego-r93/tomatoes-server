@@ -19,10 +19,10 @@
       </v-tabs>
 
       <v-card class="custom-border">
-        <v-card-text>          
+        <v-card-text class="scroll-container">          
           <router-view></router-view>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="pt-12">
           <v-btn color="indigo" variant="flat" @click="saveChanges">Save</v-btn>
           <v-btn color="red" variant="flat" @click="cancel">Cancel</v-btn>
         </v-card-actions>
@@ -67,3 +67,23 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.scroll-container {
+  height: 500px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.scroll-container::-webkit-scrollbar {
+  width: 3px;
+}
+
+.scroll-container::-webkit-scrollbar-thumb {
+  background-color: #bdbdbd;
+  border-radius: 4px;
+}
+
+.scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+</style>
