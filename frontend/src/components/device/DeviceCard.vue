@@ -5,12 +5,15 @@
         <v-col cols="2" class="align-self-center">
           <v-icon large color="#333333">mdi-chip</v-icon>
         </v-col>
-        <v-col cols="8" class="align-self-center text-center">
+        <v-col cols="6" class="align-self-center text-center">
           {{ cardData.host }}
         </v-col>
         <v-col cols="2" class="align-self-center">
-          <v-btn density="comfortable" icon="mdi-information-outline" color="#99deaa" variant="flat"></v-btn>
+          <v-btn density="comfortable" icon="mdi-upload" color="#99deaa" variant="flat" @click="navigateToOTA(cardData.host)"></v-btn>
         </v-col>
+        <v-col cols="2" class="align-self-center">
+          <v-btn density="comfortable" icon="mdi-information-outline" color="#99deaa" variant="flat"></v-btn>          
+        </v-col>       
       </v-row>
     </v-container>
 
@@ -53,6 +56,7 @@
 
 <script setup>
 import { ref, watchEffect } from 'vue'
+import router from '@/router'
 import mqttDataService from '@/services/mqttDataService'
 
 const props = defineProps(['cardData'])
@@ -69,6 +73,10 @@ const gpioMapping = {
   IO19: '19',
   IO18: '18',
   IO05: '5'
+}
+
+function navigateToOTA(id) {
+  router.push({ path: `/device/${id}` });
 }
 
 watchEffect(() => {
