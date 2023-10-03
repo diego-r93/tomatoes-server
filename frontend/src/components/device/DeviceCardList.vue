@@ -24,7 +24,7 @@
       </v-btn>
     </v-app-bar>
     <v-row>
-      <v-col v-for="device in devices" :key="device.mac" cols="2">        
+      <v-col v-for="device in devices" :key="device.mac" cols="3">        
           <DeviceCard :cardData="device" />
       </v-col>
     </v-row>

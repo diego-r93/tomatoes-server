@@ -1,15 +1,15 @@
 <template>
-  <v-card color="#99deaa" max-width="350" class="custom-border">
+  <v-card color="#99deaa" class="custom-border">
     <v-container>
       <v-row>
-        <v-col cols="2" class="align-self-center">
+        <v-col cols="4" class="align-self-center">
           <v-icon large color="#333333">mdi-chip</v-icon>
         </v-col>
-        <v-col cols="6" class="align-self-center text-center">
+        <v-col cols="4" class="align-self-center text-center">
           {{ cardData.host }}
         </v-col>
         <v-col cols="2" class="align-self-center">
-          <v-btn density="comfortable" icon="mdi-upload" color="#99deaa" variant="flat" @click="navigateToOTA(cardData.host)"></v-btn>
+          <v-btn density="comfortable" icon="mdi-upload" color="#99deaa" variant="flat" @click="navigateToOTA(cardData)"></v-btn>
         </v-col>
         <v-col cols="2" class="align-self-center">
           <v-btn density="comfortable" icon="mdi-information-outline" color="#99deaa" variant="flat"></v-btn>          
@@ -75,8 +75,8 @@ const gpioMapping = {
   IO05: '5'
 }
 
-function navigateToOTA(id) {
-  router.push({ path: `/device/${id}` });
+function navigateToOTA(deviceData) {
+  router.push({ path: `/device/${deviceData.host}` });
 }
 
 watchEffect(() => {
