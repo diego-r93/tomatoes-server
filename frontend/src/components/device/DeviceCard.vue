@@ -12,7 +12,7 @@
           <v-btn density="comfortable" icon="mdi-upload" color="#99deaa" variant="flat" @click="navigateToOTA(cardData)"></v-btn>
         </v-col>
         <v-col cols="2" class="align-self-center">
-          <v-btn density="comfortable" icon="mdi-information-outline" color="#99deaa" variant="flat"></v-btn>          
+          <v-btn density="comfortable" icon="mdi-information-outline" color="#99deaa" variant="flat" @click="navigateToInfo(cardData)"></v-btn>          
         </v-col>       
       </v-row>
     </v-container>
@@ -77,6 +77,10 @@ const gpioMapping = {
 
 function navigateToOTA(deviceData) {
   router.push({ path: `/device/${deviceData.host}` });
+}
+
+function navigateToInfo(deviceData) {
+  router.push({ path: `/device/${deviceData.host}/info` });
 }
 
 watchEffect(() => {

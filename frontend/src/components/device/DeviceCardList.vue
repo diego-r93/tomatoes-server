@@ -22,10 +22,15 @@
         <v-icon color="#bdbdbd" icon="mdi-cog-outline">
         </v-icon>
       </v-btn>
+      <div class="pr-5">
+        <v-btn class="text-none rounded-xs custom-border" variant="flat" @click="fetchDevices">
+          <v-icon color="#bdbdbd" icon="mdi-sync"></v-icon>
+        </v-btn>
+      </div>
     </v-app-bar>
     <v-row>
-      <v-col v-for="device in devices" :key="device.mac" cols="3">        
-          <DeviceCard :cardData="device" />
+      <v-col v-for="device in devices" :key="device.mac" cols="3">
+        <DeviceCard :cardData="device" />
       </v-col>
     </v-row>
   </v-container>
@@ -40,35 +45,36 @@ export default {
   name: "DeviceCardList",
   components: { DeviceCard },
   setup() {
-    const loading = ref(false);
+    const loading = ref(true);
     const devices = ref([
-    {
-        host: 'Device-01',
-        ip: '192.168.1.101',
-        mac: 'AA:BB:CC:DD:EE:01',
-        rssi: -60
-      },
-      {
-        host: 'Device-02',
-        ip: '192.168.1.102',
-        mac: 'AA:BB:CC:DD:EE:02',
-        rssi: -55
-      },
-      {
-        host: 'Device-03',
-        ip: '192.168.1.103',
-        mac: 'AA:BB:CC:DD:EE:03',
-        rssi: -65
-      },
-      {
-        host: 'Device-04',
-        ip: '192.168.1.104',
-        mac: 'AA:BB:CC:DD:EE:04',
-        rssi: -50
-      }
+      // {
+      //   host: 'Device-01',
+      //   ip: '192.168.1.101',
+      //   mac: 'AA:BB:CC:DD:EE:01',
+      //   rssi: -60
+      // },
+      // {
+      //   host: 'Device-02',
+      //   ip: '192.168.1.102',
+      //   mac: 'AA:BB:CC:DD:EE:02',
+      //   rssi: -55
+      // },
+      // {
+      //   host: 'Device-03',
+      //   ip: '192.168.1.103',
+      //   mac: 'AA:BB:CC:DD:EE:03',
+      //   rssi: -65
+      // },
+      // {
+      //   host: 'Device-04',
+      //   ip: '192.168.1.104',
+      //   mac: 'AA:BB:CC:DD:EE:04',
+      //   rssi: -50
+      // }
     ]);
 
-    onMounted(async () => {
+    const fetchDevices = async () => {
+      loading.value = true;
       try {
         const { data } = await mqttDataService.getAll();
         devices.value = data.devicesInformation.map(device => ({
@@ -83,9 +89,13 @@ export default {
       } finally {
         loading.value = false;
       }
+    };
+
+    onMounted(() => {
+      fetchDevices();
     });
 
-    return { loading, devices };
+    return { loading, devices, fetchDevices };
   },
 };
 </script>

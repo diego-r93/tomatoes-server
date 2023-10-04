@@ -1,5 +1,6 @@
 import DeviceComponent from "@/views/DeviceConfiguration.vue"
 import OTAComponent from "@/views/device/OTAComponent"
+import InfoComponent from "@/views/device/InfoComponent"
 
 export default [
   {
@@ -19,5 +20,14 @@ export default [
       layout: "default",
     },
     component: OTAComponent,
+  },
+  {
+    path: "/device/:id/info",
+    meta: {
+      requiresAuth: true,
+      category: "Device",
+      layout: "default",
+    },
+    component: InfoComponent,
   }
 ]
