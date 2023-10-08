@@ -16,14 +16,14 @@ const routes = [
     path: '/',
     redirect: "/dashboard",
     meta: {},
-  },  
+  },
   {
     path: "/:pathMatch(.*)*",
     name: "error",
     component: () =>
       import(/* webpackChunkName: "error" */ "@/views/errors/NotFoundPage.vue"),
   },
-  
+
   ...DashboardRoutes,
   ...DeviceRoutes,
   ...DatabaseRoutes,
@@ -34,6 +34,20 @@ const routes = [
   ...AuthRoutes,
   ...HelpRoutes,
 ]
+
+let authInterval = null;
+
+const startAuthInterval = () => {
+  if (authInterval) {
+    clearInterval(authInterval);
+  }
+  authInterval = setInterval(() => {
+    const isAuthenticated = Authentication.isAuthenticated();
+    if (!isAuthenticated) {
+      clearInterval(authInterval);  // Parar de verificar uma vez que não está mais autenticado.
+    }
+  }, 1000 * 60);  // A cada 1 minuto
+};
 
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
@@ -52,10 +66,18 @@ router.beforeEach(async (to, from, next) => {
 
   const authenticated = Authentication.isAuthenticated()
 
-  if (requiresAuth && !authenticated) {
-    next('/login')
+  if (requiresAuth) {
+    if (!authenticated) {
+      clearInterval(authInterval);  // Certificar-se de limpar o intervalo se não estiver autenticado.
+      next('/login');
+    } else {
+      startAuthInterval();  // Iniciar o intervalo se estiver autenticado.
+      next();
+    }
+  } else {
+    clearInterval(authInterval);  // Limpar o intervalo se a rota não requer autenticação.
+    next();
   }
-  else next()
 })
 
 export default router

@@ -12,7 +12,7 @@
         </span>
       </v-app-bar-title>
 
-      <v-btn class="me-2 text-none rounded-xs custom-border" variant="flat" @click="addItem">
+      <v-btn class="me-2 text-none rounded-xs custom-border" variant="flat" @click="addPlaceHolder">
         <v-icon color="#bdbdbd" icon="mdi-view-grid-plus" size="small">
         </v-icon>
       </v-btn>
@@ -50,9 +50,42 @@
 
     <grid-layout :layout="layout" @update:modelValue="updateLayout" :col-num="12" :row-height="30"
       :is-draggable="draggable" :is-resizable="resizable" :vertical-compact="true" :use-css-transforms="true">
+
       <grid-item v-for="chart in layout" :key="chart.i" :x="chart.x" :y="chart.y" :w="chart.w" :h="chart.h" :i="chart.i"
-        :ref="el => registerRef(Number(chart.i), el)" drag-ignore-from=".no-drag">
-        <template v-if="getChartById(chart.i)">
+        :ref="el => registerRef(Number(chart.i), el)" drag-ignore-from=".no-drag"
+        :class="{ 'new-chart-border': Number(chart.i) === charts.length }">
+
+        <!-- Se for o ID do novo item placeholder, mostre o card "Add New Chart to Panel" -->
+        <template v-if="Number(chart.i) === charts.length">
+          <v-hover>
+            <template v-slot:default="{ isHovering, props }">
+              <v-card :color="isHovering ? '#3c3c3c' : undefined" v-bind="props" class="py-1 text-none rounded-xs"
+                variant="flat">
+                <v-row no-gutters>
+                  <v-col cols="11" class="pl-4 d-flex justify-start align-center">
+                    <v-icon color="#bdbdbd" icon="mdi-view-grid-plus"></v-icon>
+                    <span class="pl-2" style="color: #bdbdbd">Add Panel</span>
+                  </v-col>
+                  <v-col cols="1" class="d-flex justify-end">
+                    <v-btn @click="removePlaceHolder(chart.i)" icon size="x-small" variant="text">
+                      <v-icon color="#bdbdbd">mdi-close</v-icon>
+                    </v-btn>
+                  </v-col>
+                </v-row>
+              </v-card>
+            </template>
+          </v-hover>
+          <v-container class="my-container d-flex justify-center align-center no-drag">
+            <v-btn variant="flat" @click="addItem">
+              <v-icon color="#bdbdbd" icon="mdi-chart-areaspline-variant"></v-icon>
+              <span class="ml-2" style="color: #bdbdbd">Add New Chart to Panel</span>
+            </v-btn>
+          </v-container>
+        </template>
+
+
+        <!-- Se não, mostre o gráfico existente -->
+        <template v-else-if="getChartById(chart.i)">
           <v-hover>
             <template v-slot:default="{ isHovering, props }">
               <v-card :color="isHovering ? '#3c3c3c' : undefined" v-bind="props"
@@ -66,6 +99,7 @@
         </template>
       </grid-item>
     </grid-layout>
+
   </v-container>
 </template>
 
@@ -118,7 +152,7 @@ export default {
             },
             {
               scale: "C",
-              values: (self, ticks) => ticks.map(rawValue => (rawValue / 1000).toFixed(2) + "° C"),
+              values: (self, ticks) => ticks.map(rawValue => rawValue.toFixed(2) + "° C"),
               stroke: "#bdbdbd",
               grid: {
                 stroke: '#2C3033',
@@ -130,8 +164,13 @@ export default {
         data: [],
         layout: { x: 0, y: 0, w: 4, h: 10, i: "0" },
         bucket: "tomatoes",
-        query: `|> range(start: -5m) 
-                |> filter(fn: (r) => r._measurement == "cpu_temperature")`,
+        query: `|> range(start: -5m)
+                |> filter(fn: (r) => r["_measurement"] == "cpu_temperature")
+                |> filter(fn: (r) => r["_field"] == "value")
+                |> filter(fn: (r) => r["host"] == "raspberrypi")
+                |> map(fn: (r) => ({ r with _value: r._value / 1000 }))
+                |> aggregateWindow(every: 500ms, fn: mean, createEmpty: false)   
+                |> yield(name: "mean")`,
       },
       {
         id: 1,
@@ -178,10 +217,13 @@ export default {
         data: [],
         layout: { x: 4, y: 0, w: 4, h: 10, i: "1" },
         bucket: "tomatoes",
-        query: `|> range(start: -5m) 
-                |> filter(fn: (r) => r._measurement == "cpu") 
-                |> filter(fn: (r) => r["_field"] == "usage_user") 
-                |> filter(fn: (r) => r["cpu"] == "cpu-total")`,
+        query: `|> range(start: -5m)
+                |> filter(fn: (r) => r["_measurement"] == "cpu")
+                |> filter(fn: (r) => r["_field"] == "usage_user")
+                |> filter(fn: (r) => r["cpu"] == "cpu-total")
+                |> filter(fn: (r) => r["host"] == "raspberrypi")
+                |> aggregateWindow(every: 500ms, fn: mean, createEmpty: false)
+                |> yield(name: "mean")`,
       },
       {
         id: 2,
@@ -231,9 +273,12 @@ export default {
         data: [],
         layout: { x: 8, y: 0, w: 4, h: 10, i: "2" },
         bucket: "tomatoes",
-        query: `|> range(start: -5m) 
-                |> filter(fn: (r) => r["_measurement"] == "mem") 
-                |> filter(fn: (r) => r["_field"] == "used")`,
+        query: `|> range(start: -5m)
+                |> filter(fn: (r) => r["_measurement"] == "mem")
+                |> filter(fn: (r) => r["_field"] == "used")
+                |> filter(fn: (r) => r["host"] == "raspberrypi")
+                |> aggregateWindow(every: 500ms, fn: mean, createEmpty: false)
+                |> yield(name: "mean")`,
       },
       {
         id: 3,
@@ -283,14 +328,15 @@ export default {
         data: [],
         layout: { x: 0, y: 10, w: 4, h: 10, i: "3" },
         bucket: "tomatoes",
-        query: `|> range(start: -5m)
+        query: `|> range(start: -5m)        
                 |> filter(fn: (r) => r["_measurement"] == "disk")
                 |> filter(fn: (r) => r["_field"] == "used")
                 |> filter(fn: (r) => r["device"] == "mmcblk0p2")
                 |> filter(fn: (r) => r["fstype"] == "ext4")
                 |> filter(fn: (r) => r["host"] == "raspberrypi")
                 |> filter(fn: (r) => r["mode"] == "rw")
-                |> filter(fn: (r) => r["path"] == "/etc/hostname")                
+                |> filter(fn: (r) => r["path"] == "/etc/hostname")
+                |> aggregateWindow(every: 500ms, fn: mean, createEmpty: false)
                 |> yield(name: "mean")`,
       },
       {
@@ -346,6 +392,7 @@ export default {
                 |> filter(fn: (r) => r["_measurement"] == "swap")
                 |> filter(fn: (r) => r["_field"] == "used")
                 |> filter(fn: (r) => r["host"] == "raspberrypi")
+                |> aggregateWindow(every: 500ms, fn: mean, createEmpty: false)
                 |> yield(name: "mean")`,
       },
     ]);
@@ -356,14 +403,16 @@ export default {
       index: 3,
       selectedLabel: '5 minutes',
       timeOptions: [
-        { label: '5 minutes', value: '-5m' },
-        { label: '10 minutes', value: '-10m' },
-        { label: '15 minutes', value: '-15m' },
-        { label: '30 minutes', value: '-30m' },
-        { label: '1 hour', value: '-1h' },
-        { label: '3 hours', value: '-3h' },
-        { label: '6 hours', value: '-6h' },
-        { label: '12 hours', value: '-12h' },
+        { label: '5 minutes', value: '-5m', range: '500ms' },
+        { label: '15 minutes', value: '-15m', range: '1s' },
+        { label: '30 minutes', value: '-30m', range: '2s' },
+        { label: '1 hour', value: '-1h', range: '5s' },
+        { label: '3 hours', value: '-3h', range: '20s' },
+        { label: '6 hours', value: '-6h', range: '30s' },
+        { label: '12 hours', value: '-12h', range: '1m' },
+        { label: '24 hours', value: '-24h', range: '2m' },
+        { label: '3 days', value: '-3d', range: '5m' },
+        { label: '1 week', value: '-1w', range: '15m' },
       ],
     });
 
@@ -434,11 +483,19 @@ export default {
       ];
     };
 
-
     const updateQueriesWithTimeRange = () => {
+      const selectedOption = state.timeOptions.find(option => option.label === state.selectedLabel);
+
       for (let chartIndex in charts) {
         let query = charts[chartIndex].query;
-        query = query.replace(/(\|> range\(start: )[^)]+\)/, `$1${timeRange.value})`);
+
+        // Atualizar a range da query
+        query = query.replace(/(\|> range\(start: )[^)]+\)/, `$1${selectedOption.value})`);
+
+        // Atualizar o windowPeriod na query
+        const regex = new RegExp('\\|> aggregateWindow\\(every: [^,]+,', 'g');
+        query = query.replace(regex, `|> aggregateWindow(every: ${selectedOption.range},`);
+
         charts[chartIndex].query = query;
       }
     };
@@ -482,19 +539,71 @@ export default {
       return charts.find(c => c.id === Number(id));
     };
 
-    const addItem = () => {
+    const addPlaceHolder = () => {
       const newId = charts.length;
 
       // Criar um novo objeto de layout
       const newLayout = {
         x: 0,
         y: 0,
-        w: 4,
-        h: 10,
+        w: 6,
+        h: 8,
         i: newId.toString(),
       };
 
+      // Atualize os gráficos existentes para mover para baixo, se necessário
+      layout.value.forEach(item => {
+        // Se um gráfico já está na mesma posição ou abaixo do novo gráfico
+        if (item.y >= newLayout.y) {
+          // Mova esse gráfico para baixo
+          item.y += newLayout.h;
+        }
+      });
+
       layout.value.push(newLayout);
+
+      index.value++;
+
+      nextTick(() => {
+        updateChartsSize();
+        fetchChartData();
+      });
+    };
+
+    const removePlaceHolder = (id) => {
+      const idNum = Number(id);
+
+      // Verifique se o ID corresponde ao ID do placeholder
+      if (idNum === charts.length) {
+        // Encontre o item do placeholder
+        const placeholderItem = layout.value.find(item => Number(item.i) === idNum);
+
+        // Se o item do placeholder não foi encontrado, retorne (para evitar erros)
+        if (!placeholderItem) return;
+
+        // Pegue a altura e a posição y do placeholder
+        const { h: placeholderHeight, y: placeholderY } = placeholderItem;
+
+        // Remova o placeholder do layout
+        layout.value = layout.value.filter(item => Number(item.i) !== idNum);
+
+        // Ajuste a posição y de todos os itens do grid que foram movidos por causa do placeholder
+        layout.value.forEach(item => {
+          if (item.y > placeholderY) {
+            item.y -= placeholderHeight;
+          }
+        });
+      }
+    };
+
+    const addItem = () => {
+      const newId = charts.length;
+
+      // Encontre o placeholder no layout
+      const placeholderLayout = layout.value.find(item => Number(item.i) === newId);
+
+      // Se não encontrarmos um placeholder, não faça nada
+      if (!placeholderLayout) return;      
 
       // Adicionar novo chart com o novo layout
       charts.push({
@@ -543,14 +652,12 @@ export default {
             },
           ],
         },
-        layout: newLayout,
+        layout: placeholderLayout,  // use o layout existente do placeholder
         bucket: "tomatoes",
         query: `|> range(start: -5m) 
                 |> filter(fn: (r) => r["_measurement"] == "mem") 
                 |> filter(fn: (r) => r["_field"] == "used")`,
       });
-
-      index.value++;
 
       nextTick(() => {
         updateChartsSize();
@@ -565,6 +672,7 @@ export default {
         layout.value.splice(index, 1);
       }
     };
+
 
     onMounted(() => {
       // Busca os dados do gráfico assim que o componente é montado
@@ -585,6 +693,8 @@ export default {
       updateLayout,
       updateQueryRange,
       fetchChartData,
+      addPlaceHolder,
+      removePlaceHolder,
       addItem,
       removeItem,
     }
@@ -621,5 +731,16 @@ export default {
   font-size: var(--v-btn-size);
   min-width: 36px;
   padding: 0 8px;
+}
+
+.new-chart-border {
+  border: 2px solid #03dac6 !important;
+}
+
+.my-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 88%;
 }
 </style>
