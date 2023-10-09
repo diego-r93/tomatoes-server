@@ -7,17 +7,18 @@
       <div class="py-2">Pumper Name: {{ pumperName }}</div>
       <v-divider></v-divider>
       <div v-if="hasDriveTimes">
-        <v-virtual-scroll class="scroll-container" :items="driveTimes" height="250" item-height="50" :bench="keepAliveAmount">
-          <template v-slot:default="{ item }">
+        <v-virtual-scroll class="scroll-container" :items="driveTimes" height="250" item-height="50">
+          <template v-slot:default="{ item, index }">
             <v-row class="align-center">
               <v-col class="flex-grow-1 text-start">
                 {{ item.time }}
               </v-col>
               <v-col class="flex-grow-1">
-                <v-switch v-model="item.state" hide-details color="indigo"></v-switch>
+                <v-switch v-model="item.state" hide-details color="indigo"
+                  @change="editDriveTimeState(index, item.state)"></v-switch>
               </v-col>
               <v-col class="flex-grow-0">
-                <v-btn icon class="elevation-0">
+                <v-btn icon class="elevation-0" @click="deleteDriveTimeAtIndex(index)">
                   <v-icon small>mdi-minus-circle-outline</v-icon>
                 </v-btn>
               </v-col>
@@ -56,7 +57,7 @@ const editBoard = async () => {
       pumperName: pumperName.value,
       pulseDuration: pulseDuration.value,
       driveTimes: driveTimes.value
-    }, localStorage.accessToken);
+    });
     // Aqui pode usar um sistema de mensagens ou alertas mais amigável e moderno, como o Vuetify Snackbar
     // alert("Board successfully updated!");
   } finally {
@@ -69,6 +70,30 @@ const deleteBoard = async () => {
     loading.value = true;
     await mongoDataService.deleteBoard(props.cardData.id, localStorage.accessToken);
     emit('delete', props.cardData.id);
+  } finally {
+    loading.value = false;
+  }
+};
+
+const editDriveTimeState = async (index, newState) => {
+  try {
+    loading.value = true;
+    await mongoDataService.editDriveTimeState(props.cardData.id, index, newState);
+    driveTimes.value[index].state = newState;
+  } catch (error) {
+    console.error("Failed to edit drive time state:", error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+const deleteDriveTimeAtIndex = async (index) => {
+  try {
+    loading.value = true;
+    await mongoDataService.deleteDriveTimeAtIndex(props.cardData.id, index);
+    driveTimes.value.splice(index, 1);
+  } catch (error) {
+    console.error("Failed to delete drive time:", error);
   } finally {
     loading.value = false;
   }

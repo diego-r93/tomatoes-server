@@ -85,7 +85,9 @@ export const update = async (req: Request, res: Response): Promise<void> => {
 
 // Edit the state of an element in the driveTimes array
 export const editDriveTimeState = async (req: Request, res: Response): Promise<void> => {
-  const { id, index, state } = req.body;
+  const id = req.params.id;
+  const index = parseInt(req.params.index, 10); // Convertendo o index para um número
+  const { state } = req.body;
 
   try {
     const board = await Board.findById(id);
@@ -103,7 +105,9 @@ export const editDriveTimeState = async (req: Request, res: Response): Promise<v
 
 // Edit a time in the driveTimes array
 export const editDriveTime = async (req: Request, res: Response): Promise<void> => {
-  const { id, index, time } = req.body;
+  const id = req.params.id;
+  const index = parseInt(req.params.index, 10); // Convertendo o index para um número
+  const { time } = req.body;
 
   try {
     const board = await Board.findById(id);
@@ -118,6 +122,7 @@ export const editDriveTime = async (req: Request, res: Response): Promise<void> 
     res.status(500).send({ message: "Error updating drive time." });
   }
 };
+
 
 // Replace the entire driveTimes array
 export const replaceDriveTimes = async (req: Request, res: Response): Promise<void> => {
@@ -140,7 +145,8 @@ export const replaceDriveTimes = async (req: Request, res: Response): Promise<vo
 
 // Delete an element at a specific index in the driveTimes array
 export const deleteDriveTimeAtIndex = async (req: Request, res: Response): Promise<void> => {
-  const { id, index } = req.body;
+  const id = req.params.id;
+  const index = parseInt(req.params.index, 10);
 
   try {
     const board = await Board.findById(id);

@@ -30,7 +30,7 @@
     </v-app-bar>
     <v-row>
       <v-col v-for="board in boards" :key="board.id" cols="3">
-        <DatabaseCard :cardData="board" @delete="handleDelete" />
+        <DatabaseCard :cardData="board" @delete="handleDelete" @updateDriveTimeState="updateDriveTimeState" />
       </v-col>
     </v-row>
   </v-container>
@@ -55,10 +55,6 @@ export default {
 
     const addBoardFormIsVisible = ref(false);
     const form = ref(false);
-
-    const handleDelete = (boardId) => {
-      boards.value = boards.value.filter(board => board.id !== boardId);
-    };
 
     const addNewBoard = async () => {
       loading.value = true;
@@ -93,6 +89,17 @@ export default {
       }
     };
 
+    const handleDelete = (boardId) => {
+      boards.value = boards.value.filter(board => board.id !== boardId);
+    };
+
+    const updateDriveTimeState = ({ boardId, index, newState }) => {
+      const boardToUpdate = boards.value.find(board => board.id === boardId.value);
+      if (boardToUpdate) {
+        boardToUpdate.driveTimes[index].state = newState;
+      }
+    };
+
     onMounted(() => {
       loadBoards();
     });
@@ -108,7 +115,8 @@ export default {
       loading,
       handleDelete,
       addNewBoard,
-      loadBoards
+      loadBoards,
+      updateDriveTimeState,
     };
   },
 };
