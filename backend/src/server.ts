@@ -10,6 +10,7 @@ import cors from 'cors';
 import path from 'path';
 import setupUsersRoutes from './routes/users-routes';
 import setupBoardsRoutes from './routes/boards-routes';
+import setupDashBoardsRoutes from './routes/dashboards-routes';
 import setupMqttRoutes from './routes/mqtt-routes';
 import setupInfluxRoutes from './routes/influxdb-routes';
 import setupNetworkRoutes from './routes/network-routes';
@@ -66,6 +67,9 @@ setupUsersRoutes(app);
 
 // Boards
 setupBoardsRoutes(app);
+
+// Dashboards
+setupDashBoardsRoutes(app);
 
 // MQTT
 setupMqttRoutes(app);

@@ -58,7 +58,7 @@ const editBoard = async () => {
       pulseDuration: pulseDuration.value,
       driveTimes: driveTimes.value
     });
-    // Aqui pode usar um sistema de mensagens ou alertas mais amigável e moderno, como o Vuetify Snackbar
+    // Usar um sistema de mensagens ou alertas mais amigável e moderno, como o Vuetify Snackbar
     // alert("Board successfully updated!");
   } finally {
     loading.value = false;

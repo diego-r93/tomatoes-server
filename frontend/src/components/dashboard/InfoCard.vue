@@ -17,7 +17,7 @@
         </v-icon>
       </v-btn>
 
-      <v-btn class="me-2 text-none rounded-xs custom-border" variant="flat">
+      <v-btn class="me-2 text-none rounded-xs custom-border" variant="flat" @click="saveCharts">
         <v-icon color="#bdbdbd" icon="mdi-content-save-outline">
         </v-icon>
       </v-btn>
@@ -107,295 +107,19 @@
 import { reactive, ref, toRefs, onMounted, nextTick } from 'vue'
 import { GridLayout, GridItem } from "vue-grid-layout"
 import Chart from '@/components/dashboard/Chart.vue'
+
 import influxdbDataService from '@/services/influxdbDataService'
+import dashboardDataService from '@/services/dashboardDataService'
 
 export default {
   components: { GridLayout, GridItem, Chart },
   setup() {
     const gridItemsRefs = ref({});
-    const charts = reactive([
-      {
-        id: 0,
-        draggable: false,
-        options: {
-          chartTitle: "cpu_temperature",
-          padding: [null, null, null, 15],
-          series: [
-            {
-              label: "Date",
-            },
-            {
-              label: "",
-              scale: "C",
-              points: {
-                show: true,
-                fill: "rgb(242, 73, 92)",
-              },
-              stroke: "rgb(242, 73, 92)",
-              fill: "rgba(242, 73, 92, 0.1)",
-            },
-          ],
-          scales: {
-            x: { time: true },
-            y: {
-              auto: true,
-              range: [],
-            },
-          },
-          axes: [
-            {
-              stroke: "#bdbdbd",
-              grid: {
-                stroke: '#2C3033',
-                width: 1
-              }
-            },
-            {
-              scale: "C",
-              values: (self, ticks) => ticks.map(rawValue => rawValue.toFixed(2) + "° C"),
-              stroke: "#bdbdbd",
-              grid: {
-                stroke: '#2C3033',
-                width: 1
-              }
-            },
-          ],
-        },
-        data: [],
-        layout: { x: 0, y: 0, w: 4, h: 10, i: "0" },
-        bucket: "tomatoes",
-        query: `|> range(start: -5m)
-                |> filter(fn: (r) => r["_measurement"] == "cpu_temperature")
-                |> filter(fn: (r) => r["_field"] == "value")
-                |> filter(fn: (r) => r["host"] == "raspberrypi")
-                |> map(fn: (r) => ({ r with _value: r._value / 1000 }))
-                |> aggregateWindow(every: 500ms, fn: mean, createEmpty: false)   
-                |> yield(name: "mean")`,
-      },
-      {
-        id: 1,
-        draggable: false,
-        options: {
-          chartTitle: "cpu_total",
-          series: [
-            {
-              label: "Date",
-            },
-            {
-              label: "",
-              points: {
-                show: true,
-                fill: "rgb(87, 148, 242)",
-              },
-              stroke: "rgb(87, 148, 242)",
-              fill: "rgba(87, 148, 242, 0.1)",
-            },
-          ],
-          scales: {
-            x: { time: true }, y: {
-              auto: true,
-              range: [],
-            },
-          },
-          axes: [
-            {
-              stroke: "#bdbdbd",
-              grid: {
-                stroke: '#2C3033',
-                width: 1
-              }
-            },
-            {
-              stroke: "#bdbdbd",
-              grid: {
-                stroke: '#2C3033',
-                width: 1
-              }
-            },
-          ],
-        },
-        data: [],
-        layout: { x: 4, y: 0, w: 4, h: 10, i: "1" },
-        bucket: "tomatoes",
-        query: `|> range(start: -5m)
-                |> filter(fn: (r) => r["_measurement"] == "cpu")
-                |> filter(fn: (r) => r["_field"] == "usage_user")
-                |> filter(fn: (r) => r["cpu"] == "cpu-total")
-                |> filter(fn: (r) => r["host"] == "raspberrypi")
-                |> aggregateWindow(every: 500ms, fn: mean, createEmpty: false)
-                |> yield(name: "mean")`,
-      },
-      {
-        id: 2,
-        options: {
-          chartTitle: "mem_used",
-          padding: [null, null, null, 12],
-          series: [
-            {
-              label: "Date",
-            },
-            {
-              label: "",
-              scale: "mb",
-              points: {
-                show: true,
-                fill: "rgb(115, 191, 105)",
-              },
-              stroke: "rgb(115, 191, 105)",
-              fill: "rgba(115, 191, 105, 0.1)",
-            },
-          ],
-          scales: {
-            x: { time: true }, y: {
-              auto: true,
-              range: [],
-            },
-          },
-          axes: [
-            {
-              stroke: "#bdbdbd",
-              grid: {
-                stroke: '#2C3033',
-                width: 1
-              }
-            },
-            {
-              scale: "mb",
-              values: (self, ticks) => ticks.map(rawValue => (rawValue / 10 ** 6).toFixed(0) + "MB"),
-              stroke: "#bdbdbd",
-              grid: {
-                stroke: '#2C3033',
-                width: 1
-              }
-            },
-          ],
-        },
-        data: [],
-        layout: { x: 8, y: 0, w: 4, h: 10, i: "2" },
-        bucket: "tomatoes",
-        query: `|> range(start: -5m)
-                |> filter(fn: (r) => r["_measurement"] == "mem")
-                |> filter(fn: (r) => r["_field"] == "used")
-                |> filter(fn: (r) => r["host"] == "raspberrypi")
-                |> aggregateWindow(every: 500ms, fn: mean, createEmpty: false)
-                |> yield(name: "mean")`,
-      },
-      {
-        id: 3,
-        options: {
-          chartTitle: "disk_used",
-          padding: [null, null, null, 12],
-          series: [
-            {
-              label: "Date",
-            },
-            {
-              label: "",
-              scale: "gb",
-              points: {
-                show: true,
-                fill: "rgb(184, 119, 217)",
-              },
-              stroke: "rgb(184, 119, 217)",
-              fill: "rgba(184, 119, 217, 0.1)",
-            },
-          ],
-          scales: {
-            x: { time: true }, y: {
-              auto: true,
-              range: [],
-            },
-          },
-          axes: [
-            {
-              stroke: "#bdbdbd",
-              grid: {
-                stroke: '#2C3033',
-                width: 1
-              }
-            },
-            {
-              scale: "gb",
-              values: (self, ticks) => ticks.map(rawValue => (rawValue / 10 ** 9).toFixed(2) + "GB"),
-              stroke: "#bdbdbd",
-              grid: {
-                stroke: '#2C3033',
-                width: 1
-              }
-            },
-          ],
-        },
-        data: [],
-        layout: { x: 0, y: 10, w: 4, h: 10, i: "3" },
-        bucket: "tomatoes",
-        query: `|> range(start: -5m)        
-                |> filter(fn: (r) => r["_measurement"] == "disk")
-                |> filter(fn: (r) => r["_field"] == "used")
-                |> filter(fn: (r) => r["device"] == "mmcblk0p2")
-                |> filter(fn: (r) => r["fstype"] == "ext4")
-                |> filter(fn: (r) => r["host"] == "raspberrypi")
-                |> filter(fn: (r) => r["mode"] == "rw")
-                |> filter(fn: (r) => r["path"] == "/etc/hostname")
-                |> aggregateWindow(every: 500ms, fn: mean, createEmpty: false)
-                |> yield(name: "mean")`,
-      },
-      {
-        id: 4,
-        draggable: false,
-        options: {
-          chartTitle: "swap",
-          padding: [null, null, null, 15],
-          series: [
-            {
-              label: "Date",
-            },
-            {
-              label: "",
-              scale: "mb",
-              points: {
-                show: true,
-                fill: "rgb(255, 152, 48)",
-              },
-              stroke: "rgb(255, 152, 48)",
-              fill: "rgba(255, 152, 48, 0.1)",
-            },
-          ],
-          scales: {
-            x: { time: true }, y: {
-              auto: true,
-              range: [],
-            },
-          },
-          axes: [
-            {
-              stroke: "#bdbdbd",
-              grid: {
-                stroke: '#2C3033',
-                width: 1
-              }
-            },
-            {
-              scale: "mb",
-              values: (self, ticks) => ticks.map(rawValue => (rawValue / 10 ** 6).toFixed(0) + "MB"),
-              stroke: "#bdbdbd",
-              grid: {
-                stroke: '#2C3033',
-                width: 1
-              }
-            },
-          ],
-        },
-        data: [],
-        layout: { x: 4, y: 10, w: 4, h: 10, i: "4" },
-        bucket: "tomatoes",
-        query: `|> range(start: -5m) 
-                |> filter(fn: (r) => r["_measurement"] == "swap")
-                |> filter(fn: (r) => r["_field"] == "used")
-                |> filter(fn: (r) => r["host"] == "raspberrypi")
-                |> aggregateWindow(every: 500ms, fn: mean, createEmpty: false)
-                |> yield(name: "mean")`,
-      },
-    ]);
+    const charts = reactive([]);
+    let layout = ref([]);
+    let index = ref([]);
+
+    const timeRange = ref('-5m');
 
     const state = reactive({
       draggable: true,
@@ -415,11 +139,6 @@ export default {
         { label: '1 week', value: '-1w', range: '15m' },
       ],
     });
-
-    const layout = ref(charts.map(chart => chart.layout));
-    const index = ref(layout.value.length);
-
-    const timeRange = ref('-5m');
 
     // Método para registrar os elementos DOM dos grid-items.
     const registerRef = (id, el) => {
@@ -457,27 +176,27 @@ export default {
     };
 
     const fetchChartData = async () => {
-      for (let chartIndex in charts) {
-        const { bucket, query } = charts[chartIndex];
+      for (let chart of charts) {
+        const { bucket, query } = chart;
         if (!bucket || !query) {
-          console.error(`Dados ausentes para o gráfico ${chartIndex}`);
+          console.error(`Dados ausentes para o gráfico ${chart.width}`);
           continue;
         }
         try {
           const response = await influxdbDataService.getData({ bucket, query });
           const influxData = response.data;
-          updateChartData(influxData, chartIndex);
+          updateChartData(influxData, chart);
         } catch (error) {
-          console.error(`Erro ao buscar os dados do InfluxDB para o gráfico ${chartIndex}:`, error);
+          console.error(`Erro ao buscar os dados do InfluxDB para o gráfico ${chart.id}:`, error);
         }
       }
     }
 
-    const updateChartData = (influxData, chartIndex) => {
+    const updateChartData = (influxData, chart) => {
       const timestamps = influxData.map(data => Math.floor(+new Date(data._time) / 1000));
       const values = influxData.map(data => data._value);
 
-      charts[chartIndex].data = [
+      chart.data = [
         timestamps,
         values
       ];
@@ -486,8 +205,8 @@ export default {
     const updateQueriesWithTimeRange = () => {
       const selectedOption = state.timeOptions.find(option => option.label === state.selectedLabel);
 
-      for (let chartIndex in charts) {
-        let query = charts[chartIndex].query;
+      for (let chart of charts) {
+        let query = chart.query;
 
         // Atualizar a range da query
         query = query.replace(/(\|> range\(start: )[^)]+\)/, `$1${selectedOption.value})`);
@@ -496,7 +215,7 @@ export default {
         const regex = new RegExp('\\|> aggregateWindow\\(every: [^,]+,', 'g');
         query = query.replace(regex, `|> aggregateWindow(every: ${selectedOption.range},`);
 
-        charts[chartIndex].query = query;
+        chart.query = query;
       }
     };
 
@@ -508,8 +227,7 @@ export default {
         state.selectedLabel = selectedItem.label;
       }
 
-      for (let chartIndex in charts) {
-        const chart = charts[chartIndex];
+      for (let chart of charts) {
         chart.options = {
           ...chart.options,
           series: [
@@ -527,6 +245,19 @@ export default {
       updateQueriesWithTimeRange();
       fetchChartData();
     };
+
+    function getFormatFunction(scale) {
+      switch (scale) {
+        case 'C':
+          return (self, ticks) => ticks.map(rawValue => rawValue.toFixed(2) + "° C");
+        case 'mb':
+          return (self, ticks) => ticks.map(rawValue => (rawValue / 10 ** 6).toFixed(0) + "MB");
+        case 'gb':
+          return (self, ticks) => ticks.map(rawValue => (rawValue / 10 ** 9).toFixed(2) + "GB");
+        default:
+          return (self, ticks) => ticks.map(rawValue => rawValue.toFixed(2)); // formato padrão
+      }
+    }
 
     const updateLayout = (newLayout) => {
       newLayout.forEach((layoutItem) => {
@@ -551,11 +282,8 @@ export default {
         i: newId.toString(),
       };
 
-      // Atualize os gráficos existentes para mover para baixo, se necessário
       layout.value.forEach(item => {
-        // Se um gráfico já está na mesma posição ou abaixo do novo gráfico
         if (item.y >= newLayout.y) {
-          // Mova esse gráfico para baixo
           item.y += newLayout.h;
         }
       });
@@ -603,7 +331,7 @@ export default {
       const placeholderLayout = layout.value.find(item => Number(item.i) === newId);
 
       // Se não encontrarmos um placeholder, não faça nada
-      if (!placeholderLayout) return;      
+      if (!placeholderLayout) return;
 
       // Adicionar novo chart com o novo layout
       charts.push({
@@ -654,9 +382,9 @@ export default {
         },
         layout: placeholderLayout,  // use o layout existente do placeholder
         bucket: "tomatoes",
-        query: `|> range(start: -5m) 
-                |> filter(fn: (r) => r["_measurement"] == "mem") 
-                |> filter(fn: (r) => r["_field"] == "used")`,
+        query: `|> range(start: -5m)
+|> filter(fn: (r) => r["_measurement"] == "mem")
+|> filter(fn: (r) => r["_field"] == "used")`,
       });
 
       nextTick(() => {
@@ -673,10 +401,62 @@ export default {
       }
     };
 
+    const saveCharts = async () => {
+      try {
+        if (!charts) {
+          console.error("charts.value é undefined");
+          return;
+        }
 
-    onMounted(() => {
-      // Busca os dados do gráfico assim que o componente é montado
+        // Criar uma cópia profunda do charts.value
+        let chartsCopy = JSON.parse(JSON.stringify(charts));
+
+        // Ajustar o campo data de cada objeto em chartsCopy para ser um array vazio
+        chartsCopy.forEach(chart => {
+          chart.data = [];
+        });
+
+        const chartsJSON = JSON.stringify(chartsCopy);
+
+        if (chartsJSON.includes("undefined")) {
+          console.error("A string chartsJSON contém 'undefined':", chartsJSON);
+          return;
+        }
+
+        const response = await dashboardDataService.saveCharts(chartsJSON);
+        if (response && response.status === 200) {
+          console.log('Gráficos salvos com sucesso!');
+        } else {
+          console.error("Erro ao salvar os gráficos:", response);
+        }
+      } catch (error) {
+        console.error("Erro ao salvar os gráficos:", error);
+      }
+    };
+
+    onMounted(async () => {
+      // Carregar gráficos do backend
+      try {
+        const response = await dashboardDataService.getcharts();
+        if (response && response.data) {
+          response.data.forEach(chartObject => {
+            // Se o objeto chart tiver um campo scale, ajuste a função values de acordo com o scale
+            if (chartObject.options && chartObject.options.axes && chartObject.options.axes[1] && chartObject.options.axes[1].scale) {
+              const formatFunction = getFormatFunction(chartObject.options.axes[1].scale);
+              chartObject.options.axes[1].values = formatFunction;
+            }
+
+            charts.push(chartObject); // Só consegui fazer funcionar com push
+          });
+        }
+      } catch (error) {
+        console.error("Erro ao carregar os gráficos:", error);
+      }
+
       fetchChartData();
+
+      layout.value = charts.map(chart => chart.layout);
+      index.value = layout.value.length;
 
       window.addEventListener('resize', () => {
         updateChartsSize();
@@ -697,6 +477,7 @@ export default {
       removePlaceHolder,
       addItem,
       removeItem,
+      saveCharts,
     }
   },
 }

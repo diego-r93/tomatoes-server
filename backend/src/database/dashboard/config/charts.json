@@ -1,0 +1,327 @@
+[
+  {
+    "id": 0,
+    "draggable": false,
+    "options": {
+      "chartTitle": "cpu_temperature",
+      "padding": [
+        null,
+        null,
+        null,
+        15
+      ],
+      "series": [
+        {
+          "label": "Date"
+        },
+        {
+          "label": "",
+          "scale": "C",
+          "points": {
+            "show": true,
+            "fill": "rgb(242, 73, 92)"
+          },
+          "stroke": "rgb(242, 73, 92)",
+          "fill": "rgba(242, 73, 92, 0.1)"
+        }
+      ],
+      "scales": {
+        "x": {
+          "time": true
+        },
+        "y": {
+          "auto": true,
+          "range": []
+        }
+      },
+      "axes": [
+        {
+          "stroke": "#bdbdbd",
+          "grid": {
+            "stroke": "#2C3033",
+            "width": 1
+          }
+        },
+        {
+          "scale": "C",
+          "stroke": "#bdbdbd",
+          "grid": {
+            "stroke": "#2C3033",
+            "width": 1
+          }
+        }
+      ],
+      "width": 601,
+      "height": 327
+    },
+    "data": [],
+    "layout": {
+      "x": 0,
+      "y": 0,
+      "w": 4,
+      "h": 10,
+      "i": "0",
+      "moved": false
+    },
+    "bucket": "tomatoes",
+    "query": "|> range(start: -5m)\n|> filter(fn: (r) => r[\"_measurement\"] == \"cpu_temperature\")\n|> filter(fn: (r) => r[\"_field\"] == \"value\")\n|> filter(fn: (r) => r[\"host\"] == \"raspberrypi\")\n|> map(fn: (r) => ({ r with _value: r._value / 1000 }))\n|> aggregateWindow(every: 500ms, fn: mean, createEmpty: false)\n|> yield(name: \"mean\")"
+  },
+  {
+    "id": 1,
+    "draggable": false,
+    "options": {
+      "chartTitle": "cpu_total",
+      "series": [
+        {
+          "label": "Date"
+        },
+        {
+          "label": "",
+          "points": {
+            "show": true,
+            "fill": "rgb(87, 148, 242)"
+          },
+          "stroke": "rgb(87, 148, 242)",
+          "fill": "rgba(87, 148, 242, 0.1)"
+        }
+      ],
+      "scales": {
+        "x": {
+          "time": true
+        },
+        "y": {
+          "auto": true,
+          "range": []
+        }
+      },
+      "axes": [
+        {
+          "stroke": "#bdbdbd",
+          "grid": {
+            "stroke": "#2C3033",
+            "width": 1
+          }
+        },
+        {
+          "stroke": "#bdbdbd",
+          "grid": {
+            "stroke": "#2C3033",
+            "width": 1
+          }
+        }
+      ],
+      "width": 601,
+      "height": 327
+    },
+    "data": [],
+    "layout": {
+      "x": 4,
+      "y": 0,
+      "w": 4,
+      "h": 10,
+      "i": "1",
+      "moved": false
+    },
+    "bucket": "tomatoes",
+    "query": "|> range(start: -5m)\n|> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\n|> filter(fn: (r) => r[\"_field\"] == \"usage_user\")\n|> filter(fn: (r) => r[\"cpu\"] == \"cpu-total\")\n|> filter(fn: (r) => r[\"host\"] == \"raspberrypi\")\n|> aggregateWindow(every: 500ms, fn: mean, createEmpty: false)\n|> yield(name: \"mean\")"
+  },
+  {
+    "id": 2,
+    "options": {
+      "chartTitle": "mem_used",
+      "padding": [
+        null,
+        null,
+        null,
+        12
+      ],
+      "series": [
+        {
+          "label": "Date"
+        },
+        {
+          "label": "",
+          "scale": "mb",
+          "points": {
+            "show": true,
+            "fill": "rgb(115, 191, 105)"
+          },
+          "stroke": "rgb(115, 191, 105)",
+          "fill": "rgba(115, 191, 105, 0.1)"
+        }
+      ],
+      "scales": {
+        "x": {
+          "time": true
+        },
+        "y": {
+          "auto": true,
+          "range": []
+        }
+      },
+      "axes": [
+        {
+          "stroke": "#bdbdbd",
+          "grid": {
+            "stroke": "#2C3033",
+            "width": 1
+          }
+        },
+        {
+          "scale": "mb",
+          "stroke": "#bdbdbd",
+          "grid": {
+            "stroke": "#2C3033",
+            "width": 1
+          }
+        }
+      ],
+      "width": 601,
+      "height": 327
+    },
+    "data": [],
+    "layout": {
+      "x": 8,
+      "y": 0,
+      "w": 4,
+      "h": 10,
+      "i": "2",
+      "moved": false
+    },
+    "bucket": "tomatoes",
+    "query": "|> range(start: -5m)\n|> filter(fn: (r) => r[\"_measurement\"] == \"mem\")\n|> filter(fn: (r) => r[\"_field\"] == \"used\")\n|> filter(fn: (r) => r[\"host\"] == \"raspberrypi\")\n|> aggregateWindow(every: 500ms, fn: mean, createEmpty: false)\n|> yield(name: \"mean\")"
+  },
+  {
+    "id": 3,
+    "options": {
+      "chartTitle": "disk_used",
+      "padding": [
+        null,
+        null,
+        null,
+        12
+      ],
+      "series": [
+        {
+          "label": "Date"
+        },
+        {
+          "label": "",
+          "scale": "gb",
+          "points": {
+            "show": true,
+            "fill": "rgb(184, 119, 217)"
+          },
+          "stroke": "rgb(184, 119, 217)",
+          "fill": "rgba(184, 119, 217, 0.1)"
+        }
+      ],
+      "scales": {
+        "x": {
+          "time": true
+        },
+        "y": {
+          "auto": true,
+          "range": []
+        }
+      },
+      "axes": [
+        {
+          "stroke": "#bdbdbd",
+          "grid": {
+            "stroke": "#2C3033",
+            "width": 1
+          }
+        },
+        {
+          "scale": "gb",
+          "stroke": "#bdbdbd",
+          "grid": {
+            "stroke": "#2C3033",
+            "width": 1
+          }
+        }
+      ],
+      "width": 601,
+      "height": 327
+    },
+    "data": [],
+    "layout": {
+      "x": 0,
+      "y": 10,
+      "w": 4,
+      "h": 10,
+      "i": "3",
+      "moved": false
+    },
+    "bucket": "tomatoes",
+    "query": "|> range(start: -5m)\n|> filter(fn: (r) => r[\"_measurement\"] == \"disk\")\n|> filter(fn: (r) => r[\"_field\"] == \"used\")\n|> filter(fn: (r) => r[\"device\"] == \"mmcblk0p2\")\n|> filter(fn: (r) => r[\"fstype\"] == \"ext4\")\n|> filter(fn: (r) => r[\"host\"] == \"raspberrypi\")\n|> filter(fn: (r) => r[\"mode\"] == \"rw\")\n|> filter(fn: (r) => r[\"path\"] == \"/etc/hostname\")\n|> aggregateWindow(every: 500ms, fn: mean, createEmpty: false)\n|> yield(name: \"mean\")"
+  },
+  {
+    "id": 4,
+    "draggable": false,
+    "options": {
+      "chartTitle": "swap",
+      "padding": [
+        null,
+        null,
+        null,
+        15
+      ],
+      "series": [
+        {
+          "label": "Date"
+        },
+        {
+          "label": "",
+          "scale": "mb",
+          "points": {
+            "show": true,
+            "fill": "rgb(255, 152, 48)"
+          },
+          "stroke": "rgb(255, 152, 48)",
+          "fill": "rgba(255, 152, 48, 0.1)"
+        }
+      ],
+      "scales": {
+        "x": {
+          "time": true
+        },
+        "y": {
+          "auto": true,
+          "range": []
+        }
+      },
+      "axes": [
+        {
+          "stroke": "#bdbdbd",
+          "grid": {
+            "stroke": "#2C3033",
+            "width": 1
+          }
+        },
+        {
+          "scale": "mb",
+          "stroke": "#bdbdbd",
+          "grid": {
+            "stroke": "#2C3033",
+            "width": 1
+          }
+        }
+      ],
+      "width": 601,
+      "height": 327
+    },
+    "data": [],
+    "layout": {
+      "x": 4,
+      "y": 10,
+      "w": 4,
+      "h": 10,
+      "i": "4",
+      "moved": false
+    },
+    "bucket": "tomatoes",
+    "query": "|> range(start: -5m)\n|> filter(fn: (r) => r[\"_measurement\"] == \"swap\")\n|> filter(fn: (r) => r[\"_field\"] == \"used\")\n|> filter(fn: (r) => r[\"host\"] == \"raspberrypi\")\n|> aggregateWindow(every: 500ms, fn: mean, createEmpty: false)\n|> yield(name: \"mean\")"
+  }
+]
