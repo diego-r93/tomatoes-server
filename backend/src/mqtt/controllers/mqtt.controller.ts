@@ -67,7 +67,7 @@ export const getDevices = async (req: Request, res: Response): Promise<void> => 
                 const device = JSON.parse(message.toString());
                 devices.push(device);
 
-                setTimeout(resolve, 1000);
+                setTimeout(resolve, 500);
             });
 
             mqttClient.subscribe('devices');

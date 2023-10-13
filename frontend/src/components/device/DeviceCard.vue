@@ -9,39 +9,33 @@
           {{ cardData.host }}
         </v-col>
         <v-col cols="2" class="align-self-center">
-          <v-btn density="comfortable" icon="mdi-upload" color="#99deaa" variant="flat" @click="navigateToOTA(cardData)"></v-btn>
+          <v-btn density="comfortable" icon="mdi-upload" color="#99deaa" variant="flat"
+            @click="navigateToOTA(cardData)"></v-btn>
         </v-col>
         <v-col cols="2" class="align-self-center">
-          <v-btn density="comfortable" icon="mdi-information-outline" color="#99deaa" variant="flat" @click="navigateToInfo(cardData)"></v-btn>          
-        </v-col>       
+          <v-btn density="comfortable" icon="mdi-information-outline" color="#99deaa" variant="flat"
+            @click="navigateToInfo(cardData)"></v-btn>
+        </v-col>
       </v-row>
     </v-container>
 
     <v-list lines="one" class="py-2 px-2">
       <v-list-item>
-        <v-list-item-content>
-          <v-list-item-title>Hostname</v-list-item-title>
-          <v-list-item-subtitle>{{ cardData.host }}</v-list-item-subtitle>
-        </v-list-item-content>
+        <v-list-item-title>Hostname</v-list-item-title>
+        <v-list-item-subtitle>{{ cardData.host }}</v-list-item-subtitle>
       </v-list-item>
       <v-list-item>
-        <v-list-item-content>
-          <v-list-item-title>IP</v-list-item-title>
-          <v-list-item-subtitle>{{ cardData.ip }}</v-list-item-subtitle>
-        </v-list-item-content></v-list-item>
-      <v-list-item>
-        <v-list-item-content>
-          <v-list-item-title>MAC Address</v-list-item-title>
-          <v-list-item-subtitle>{{ cardData.mac }}</v-list-item-subtitle>
-        </v-list-item-content>
+        <v-list-item-title>IP</v-list-item-title>
+        <v-list-item-subtitle>{{ cardData.ip }}</v-list-item-subtitle>
       </v-list-item>
       <v-list-item>
-        <v-list-item-content>
-          <v-list-item-title>RSSI</v-list-item-title>
-          <v-list-item-subtitle>{{ cardData.rssi }}</v-list-item-subtitle>
-        </v-list-item-content>
+        <v-list-item-title>MAC Address</v-list-item-title>
+        <v-list-item-subtitle>{{ cardData.mac }}</v-list-item-subtitle>
       </v-list-item>
-
+      <v-list-item>
+        <v-list-item-title>RSSI</v-list-item-title>
+        <v-list-item-subtitle>{{ cardData.rssi }}</v-list-item-subtitle>
+      </v-list-item>
 
       <v-divider class="mt-4"></v-divider>
       <v-list class="py-4 px-6">
@@ -58,6 +52,10 @@
 import { ref, watchEffect } from 'vue'
 import router from '@/router'
 import mqttDataService from '@/services/mqttDataService'
+
+import { useDeviceStore } from '@/store/deviceData';
+
+const deviceStore = useDeviceStore();
 
 const props = defineProps(['cardData'])
 
@@ -76,6 +74,7 @@ const gpioMapping = {
 }
 
 function navigateToOTA(deviceData) {
+  deviceStore.setDeviceData(deviceData);
   router.push({ path: `/device/${deviceData.host}` });
 }
 

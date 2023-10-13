@@ -10,10 +10,10 @@
     </v-app-bar-title>
   </v-app-bar>
 
-  <v-container fluid>
-    <v-row class="mt-4 text-center justify-center align-center">
-      <v-col cols="12">
-        <v-img src="@/assets/images/update-logo.png" max-width="280" alt="ElegantOTA"></v-img>
+  <v-container>
+    <v-row class="mt-4">
+      <v-col cols="12" class="d-flex justify-center">
+        <v-img src="@/assets/images/update-logo-dark.png" max-width="280" alt="ElegantOTA"></v-img>
       </v-col>
       <v-col cols="12" v-if="loading">
         <v-progress-circular indeterminate></v-progress-circular>
@@ -32,19 +32,28 @@
       </v-col>
       <v-col cols="12" v-else-if="!loading && !uploading">
         <v-row>
-          <v-col class="d-flex justify-center" cols="12">
-            <v-radio-group v-model="type" row>
+          <v-col cols="12">
+            <v-radio-group class="mt-4 d-flex justify-center" v-model="type" inline>
               <v-radio label="Firmware" value="firmware"></v-radio>
               <v-radio label="Filesystem" value="filesystem"></v-radio>
             </v-radio-group>
           </v-col>
         </v-row>
-        <v-row class="mt-3">
-          <v-col class="justify-center" cols="12">
-            <v-file-input variant="outlined" v-on:change="uploadOTA" ref="fileInput"></v-file-input>
-            <v-btn @click="submit">Upload</v-btn>
+
+        <v-row>
+          <v-col class="text-center" cols="12">
+            <DropFile />
+            <v-btn class="mt-6" @click="submit">Upload</v-btn>
           </v-col>
         </v-row>
+
+        <!-- <v-row class="mt-10">
+          <v-col class="text-center" cols="12">
+            <v-file-input variant="outlined" v-on:change="uploadOTA" ref="fileInput"></v-file-input>
+            <v-btn class="mt-6" @click="submit">Upload</v-btn>
+          </v-col>
+        </v-row> -->
+
       </v-col>
       <v-col cols="12" v-if="!loading && uploading">
         <v-progress-linear :value="progress" color="primary"></v-progress-linear>
@@ -64,6 +73,12 @@
 import { ref, onMounted } from 'vue';
 import router from '@/router'
 
+import DropFile from "@/components/device/DropZone.vue";
+
+import { useDeviceStore } from '@/store/deviceData';
+
+const deviceStore = useDeviceStore();
+
 const loading = ref(false); // Colocar true quandoe stiver finalizado
 const uploading = ref(false);
 const progress = ref(0);
@@ -76,6 +91,7 @@ const fileInput = ref(null);
 
 const deviceData = ref({
   id: null,
+  ip: null,
   hardware: null,
 });
 
@@ -136,8 +152,11 @@ const clear = () => {
   OTASuccess.value = false;
 };
 
-onMounted(() => {
-  if (process.env.NODE_ENV === 'production') {
+onMounted(async () => {
+  const { ip } = deviceStore.deviceData;
+  console.log('IP:', ip);
+
+   if (process.env.NODE_ENV === 'production') {
     fetch('/update/identity', {
       headers: {
         'X-Requested-With': 'XMLHttpRequest'
@@ -152,3 +171,5 @@ onMounted(() => {
   }
 });
 </script>
+
+<style></style>

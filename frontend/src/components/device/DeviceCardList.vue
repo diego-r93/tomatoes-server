@@ -46,32 +46,7 @@ export default {
   components: { DeviceCard },
   setup() {
     const loading = ref(true);
-    const devices = ref([
-      // {
-      //   host: 'Device-01',
-      //   ip: '192.168.1.101',
-      //   mac: 'AA:BB:CC:DD:EE:01',
-      //   rssi: -60
-      // },
-      // {
-      //   host: 'Device-02',
-      //   ip: '192.168.1.102',
-      //   mac: 'AA:BB:CC:DD:EE:02',
-      //   rssi: -55
-      // },
-      // {
-      //   host: 'Device-03',
-      //   ip: '192.168.1.103',
-      //   mac: 'AA:BB:CC:DD:EE:03',
-      //   rssi: -65
-      // },
-      // {
-      //   host: 'Device-04',
-      //   ip: '192.168.1.104',
-      //   mac: 'AA:BB:CC:DD:EE:04',
-      //   rssi: -50
-      // }
-    ]);
+    const devices = ref([]);
 
     const fetchDevices = async () => {
       loading.value = true;
