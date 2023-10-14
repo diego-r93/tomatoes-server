@@ -5,11 +5,11 @@ dotenv.config();
 
 const token = process.env.DOCKER_INFLUXDB_INIT_ADMIN_TOKEN || '';
 const org = process.env.DOCKER_INFLUXDB_INIT_ORG || '';
-const bucket = process.env.DOCKER_INFLUXDB_INIT_BUCKET || '';
+// const bucket = process.env.DOCKER_INFLUXDB_INIT_BUCKET || '';
 const port = process.env.DOCKER_INFLUXDB_INIT_PORT || '';
 const host = process.env.DOCKER_INFLUXDB_INIT_HOST || '';
 const url = `http://${host}:${port}`;
 
 const client = new InfluxDB({ url: url, token: token });
 
-export { client, org, bucket };
+export { client, org };

@@ -177,13 +177,13 @@ export default {
 
     const fetchChartData = async () => {
       for (let chart of charts) {
-        const { bucket, query } = chart;
-        if (!bucket || !query) {
+        const { query } = chart;
+        if (!query) {
           console.error(`Dados ausentes para o gráfico ${chart.width}`);
           continue;
         }
         try {
-          const response = await influxdbDataService.getData({ bucket, query });
+          const response = await influxdbDataService.getData({ query });
           const influxData = response.data;
           updateChartData(influxData, chart);
         } catch (error) {
@@ -381,8 +381,8 @@ export default {
           ],
         },
         layout: placeholderLayout,  // use o layout existente do placeholder
-        bucket: "tomatoes",
-        query: `|> range(start: -5m)
+        query: `from(bucket: "tomatoes")
+|> range(start: -5m)
 |> filter(fn: (r) => r["_measurement"] == "mem")
 |> filter(fn: (r) => r["_field"] == "used")`,
       });

@@ -1,4 +1,4 @@
-import { client, org, bucket } from '../config/influxdb';
+import { client, org } from '../config/influxdb';
 import { QueryApi } from '@influxdata/influxdb-client';
 
 class SensorDataModel {
@@ -8,11 +8,8 @@ class SensorDataModel {
         this.queryApi = client.getQueryApi(org);
     }
 
-    public getSensorData(bucket: string, query: string): Promise<any[]> {
-        const fluxQuery = `
-            from(bucket: "${bucket}")
-            ${query}       
-        `;
+    public getSensorData(query: string): Promise<any[]> {
+        const fluxQuery = query;
 
         return new Promise((resolve, reject) => {
             const results: any[] = [];
