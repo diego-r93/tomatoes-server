@@ -13,19 +13,22 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, defineEmits  } from 'vue';
 
 const isDragging = ref(false);
-const files = ref([]);
-
 const fileInput = ref(null);
 
+const emit = defineEmits(['file-selected']);
+
 const onChange = () => {
-  files.value.push(...fileInput.value.files);
+  const files = fileInput.value.files;
+  if (files.length > 0) {
+    emit('file-selected', files[0]);
+  }
 };
 
-const dragover = (e) => {
-  e.preventDefault();
+const dragover = (event) => {
+  event.preventDefault();
   isDragging.value = true;
 };
 

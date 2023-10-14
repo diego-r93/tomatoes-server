@@ -4,9 +4,8 @@ import { defineStore } from 'pinia';
 export const useDeviceStore = defineStore('device', {  
   state: () => ({
     deviceData: {
-      id: null,
+      host: null,
       ip: null,
-      hardware: null,
     },
   }),
   actions: {

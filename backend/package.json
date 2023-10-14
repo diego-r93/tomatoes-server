@@ -20,6 +20,7 @@
     "jsonwebtoken": "^9.0.1",
     "mongoose": "^7.5.3",
     "mqtt": "^5.0.2",
+    "multer": "^1.4.5-lts.1",
     "sqlite3": "^5.1.6"
   },
   "devDependencies": {
@@ -29,6 +30,7 @@
     "@types/jsonwebtoken": "^9.0.2",
     "@types/mongoose": "^5.11.97",
     "@types/mqtt": "^2.5.0",
+    "@types/multer": "^1.4.8",
     "@types/node": "^20.4.10",
     "@types/sqlite3": "^3.1.8",
     "nodemon": "^3.0.1",

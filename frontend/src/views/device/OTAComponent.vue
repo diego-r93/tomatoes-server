@@ -11,22 +11,20 @@
   </v-app-bar>
 
   <v-container>
-    <v-row class="mt-4">
+    <v-row class="mt-4 d-flex justify-center">
       <v-col cols="12" class="d-flex justify-center">
         <v-img src="@/assets/images/update-logo-dark.png" max-width="280" alt="ElegantOTA"></v-img>
       </v-col>
       <v-col cols="12" v-if="loading">
         <v-progress-circular indeterminate></v-progress-circular>
       </v-col>
-      <v-col cols="12" v-if="!loading && !uploading && OTAError !== null">
-        <v-alert type="error" class="mx-auto" dense>
-          <!-- SVG content for error -->
+      <v-col cols="4" class="text-center my-10" v-if="!loading && !uploading && OTAError !== null">
+        <v-alert type="error" dense>
           {{ OTAError }}
         </v-alert>
       </v-col>
-      <v-col cols="12" v-else-if="!loading && !uploading && OTASuccess">
-        <v-alert type="success" class="mx-auto" dense>
-          <!-- SVG content for success -->
+      <v-col cols="4" class="text-center my-10" v-else-if="!loading && !uploading && OTASuccess">
+        <v-alert type="success" dense>
           OTA Success
         </v-alert>
       </v-col>
@@ -42,27 +40,20 @@
 
         <v-row>
           <v-col class="text-center" cols="12">
-            <DropFile />
-            <v-btn class="mt-6" @click="submit">Upload</v-btn>
+            <DropFile @file-selected="uploadOTA" />
+            <v-btn class="mt-10" @click="submit">Upload</v-btn>
           </v-col>
         </v-row>
 
-        <!-- <v-row class="mt-10">
-          <v-col class="text-center" cols="12">
-            <v-file-input variant="outlined" v-on:change="uploadOTA" ref="fileInput"></v-file-input>
-            <v-btn class="mt-6" @click="submit">Upload</v-btn>
-          </v-col>
-        </v-row> -->
-
       </v-col>
-      <v-col cols="12" v-if="!loading && uploading">
-        <v-progress-linear :value="progress" color="primary"></v-progress-linear>
-        <div class="text-center">{{ progress }}%</div>
+      <v-col cols="6" class="text-center my-10" v-if="!loading && uploading">
+        <v-progress-linear :model-value="progress" color="primary" height="8"></v-progress-linear>
+        <div class="text-center mt-8">{{ progress }}%</div>
       </v-col>
       <v-col cols="12" v-if="!loading">
-        <div class="text-center">
-          <v-chip>{{ deviceData.id }}</v-chip>
-          <v-chip color="green">{{ deviceData.hardware }}</v-chip>
+        <div class="text-center pt-2">
+          <v-chip>{{ deviceData.host }}</v-chip>
+          <v-chip class="ml-2" color="green">{{ deviceData.ip }}</v-chip>
         </div>
       </v-col>
     </v-row>
@@ -76,6 +67,7 @@ import router from '@/router'
 import DropFile from "@/components/device/DropZone.vue";
 
 import { useDeviceStore } from '@/store/deviceData';
+import OTAService from "@/services/OTAService";
 
 const deviceStore = useDeviceStore();
 
@@ -85,60 +77,54 @@ const progress = ref(0);
 const OTAError = ref(null);
 const OTASuccess = ref(false);
 const type = ref('firmware');
-const file = ref(null);
-
-const fileInput = ref(null);
+const selectedFile = ref(null);
 
 const deviceData = ref({
-  id: null,
+  host: null,
   ip: null,
-  hardware: null,
 });
 
 const goBack = () => {
   router.go(-1);
 }
 
-const uploadOTA = () => {
-  file.value = fileInput.value.files[0];
+const uploadOTA = (file) => {
+  selectedFile.value = file;
 };
 
 const submit = () => {
+  if (!selectedFile.value) {
+    // Caso nenhum arquivo seja selecionado
+    console.log("Nenhum arquivo selecionado")
+    return;
+  }
+
   uploading.value = true;
   const formData = new FormData();
-  formData.append('file', file.value);
+  formData.append('file', selectedFile.value);
+  formData.append('ip', deviceData.value.ip);
 
-  const request = new XMLHttpRequest();
+  // Registrando o nome do arquivo no console
+  console.log("Enviando arquivo:", selectedFile.value.name);
 
-  request.upload.addEventListener('progress', (event) => {
+  OTAService.uploadFile(formData, (event) => {
     if (event.lengthComputable) {
       const percentCompleted = Math.round((event.loaded / event.total) * 100);
       progress.value = percentCompleted;
     }
-  });
-
-  request.addEventListener('load', () => {
-    if (request.status === 200) {
+  }).then(response => {
+    if (response.status === 200) {
       OTASuccess.value = true;
-    } else if (request.status !== 500) {
-      OTAError.value = `[HTTP ERROR] ${request.statusText}`;
-    } else {
-      OTAError.value = request.responseText;
     }
-    uploading.value = false;
-    progress.value = 0;
-  });
-
-  request.withCredentials = true;
-
-  request.addEventListener('error', (error) => {
+  })
+  .catch(error => {
     console.error(error);
+    OTAError.value = error.message;
+  })
+  .finally(() => {
     uploading.value = false;
     progress.value = 0;
-  });
-
-  request.open('POST', '/ota-update');
-  request.send(formData);
+  }); 
 };
 
 const retryOTA = () => {
@@ -153,22 +139,8 @@ const clear = () => {
 };
 
 onMounted(async () => {
-  const { ip } = deviceStore.deviceData;
-  console.log('IP:', ip);
-
-   if (process.env.NODE_ENV === 'production') {
-    fetch('/update/identity', {
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest'
-      }
-    })
-      .then(async (response) => {
-        if (response.ok) {
-          deviceData.value = await response.json();
-          loading.value = false;
-        }
-      });
-  }
+  const { host, ip } = deviceStore.deviceData;
+  deviceData.value = { host, ip };
 });
 </script>
 
