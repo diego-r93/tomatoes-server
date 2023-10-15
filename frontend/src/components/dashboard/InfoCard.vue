@@ -453,6 +453,7 @@ export default {
         console.error("Erro ao carregar os gráficos:", error);
       }
 
+      updateQueryRange(timeRange.value);
       fetchChartData();
 
       layout.value = charts.map(chart => chart.layout);

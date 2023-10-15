@@ -1,50 +1,53 @@
 <template>
-  <v-card color="#99deaa" class="custom-border">
-    <v-container>
-      <v-row>
-        <v-col cols="4" class="align-self-center">
+  <v-card class="custom-border">
+    <v-layout>
+      <v-app-bar color="#99deaa" density="compact">
+        <template v-slot:prepend>
           <v-icon large color="#333333">mdi-chip</v-icon>
-        </v-col>
-        <v-col cols="4" class="align-self-center text-center">
-          {{ cardData.host }}
-        </v-col>
-        <v-col cols="2" class="align-self-center">
+        </template>
+
+        <v-app-bar-title>{{ cardData.host }}</v-app-bar-title>
+
+        <template v-slot:append>
           <v-btn density="comfortable" icon="mdi-upload" color="#99deaa" variant="flat"
             @click="navigateToOTA(cardData)"></v-btn>
-        </v-col>
-        <v-col cols="2" class="align-self-center">
           <v-btn density="comfortable" icon="mdi-information-outline" color="#99deaa" variant="flat"
             @click="navigateToInfo(cardData)"></v-btn>
-        </v-col>
-      </v-row>
-    </v-container>
+        </template>
+      </v-app-bar>
 
-    <v-list lines="one" class="py-2 px-2">
-      <v-list-item>
-        <v-list-item-title>Hostname</v-list-item-title>
-        <v-list-item-subtitle>{{ cardData.host }}</v-list-item-subtitle>
-      </v-list-item>
-      <v-list-item>
-        <v-list-item-title>IP</v-list-item-title>
-        <v-list-item-subtitle>{{ cardData.ip }}</v-list-item-subtitle>
-      </v-list-item>
-      <v-list-item>
-        <v-list-item-title>MAC Address</v-list-item-title>
-        <v-list-item-subtitle>{{ cardData.mac }}</v-list-item-subtitle>
-      </v-list-item>
-      <v-list-item>
-        <v-list-item-title>RSSI</v-list-item-title>
-        <v-list-item-subtitle>{{ cardData.rssi }}</v-list-item-subtitle>
-      </v-list-item>
+      <v-main>
+        <v-container fluid>
+          <v-list lines="one" class="py-2">
+            <v-list-item>
+              <v-list-item-title>Hostname</v-list-item-title>
+              <v-list-item-subtitle>{{ cardData.host }}</v-list-item-subtitle>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-title>IP</v-list-item-title>
+              <v-list-item-subtitle>{{ cardData.ip }}</v-list-item-subtitle>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-title>MAC Address</v-list-item-title>
+              <v-list-item-subtitle>{{ cardData.mac }}</v-list-item-subtitle>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-title>RSSI</v-list-item-title>
+              <v-list-item-subtitle>{{ cardData.rssi }}</v-list-item-subtitle>
+            </v-list-item>
 
-      <v-divider class="mt-4"></v-divider>
-      <v-list class="py-4 px-6">
-        <v-switch v-model="gpio.IO21" label="IO21" color="indigo" hide-details></v-switch>
-        <v-switch v-model="gpio.IO19" label="IO19" color="indigo" hide-details></v-switch>
-        <v-switch v-model="gpio.IO18" label="IO18" color="indigo" hide-details></v-switch>
-        <v-switch v-model="gpio.IO05" label="IO05" color="indigo" hide-details></v-switch>
-      </v-list>
-    </v-list>
+            <v-divider class="mt-4"></v-divider>
+            <v-list class="py-4 px-6">
+              <v-switch v-model="gpio.IO21" label="IO21" color="indigo" hide-details></v-switch>
+              <v-switch v-model="gpio.IO19" label="IO19" color="indigo" hide-details></v-switch>
+              <v-switch v-model="gpio.IO18" label="IO18" color="indigo" hide-details></v-switch>
+              <v-switch v-model="gpio.IO05" label="IO05" color="indigo" hide-details></v-switch>
+            </v-list>
+          </v-list>
+        </v-container>
+      </v-main>
+    </v-layout>
+
   </v-card>
 </template>
 

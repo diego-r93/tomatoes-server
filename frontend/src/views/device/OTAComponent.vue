@@ -22,11 +22,13 @@
         <v-alert type="error" dense>
           {{ OTAError }}
         </v-alert>
+        <v-btn class="mt-10" @click="retryOTA">Return</v-btn>
       </v-col>
       <v-col cols="4" class="text-center my-10" v-else-if="!loading && !uploading && OTASuccess">
         <v-alert type="success" dense>
           OTA Success
         </v-alert>
+        <v-btn class="mt-10" @click="clear">Return</v-btn>
       </v-col>
       <v-col cols="12" v-else-if="!loading && !uploading">
         <v-row>
