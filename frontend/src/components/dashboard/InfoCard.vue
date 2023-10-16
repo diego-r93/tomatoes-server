@@ -205,17 +205,20 @@ export default {
     const updateQueriesWithTimeRange = () => {
       const selectedOption = state.timeOptions.find(option => option.label === state.selectedLabel);
 
-      for (let chart of charts) {
-        let query = chart.query;
+      if (selectedOption) {       
 
-        // Atualizar a range da query
-        query = query.replace(/(\|> range\(start: )[^)]+\)/, `$1${selectedOption.value})`);
+        for (let chart of charts) {
+          let query = chart.query;
 
-        // Atualizar o windowPeriod na query
-        const regex = new RegExp('\\|> aggregateWindow\\(every: [^,]+,', 'g');
-        query = query.replace(regex, `|> aggregateWindow(every: ${selectedOption.range},`);
+          // Atualizar a range da query
+          query = query.replace(/(\|> range\(start: )[^)]+\)/, `$1${selectedOption.value})`);
 
-        chart.query = query;
+          // Atualizar o windowPeriod na query
+          const regex = new RegExp('\\|> aggregateWindow\\(every: [^,]+,', 'g');
+          query = query.replace(regex, `|> aggregateWindow(every: ${selectedOption.range},`);
+
+          chart.query = query;
+        }
       }
     };
 
