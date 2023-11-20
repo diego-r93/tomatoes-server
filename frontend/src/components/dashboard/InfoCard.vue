@@ -205,7 +205,7 @@ export default {
     const updateQueriesWithTimeRange = () => {
       const selectedOption = state.timeOptions.find(option => option.label === state.selectedLabel);
 
-      if (selectedOption) {       
+      if (selectedOption) {
 
         for (let chart of charts) {
           let query = chart.query;
@@ -385,9 +385,12 @@ export default {
         },
         layout: placeholderLayout,  // use o layout existente do placeholder
         query: `from(bucket: "tomatoes")
-|> range(start: -5m)
+|> range(start: v.timeRangeStart, stop: v.timeRangeStop)
 |> filter(fn: (r) => r["_measurement"] == "mem")
-|> filter(fn: (r) => r["_field"] == "used")`,
+|> filter(fn: (r) => r["_field"] == "used")
+|> filter(fn: (r) => r["host"] == "raspberrypi")
+|> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+|> yield(name: "mean")`,
       });
 
       nextTick(() => {
