@@ -41,10 +41,27 @@
         </v-list>
       </v-menu>
 
-      <div class="pr-5">
-        <v-btn class="text-none rounded-xs custom-border" variant="flat" @click="fetchChartData">
-          <v-icon color="#bdbdbd" icon="mdi-sync"></v-icon>
-        </v-btn>
+
+      <v-btn class="text-none rounded-xs custom-border" variant="flat" @click="fetchChartData">
+        <v-icon color="#bdbdbd" icon="mdi-sync"></v-icon>
+      </v-btn>
+
+
+      <div class="pr-3 pl-1">
+        <v-menu>
+          <template v-slot:activator="{ on, props }">
+            <v-btn v-bind="props" class="me-2 text-none rounded-xs custom-border" variant="flat" v-on="on">
+              <v-icon class="mr-2" color="#bdbdbd" icon="mdi-timer-outline"></v-icon>
+              <span style="color: #bdbdbd">{{ selectedUpdateInterval }}</span>
+            </v-btn>
+          </template>
+          <v-list>
+            <v-list-item v-for="(timeOption, index) in updateIntervals" :key="index" :value="timeOption.value"
+              @click="setUpdateInterval(timeOption)">
+              <v-list-item-title>{{ timeOption.label }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
       </div>
     </v-app-bar>
 
@@ -121,6 +138,8 @@ export default {
 
     const timeRange = ref('-5m');
 
+    const intervalId = ref(null);
+
     const state = reactive({
       draggable: true,
       resizable: true,
@@ -138,6 +157,20 @@ export default {
         { label: '3 days', value: '-3d', range: '5m' },
         { label: '1 week', value: '-1w', range: '15m' },
       ],
+      updateIntervals: [
+        { label: 'Off', value: null },
+        { label: '5s', value: '5s' },
+        { label: '10s', value: '10s' },
+        { label: '30s', value: '30s' },
+        { label: '1m', value: '1m' },
+        { label: '5m', value: '5m' },
+        { label: '15m', value: '15m' },
+        { label: '30m', value: '30m' },
+        { label: '1h', value: '1h' },
+        { label: '2h', value: '2h' },
+      ],
+      selectedUpdateInterval: 'Off',
+      intervalId: null,
     });
 
     // Método para registrar os elementos DOM dos grid-items.
@@ -440,7 +473,44 @@ export default {
       }
     };
 
+    const setUpdateInterval = (intervalOption) => {
+      state.selectedUpdateInterval = intervalOption.label; // Atualizar o rótulo selecionado
+
+      // Limpa qualquer intervalo existente
+      if (intervalId.value) {
+        clearInterval(intervalId.value);
+      }
+
+      // Configura um novo intervalo se o valor for diferente de 'null'
+      if (intervalOption.value) {
+        const intervalTime = parseInterval(intervalOption.value);
+        intervalId.value = setInterval(fetchChartData, intervalTime);
+      } else {
+        // Se "Off" for selecionado, certifique-se de que não há intervalos ativos
+        if (intervalId.value) {
+          clearInterval(intervalId.value);
+        }
+      }
+    };
+
+    const parseInterval = (intervalString) => {
+      if (!intervalString) return 0;
+      const units = {
+        's': 1000,
+        'm': 60000,
+        'h': 3600000,
+      };
+      const unit = intervalString.slice(-1);
+      const time = parseInt(intervalString.slice(0, -1));
+      return time * (units[unit] || 0);
+    };
+
+
     onMounted(async () => {
+      if (intervalId.value) {
+        clearInterval(intervalId.value);
+      }
+
       // Carregar gráficos do backend
       try {
         const response = await dashboardDataService.getcharts();
@@ -485,6 +555,7 @@ export default {
       addItem,
       removeItem,
       saveCharts,
+      setUpdateInterval,
     }
   },
 }
