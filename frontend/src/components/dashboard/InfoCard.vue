@@ -17,7 +17,7 @@
         </v-icon>
       </v-btn>
 
-      <v-btn class="me-2 text-none rounded-xs custom-border" variant="flat" @click="saveCharts">
+      <v-btn class="me-2 text-none rounded-xs custom-border" variant="flat" @click="confirmSaveDashboard">
         <v-icon color="#bdbdbd" icon="mdi-content-save-outline">
         </v-icon>
       </v-btn>
@@ -35,7 +35,7 @@
         </template>
         <v-list>
           <v-list-item v-for="(item, index) in timeOptions" :key="index" :value="item.value"
-            @click="updateQueryRange(item.value)">
+            @click="updateQuerySince(item.value)">
             <v-list-item-title>{{ item.label }}</v-list-item-title>
           </v-list-item>
         </v-list>
@@ -49,8 +49,8 @@
 
       <div class="pr-3 pl-1">
         <v-menu>
-          <template v-slot:activator="{ on, props }">
-            <v-btn v-bind="props" class="me-2 text-none rounded-xs custom-border" variant="flat" v-on="on">
+          <template v-slot:activator="{ props }">
+            <v-btn v-bind="props" class="me-2 text-none rounded-xs custom-border" variant="flat">
               <v-icon class="mr-2" color="#bdbdbd" icon="mdi-timer-outline"></v-icon>
               <span style="color: #bdbdbd">{{ selectedUpdateInterval }}</span>
             </v-btn>
@@ -116,8 +116,22 @@
         </template>
       </grid-item>
     </grid-layout>
-
   </v-container>
+
+  <v-dialog v-model="showSaveDialog" persistent max-width="340px">
+    <v-card>
+      <v-card-title class="headline">Save Dashboard</v-card-title>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn color="green darken-1" text @click="saveDashboard">
+          Save
+        </v-btn>
+        <v-btn color="red darken-1" text @click="showSaveDialog = false">
+          Cancel
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script>
@@ -136,9 +150,14 @@ export default {
     let layout = ref([]);
     let index = ref([]);
 
-    const timeRange = ref('-5m');
+    const timeSince = ref('-5m');
+    const timeRange = ref('500ms');
 
     const intervalId = ref(null);
+
+    const placeholderAdded = ref(false);
+    const showSaveDialog = ref(false);
+    const hasChanges = ref(false);
 
     const state = reactive({
       draggable: true,
@@ -159,6 +178,7 @@ export default {
       ],
       updateIntervals: [
         { label: 'Off', value: null },
+        { label: '2s', value: '2s' },
         { label: '5s', value: '5s' },
         { label: '10s', value: '10s' },
         { label: '30s', value: '30s' },
@@ -168,6 +188,7 @@ export default {
         { label: '30m', value: '30m' },
         { label: '1h', value: '1h' },
         { label: '2h', value: '2h' },
+        { label: '6h', value: '6h' },
       ],
       selectedUpdateInterval: 'Off',
       intervalId: null,
@@ -206,6 +227,7 @@ export default {
         chart.options.width = size.width;
         chart.options.height = size.height - xAxisHeight - legendHeight + titleHeight;
       });
+      hasChanges.value = true;
     };
 
     const fetchChartData = async () => {
@@ -251,12 +273,14 @@ export default {
           query = query.replace(regex, `|> aggregateWindow(every: ${selectedOption.range},`);
 
           chart.query = query;
+
+          timeRange.value = selectedOption.range;
         }
       }
     };
 
-    const updateQueryRange = (value) => {
-      timeRange.value = value;
+    const updateQuerySince = (value) => {
+      timeSince.value = value;
 
       const selectedItem = state.timeOptions.find(item => item.value === value);
       if (selectedItem) {
@@ -272,7 +296,7 @@ export default {
               ...chart.options.series[1],
               points: {
                 ...chart.options.series[1].points,
-                show: timeRange.value === '-5m'
+                show: timeSince.value === '-5m'
               }
             }
           ]
@@ -286,6 +310,8 @@ export default {
       switch (scale) {
         case 'C':
           return (self, ticks) => ticks.map(rawValue => rawValue.toFixed(2) + "° C");
+        case 'tds':
+          return (self, ticks) => ticks.map(rawValue => rawValue.toFixed(2) + "µS/cm");
         case 'mb':
           return (self, ticks) => ticks.map(rawValue => (rawValue / 10 ** 6).toFixed(0) + "MB");
         case 'gb':
@@ -300,6 +326,7 @@ export default {
         const chart = charts.find(c => c.id.toString() === layoutItem.i);
         if (chart) chart.layout = layoutItem;
       });
+      hasChanges.value = true;
     };
 
     const getChartById = (id) => {
@@ -307,31 +334,39 @@ export default {
     };
 
     const addPlaceHolder = () => {
-      const newId = charts.length;
+      if (!placeholderAdded.value) {
+        const newId = charts.length;
 
-      // Criar um novo objeto de layout
-      const newLayout = {
-        x: 0,
-        y: 0,
-        w: 6,
-        h: 8,
-        i: newId.toString(),
-      };
+        // Criar um novo objeto de layout
+        const newLayout = {
+          x: 0,
+          y: 0,
+          w: 6,
+          h: 8,
+          i: newId.toString(),
+        };
 
-      layout.value.forEach(item => {
-        if (item.y >= newLayout.y) {
-          item.y += newLayout.h;
-        }
-      });
+        layout.value.forEach(item => {
+          if (item.y >= newLayout.y) {
+            item.y += newLayout.h;
+          }
+        });
 
-      layout.value.push(newLayout);
+        layout.value.push(newLayout);
 
-      index.value++;
+        index.value++;
 
-      nextTick(() => {
-        updateChartsSize();
-        fetchChartData();
-      });
+        nextTick(() => {
+          updateChartsSize();
+          updateQueriesWithTimeRange();
+          fetchChartData();
+        });
+
+        placeholderAdded.value = true;
+        hasChanges.value = true;
+      } else {
+        return;
+      }      
     };
 
     const removePlaceHolder = (id) => {
@@ -357,6 +392,9 @@ export default {
             item.y -= placeholderHeight;
           }
         });
+
+        placeholderAdded.value = false;
+        hasChanges.value = false;
       }
     };
 
@@ -418,11 +456,11 @@ export default {
         },
         layout: placeholderLayout,  // use o layout existente do placeholder
         query: `from(bucket: "tomatoes")
-|> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+|> range(start: ${timeSince.value})
 |> filter(fn: (r) => r["_measurement"] == "mem")
 |> filter(fn: (r) => r["_field"] == "used")
 |> filter(fn: (r) => r["host"] == "raspberrypi")
-|> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+|> aggregateWindow(every: ${timeRange.value}, fn: mean, createEmpty: false)
 |> yield(name: "mean")`,
       });
 
@@ -430,6 +468,9 @@ export default {
         updateChartsSize();
         fetchChartData();
       });
+
+      placeholderAdded.value = false;
+      hasChanges.value = true;
     };
 
     const removeItem = (id) => {
@@ -438,9 +479,17 @@ export default {
         charts.splice(index, 1);
         layout.value.splice(index, 1);
       }
+      hasChanges.value = true;
     };
 
-    const saveCharts = async () => {
+    const confirmSaveDashboard = () => {
+      showSaveDialog.value = true;
+    };
+
+    const saveDashboard = async () => {
+
+      showSaveDialog.value = false;
+
       try {
         if (!charts) {
           console.error("charts.value é undefined");
@@ -471,6 +520,8 @@ export default {
       } catch (error) {
         console.error("Erro ao salvar os gráficos:", error);
       }
+
+      hasChanges.value = false;
     };
 
     const setUpdateInterval = (intervalOption) => {
@@ -529,7 +580,7 @@ export default {
         console.error("Erro ao carregar os gráficos:", error);
       }
 
-      updateQueryRange(timeRange.value);
+      updateQuerySince(timeSince.value);
       fetchChartData();
 
       layout.value = charts.map(chart => chart.layout);
@@ -541,21 +592,29 @@ export default {
       });
     });
 
+    window.onbeforeunload = function () {
+      if (hasChanges.value) {
+        return "É possível que as alterações não sejam salvas. Você realmente deseja recarregar a página?";
+      }
+    };
+
     return {
       ...toRefs(state),
       charts,
       layout,
+      showSaveDialog,
       getChartById,
       registerRef,
       updateLayout,
-      updateQueryRange,
+      updateQuerySince,
       fetchChartData,
       addPlaceHolder,
       removePlaceHolder,
       addItem,
       removeItem,
-      saveCharts,
+      saveDashboard,
       setUpdateInterval,
+      confirmSaveDashboard,
     }
   },
 }
