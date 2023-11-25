@@ -18,6 +18,10 @@
           Database / Boards
         </span>
       </v-app-bar-title>
+      <v-btn class="me-2 text-none rounded-xs custom-border" variant="flat" @click="addBoardFormIsVisible = true">
+        <v-icon color="#bdbdbd" icon="mdi-timer-plus-outline">
+        </v-icon>
+      </v-btn>
       <v-btn class="me-2 text-none rounded-xs custom-border" variant="flat">
         <v-icon color="#bdbdbd" icon="mdi-cog-outline">
         </v-icon>
@@ -30,10 +34,32 @@
     </v-app-bar>
     <v-row>
       <v-col v-for="board in boards" :key="board.id" cols="3">
-        <DatabaseCard :cardData="board" @delete="handleDelete" @updateDriveTimeState="updateDriveTimeState" />
+        <DatabaseCard :cardData="board" @delete="handleDelete" @updateBoard="handleUpdateBoard"
+          @updateDriveTimeState="handleUpdateDriveTimeState" />
       </v-col>
     </v-row>
   </v-container>
+
+  <!-- Diálogo de Adição -->
+  <v-dialog v-model="addBoardFormIsVisible" persistent max-width="400px">
+    <v-card>
+      <v-card-title>Add New Board</v-card-title>
+      <v-card-text>
+        <v-text-field v-model="pumperCode" label="Pumper Code" type="text"></v-text-field>
+        <v-text-field v-model="pumperName" label="Pumper Name" type="text"></v-text-field>
+        <v-text-field v-model="pulseDuration" label="Pulse Duration" type="text"></v-text-field>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn color="red darken-1" text @click="addBoardFormIsVisible = false">
+          Cancel
+        </v-btn>
+        <v-btn color="green darken-1" text @click="addNewBoard">
+          Add
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script>
@@ -63,19 +89,27 @@ export default {
           pumperCode: pumperCode.value,
           pumperName: pumperName.value,
           pulseDuration: pulseDuration.value,
-          driveTimes: driveTimes.value,
+          driveTimes: [{
+            time: "06:00:00",
+            state: false,
+          }],
         });
 
-        // Considerar usar uma biblioteca de toast para isso, como vue-toasted
-        // alert("Nova placa adicionada com sucesso!");
-        // Considerar usar o vue-router para navegar para a página desejada ao invés de recarregar a página
-        // window.location.reload(); // Reloga a página, pode ser últil em algum outro lugar
+        // Resetar os campos após a adição
+        pumperCode.value = "";
+        pumperName.value = "";
+        pulseDuration.value = "";
+
+        addBoardFormIsVisible.value = false;
+        // Recarregar os boards
+        await loadBoards();
       } catch (error) {
         console.error(error);
       } finally {
         loading.value = false;
       }
     };
+
 
     const loadBoards = async () => {
       loading.value = true;
@@ -89,11 +123,16 @@ export default {
       }
     };
 
-    const handleDelete = (boardId) => {
-      boards.value = boards.value.filter(board => board.id !== boardId);
+    const handleUpdateBoard = async () => {
+     await loadBoards();
     };
 
-    const updateDriveTimeState = ({ boardId, index, newState }) => {
+    const handleDelete = async (boardId) => {
+      boards.value = boards.value.filter(board => board.id !== boardId);
+      await loadBoards();
+    };
+
+    const handleUpdateDriveTimeState = ({ boardId, index, newState }) => {
       const boardToUpdate = boards.value.find(board => board.id === boardId.value);
       if (boardToUpdate) {
         boardToUpdate.driveTimes[index].state = newState;
@@ -113,10 +152,11 @@ export default {
       driveTimes,
       form,
       loading,
-      handleDelete,
       addNewBoard,
       loadBoards,
-      updateDriveTimeState,
+      handleUpdateBoard,
+      handleDelete,
+      handleUpdateDriveTimeState,
     };
   },
 };

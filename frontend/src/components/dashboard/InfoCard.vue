@@ -135,7 +135,7 @@
 </template>
 
 <script>
-import { reactive, ref, toRefs, onMounted, nextTick } from 'vue'
+import { reactive, ref, toRefs, onMounted, onUnmounted, nextTick } from 'vue'
 import { GridLayout, GridItem } from "vue-grid-layout"
 import Chart from '@/components/dashboard/Chart.vue'
 
@@ -366,7 +366,7 @@ export default {
         hasChanges.value = true;
       } else {
         return;
-      }      
+      }
     };
 
     const removePlaceHolder = (id) => {
@@ -592,11 +592,20 @@ export default {
       });
     });
 
-    window.onbeforeunload = function () {
-      if (hasChanges.value) {
-        return "É possível que as alterações não sejam salvas. Você realmente deseja recarregar a página?";
-      }
-    };
+    onMounted(() => {
+      window.addEventListener('resize', updateChartsSize);
+
+      window.onbeforeunload = function () {
+        if (hasChanges.value) {
+          return "É possível que as alterações não sejam salvas. Você realmente deseja recarregar a página?";
+        }
+      };
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener('resize', updateChartsSize);
+      window.onbeforeunload = null; // Remove o evento onbeforeunload
+    });
 
     return {
       ...toRefs(state),
