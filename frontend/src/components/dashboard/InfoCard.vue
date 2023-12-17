@@ -296,7 +296,7 @@ export default {
               ...chart.options.series[1],
               points: {
                 ...chart.options.series[1].points,
-                show: timeSince.value === '-5m'
+                show: timeSince.value === '-5m',
               }
             }
           ]
@@ -309,9 +309,12 @@ export default {
     function getFormatFunction(scale) {
       switch (scale) {
         case 'C':
-          return (self, ticks) => ticks.map(rawValue => rawValue.toFixed(2) + "° C");
+          return (self, ticks) => ticks.map(rawValue => rawValue.toFixed(1) + "° C");
         case 'tds':
-          return (self, ticks) => ticks.map(rawValue => rawValue.toFixed(2) + "µS/cm");
+          // return (self, ticks) => ticks.map(rawValue => rawValue.toFixed(0) + "µS/cm");
+          return (self, ticks) => ticks.map(rawValue => rawValue.toFixed(0) + "µS");
+        case 'ph':
+          return (self, ticks) => ticks.map(rawValue => rawValue.toFixed(1));
         case 'mb':
           return (self, ticks) => ticks.map(rawValue => (rawValue / 10 ** 6).toFixed(0) + "MB");
         case 'gb':

@@ -16,7 +16,7 @@
         },
         {
           "label": "pH",
-          "scale": "y",
+          "scale": "ph",
           "points": {
             "show": true,
             "fill": "rgb(184, 119, 217)"
@@ -43,7 +43,7 @@
           }
         },
         {
-          "scale": "y",
+          "scale": "ph",          
           "stroke": "#bdbdbd",
           "grid": {
             "stroke": "#2C3033",
@@ -80,8 +80,8 @@
           "label": "Date"
         },
         {
-          "label": "",
-          "scale": "y",
+          "label": "TDS",
+          "scale": "tds",
           "points": {
             "show": true,
             "fill": "rgb(87, 148, 242)"
@@ -108,7 +108,7 @@
           }
         },
         {
-          "scale": "y",
+          "scale": "tds",
           "stroke": "#bdbdbd",
           "grid": {
             "stroke": "#2C3033",
@@ -145,7 +145,7 @@
           "label": "Date"
         },
         {
-          "label": "",
+          "label": "Temperature",
           "scale": "C",
           "points": {
             "show": true,
