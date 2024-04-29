@@ -261,19 +261,16 @@ export default {
       const selectedOption = state.timeOptions.find(option => option.label === state.selectedLabel);
 
       if (selectedOption) {
-
         for (let chart of charts) {
           let query = chart.query;
 
-          // Atualizar a range da query
-          query = query.replace(/(\|> range\(start: )[^)]+\)/, `$1${selectedOption.value})`);
+          // Removendo todos os parênteses extras no fim do 'now()' e garantindo que apenas um parêntese feche a função
+          query = query.replace(/(\|> range\(start: )[^,]+(, stop: )[^)]*\)*\)/, `$1${selectedOption.value}$2now())`);
 
-          // Atualizar o windowPeriod na query
-          const regex = new RegExp('\\|> aggregateWindow\\(every: [^,]+,', 'g');
-          query = query.replace(regex, `|> aggregateWindow(every: ${selectedOption.range},`);
+          // Substituição para 'aggregateWindow', adaptando o intervalo de agregação
+          query = query.replace(/(\|> aggregateWindow\(every: )[^,]+(,)/, `$1${selectedOption.range}$2`);
 
           chart.query = query;
-
           timeRange.value = selectedOption.range;
         }
       }
@@ -459,7 +456,7 @@ export default {
         },
         layout: placeholderLayout,  // use o layout existente do placeholder
         query: `from(bucket: "tomatoes")
-|> range(start: ${timeSince.value})
+|> range(start: ${timeSince.value}, stop: now())
 |> filter(fn: (r) => r["_measurement"] == "mem")
 |> filter(fn: (r) => r["_field"] == "used")
 |> filter(fn: (r) => r["host"] == "raspberrypi")
@@ -489,6 +486,17 @@ export default {
       showSaveDialog.value = true;
     };
 
+    // Função para generalizar a query no JSON
+    const prepareQueryForSave = (query) => {
+      // Substituir a parte de range para usar variáveis
+      query = query.replace(/\|> range\(start: [^,]+(, stop: [^)]+)?\)/, '|> range(start: v.timeRangeStart, stop: v.timeRangeStop');
+
+      // Substituir a parte de aggregateWindow para usar a variável windowPeriod
+      query = query.replace(/\|> aggregateWindow\(every: [^,]+,/, '|> aggregateWindow(every: v.windowPeriod,');
+
+      return query;
+    };
+
     const saveDashboard = async () => {
 
       showSaveDialog.value = false;
@@ -501,6 +509,12 @@ export default {
 
         // Criar uma cópia profunda do charts.value
         let chartsCopy = JSON.parse(JSON.stringify(charts));
+
+        // Ajustar a query para ser genérica e limpar o campo data de cada objeto em chartsCopy
+        chartsCopy.forEach(chart => {
+          chart.data = []; // Limpar os dados
+          chart.query = prepareQueryForSave(chart.query); // Generalizar a query antes de salvar
+        });
 
         // Ajustar o campo data de cada objeto em chartsCopy para ser um array vazio
         chartsCopy.forEach(chart => {

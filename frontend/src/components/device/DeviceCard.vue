@@ -34,14 +34,12 @@
             <v-list-item>
               <v-list-item-title>RSSI</v-list-item-title>
               <v-list-item-subtitle>{{ cardData.rssi }}</v-list-item-subtitle>
-            </v-list-item>
+            </v-list-item>            
 
             <v-divider class="mt-4"></v-divider>
             <v-list class="py-4 px-6">
-              <v-switch v-model="gpio.IO21" label="IO21" color="indigo" hide-details></v-switch>
-              <v-switch v-model="gpio.IO19" label="IO19" color="indigo" hide-details></v-switch>
-              <v-switch v-model="gpio.IO18" label="IO18" color="indigo" hide-details></v-switch>
-              <v-switch v-model="gpio.IO05" label="IO05" color="indigo" hide-details></v-switch>
+              <v-switch v-for="(port, code) in cardData.ports" :key="code" v-model="gpioStates[port.gpio]"
+                :label="'GPIO ' + port.gpio" color="indigo" hide-details></v-switch>
             </v-list>
           </v-list>
         </v-container>
@@ -55,26 +53,13 @@
 import { ref, watchEffect } from 'vue'
 import router from '@/router'
 import mqttDataService from '@/services/mqttDataService'
-
 import { useDeviceStore } from '@/store/deviceData';
 
 const deviceStore = useDeviceStore();
 
 const props = defineProps(['cardData'])
 
-const gpio = ref({
-  IO21: false,
-  IO19: false,
-  IO18: false,
-  IO05: false
-})
-
-const gpioMapping = {
-  IO21: '21',
-  IO19: '19',
-  IO18: '18',
-  IO05: '5'
-}
+const gpioStates = ref({});
 
 function navigateToOTA(deviceData) {
   deviceStore.setDeviceData(deviceData);
@@ -86,18 +71,23 @@ function navigateToInfo(deviceData) {
 }
 
 watchEffect(() => {
-  updateGpio(gpio.value)
-})
+  if (!props.cardData || !props.cardData.ports) return;
+  const ports = props.cardData.ports;
+
+  Object.values(ports).forEach(port => {
+    if (gpioStates.value[port.gpio] === undefined) {
+      gpioStates.value[port.gpio] = port.state;
+    }
+  });
+
+  updateGpio(gpioStates.value);
+});
 
 function updateGpio(gpioData) {
-  const payload = {}
-
-  for (const key in gpioData) {
-    const gpioValue = gpioData[key]
-    const gpioNumber = gpioMapping[key]
-
-    payload[gpioNumber] = gpioValue
-  }
+  const payload = {};
+  Object.entries(gpioData).forEach(([gpioNumber, state]) => {
+    payload[gpioNumber] = state;
+  });
 
   mqttDataService.updateGpio(props.cardData.host, payload)
     .then(() => {

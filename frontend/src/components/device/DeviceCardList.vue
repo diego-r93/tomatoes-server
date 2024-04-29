@@ -3,7 +3,11 @@
     <v-row>
       <v-col>
         <div class="text-center">
-          <v-progress-circular :size="80" color="primary" indeterminate></v-progress-circular>
+          <v-progress-circular
+            :size="80"
+            color="primary"
+            indeterminate
+          ></v-progress-circular>
         </div>
       </v-col>
     </v-row>
@@ -14,16 +18,17 @@
         <v-icon color="#bdbdbd" icon="mdi-chip" size="small"></v-icon>
       </template>
       <v-app-bar-title class="text-h6">
-        <span style="color: #bdbdbd">
-          Devices / List
-        </span>
+        <span style="color: #bdbdbd"> Devices / List </span>
       </v-app-bar-title>
       <v-btn class="me-2 text-none rounded-xs custom-border" variant="flat">
-        <v-icon color="#bdbdbd" icon="mdi-cog-outline">
-        </v-icon>
+        <v-icon color="#bdbdbd" icon="mdi-cog-outline"> </v-icon>
       </v-btn>
       <div class="pr-5">
-        <v-btn class="text-none rounded-xs custom-border" variant="flat" @click="fetchDevices">
+        <v-btn
+          class="text-none rounded-xs custom-border"
+          variant="flat"
+          @click="fetchDevices"
+        >
           <v-icon color="#bdbdbd" icon="mdi-sync"></v-icon>
         </v-btn>
       </div>
@@ -37,9 +42,9 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
-import DeviceCard from '@/components/device/DeviceCard.vue';
-import mqttDataService from '@/services/mqttDataService';
+import { ref, onMounted } from "vue";
+import DeviceCard from "@/components/device/DeviceCard.vue";
+import mqttDataService from "@/services/mqttDataService";
 
 export default {
   name: "DeviceCardList",
@@ -52,11 +57,13 @@ export default {
       loading.value = true;
       try {
         const { data } = await mqttDataService.getAll();
-        devices.value = data.devicesInformation.map(device => ({
+        devices.value = data.devicesInformation.map((device) => ({
           host: device.host,
           ip: device.ip,
           mac: device.mac,
           rssi: device.rssi,
+          datetime: device.datetime,
+          ports: device.ports,
         }));
       } catch (error) {
         console.error(error);
@@ -74,3 +81,13 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.v-btn--size-default {
+  --v-btn-size: 0.875rem;
+  --v-btn-height: 32px;
+  font-size: var(--v-btn-size);
+  min-width: 36px;
+  padding: 0 8px;
+}
+</style>

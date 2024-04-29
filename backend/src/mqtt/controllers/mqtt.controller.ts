@@ -59,6 +59,8 @@ export const getDevices = async (req: Request, res: Response): Promise<void> => 
         const topic: string = 'getdevices';
         const message: string = 'get all';
 
+        const timeout = 1000; // Tempo em milissegundos para aguardar respostas
+
         const devicesPromise: Promise<void> = new Promise((resolve, reject) => {
             mqttClient.setMessageCallback((topic: string, message: Buffer) => {
                 console.log(`Successfully subscribe on MQTT topic ${topic}`);
@@ -67,7 +69,7 @@ export const getDevices = async (req: Request, res: Response): Promise<void> => 
                 const device = JSON.parse(message.toString());
                 devices.push(device);
 
-                setTimeout(resolve, 500);
+                setTimeout(resolve, timeout);
             });
 
             mqttClient.subscribe('devices');
@@ -82,6 +84,8 @@ export const getDevices = async (req: Request, res: Response): Promise<void> => 
             devicesNumber: devices.length,
             devicesInformation: devices,
         };
+
+        console.log(JSON.stringify(result, null, 2));
 
         res.status(200).json(result);
     } catch (error: any) {
