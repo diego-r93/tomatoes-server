@@ -56,4 +56,12 @@ body {
 .custom-border {
   border: 1px solid #3c3c3c;
 }
+
+.v-btn--size-default {
+  --v-btn-size: 0.875rem;
+  --v-btn-height: 32px;
+  font-size: var(--v-btn-size);
+  min-width: 36px;
+  padding: 0 8px;
+}
 </style>

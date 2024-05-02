@@ -294,45 +294,5 @@ onMounted(async () => {
 });
 </script>
 
-<style scoped>
-.vue-grid-item:hover {
-  opacity: 0.7;
-}
-
-.vue-grid-item.resizing {
-  opacity: 0.9;
-}
-
-.vue-grid-item.vue-grid-placeholder {
-  background: rgb(60, 190, 160);
-}
-
-.vue-grid-item:not(.vue-grid-placeholder) {
-  background: #212121;
-  border: 1px solid #3c3c3c;
-  border-radius: 3px;
-}
-
-.u-label {
-  color: #bdbdbd;
-}
-
-.v-btn--size-default {
-  --v-btn-size: 0.875rem;
-  --v-btn-height: 32px;
-  font-size: var(--v-btn-size);
-  min-width: 36px;
-  padding: 0 8px;
-}
-
-.new-chart-border {
-  border: 2px solid #03dac6 !important;
-}
-
-.my-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 88%;
-}
+<style>
 </style>

@@ -349,7 +349,7 @@ export default {
       fetchChartData();
     };
 
-    const getFormatFunction = (scale) =>{
+    const getFormatFunction = (scale) => {
       switch (scale) {
         case 'C':
           return (self, ticks) => ticks.map(rawValue => rawValue.toFixed(1) + "° C");
@@ -515,26 +515,37 @@ export default {
     };
 
     const removeItem = (id) => {
-      const index = id;
-      if (index > -1) {
-        charts.splice(index, 1);
-        layout.value.splice(index, 1);
+      // Certifique-se de que o ID seja um número, já que os IDs nos objetos de layout são strings
+      const numericId = Number(id);
+
+      // Encontrar o índice do gráfico com o ID correspondente
+      const chartIndex = charts.findIndex(chart => chart.id === numericId);
+      if (chartIndex === -1) {
+        console.error(`Gráfico com ID ${id} não encontrado.`);
+        return; // Se não encontrar o gráfico, retorna e não faz nada
       }
+
+      // Remove o gráfico do array de gráficos
+      charts.splice(chartIndex, 1);
+
+      // Remove o item de layout correspondente
+      layout.value = layout.value.filter(item => Number(item.i) !== numericId);
+
       hasChanges.value = true;
     };
 
-    const navigateToView = (value) => { 
+    const navigateToView = (value) => {
       router.push({ path: `/dashboard/viewPanel/${value}` });
     };
 
-    const navigateToEdit = (value) => { 
+    const navigateToEdit = (value) => {
       router.push({ path: `/dashboard/editPanel/${value}` });
     };
 
     // Objeto para mapear nomes de métodos para funções
     const methods = {
       navigateToView,
-      navigateToEdit,      
+      navigateToEdit,
       removeItem
     };
 
@@ -679,9 +690,15 @@ export default {
         updateQueriesWithTimeRange();
       });
 
-      window.onbeforeunload = function () {
+      window.onbeforeunload = function (e) {
         if (hasChanges.value) {
-          return "É possível que as alterações não sejam salvas. Você realmente deseja recarregar a página?";
+          // Mensagem para o usuário
+          const confirmationMessage = "É possível que as alterações não sejam salvas. Você realmente deseja recarregar a página?";
+
+          // Padrão para alguns navegadores
+          e.returnValue = confirmationMessage;
+
+          return confirmationMessage;
         }
       };
     });
@@ -715,7 +732,7 @@ export default {
 }
 </script>
 
-<style scoped>
+<style>
 .vue-grid-item:hover {
   opacity: 0.7;
 }
@@ -736,14 +753,6 @@ export default {
 
 .u-label {
   color: #bdbdbd;
-}
-
-.v-btn--size-default {
-  --v-btn-size: 0.875rem;
-  --v-btn-height: 32px;
-  font-size: var(--v-btn-size);
-  min-width: 36px;
-  padding: 0 8px;
 }
 
 .new-chart-border {
