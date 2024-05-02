@@ -1,3 +1,7 @@
+import DashBoard from "@/views/DashBoard"
+import ChartViewComponent from "@/views/dashboard/ChartViewComponent"
+import ChartEditComponent from "@/views/dashboard/ChartEditComponent"
+
 export default [
   {
     path: "/dashboard",
@@ -5,6 +9,22 @@ export default [
       requiresAuth: true,
       layout: "ui",
     },
-    component: () => import("@/views/DashBoard.vue"),
+    component: DashBoard,
+  },
+  {
+    path: "/dashboard/viewPanel/:id",
+    meta: {
+      requiresAuth: true,
+      layout: "ui",
+    },
+    component: ChartViewComponent,
+  },
+  {
+    path: "/dashboard/editPanel/:id",
+    meta: {
+      requiresAuth: true,
+      layout: "default",
+    },
+    component: ChartEditComponent,
   },
 ]

@@ -68,10 +68,10 @@
 
       <grid-item v-for="chart in layout" :key="chart.i" :x="chart.x" :y="chart.y" :w="chart.w" :h="chart.h" :i="chart.i"
         :ref="el => registerRef(Number(chart.i), el)" drag-ignore-from=".no-drag"
-        :class="{ 'new-chart-border': Number(chart.i) === charts.length }">
+        :class="{ 'new-chart-border': Number(chart.i) === charts.length && placeholderVisible }">
 
         <!-- Se for o ID do novo item placeholder, mostre o card "Add New Chart to Panel" -->
-        <template v-if="Number(chart.i) === charts.length">
+        <template v-if="Number(chart.i) === charts.length && placeholderVisible">
           <v-hover>
             <template v-slot:default="{ isHovering, props }">
               <v-card :color="isHovering ? '#3c3c3c' : undefined" v-bind="props" class="py-1 text-none rounded-xs"
@@ -111,7 +111,7 @@
             </v-hover>
           </div>
           <div class="d-flex justify-center">
-            <v-card class="position-absolute" style="z-index: 10;" max-width="200" :class="['elevation-10']"
+            <v-card class="position-absolute" style="z-index: 10;" max-width="200" :class="['elevation-14']"
               v-show="listVisibility[chart.i]">
               <v-list :lines="false" density="compact" nav>
                 <template v-for="(item, index) in listItems" :key="index">
@@ -119,7 +119,7 @@
                   <v-list-item v-if="item.title && !item.type" :value="item.value" color="primary"
                     @click="handleItemClick(item, chart.i)">
                     <template v-slot:prepend>
-                      <v-icon v-if="item.icon">{{ item.icon }}</v-icon>
+                      <v-icon size="x-small" v-if="item.icon">{{ item.icon }}</v-icon>
                     </template>
                     <v-list-item-content>
                       <v-list-item-title>{{ item.title }}</v-list-item-title>
@@ -155,9 +155,10 @@
 </template>
 
 <script>
-import { reactive, ref, toRefs, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { reactive, ref, toRefs, onMounted, nextTick, watch } from 'vue'
 import { GridLayout, GridItem } from "vue-grid-layout"
 import Chart from '@/components/dashboard/Chart.vue'
+import { useRouter } from 'vue-router'
 
 import influxdbDataService from '@/services/influxdbDataService'
 import dashboardDataService from '@/services/dashboardDataService'
@@ -165,6 +166,8 @@ import dashboardDataService from '@/services/dashboardDataService'
 export default {
   components: { GridLayout, GridItem, Chart },
   setup() {
+    const router = useRouter()
+
     const gridItemsRefs = ref({});
     const charts = reactive([]);
     let layout = ref([]);
@@ -176,6 +179,8 @@ export default {
     const intervalId = ref(null);
 
     const placeholderAdded = ref(false);
+    const placeholderVisible = ref(false);
+
     const showSaveDialog = ref(false);
     const hasChanges = ref(false);
 
@@ -219,8 +224,8 @@ export default {
 
     // Dados da lista
     const listItems = [
-      { title: 'View', icon: 'mdi mdi-eye-outline', value: 1, method: 'testFunction' },
-      { title: 'Edit', icon: 'mdi-view-dashboard-edit-outline', value: 2, method: 'testFunction' },
+      { title: 'View', icon: 'mdi mdi-eye-outline', value: 1, method: 'navigateToView' },
+      { title: 'Edit', icon: 'mdi-view-dashboard-edit-outline', value: 2, method: 'navigateToEdit' },
       { type: 'divider' },
       { title: 'Remove', icon: 'mdi mdi-trash-can-outline', value: 3, method: 'removeItem' },
     ];
@@ -344,7 +349,7 @@ export default {
       fetchChartData();
     };
 
-    function getFormatFunction(scale) {
+    const getFormatFunction = (scale) =>{
       switch (scale) {
         case 'C':
           return (self, ticks) => ticks.map(rawValue => rawValue.toFixed(1) + "° C");
@@ -360,7 +365,7 @@ export default {
         default:
           return (self, ticks) => ticks.map(rawValue => rawValue.toFixed(2)); // formato padrão
       }
-    }
+    };
 
     const updateLayout = (newLayout) => {
       newLayout.forEach((layoutItem) => {
@@ -399,11 +404,10 @@ export default {
 
         nextTick(() => {
           updateChartsSize();
-          updateQueriesWithTimeRange();
-          fetchChartData();
         });
 
         placeholderAdded.value = true;
+        placeholderVisible.value = true;
         hasChanges.value = true;
       } else {
         return;
@@ -435,6 +439,7 @@ export default {
         });
 
         placeholderAdded.value = false;
+        placeholderVisible.value = false;
         hasChanges.value = false;
       }
     };
@@ -505,24 +510,31 @@ export default {
       });
 
       placeholderAdded.value = false;
+      placeholderVisible.value = false;
       hasChanges.value = true;
     };
 
     const removeItem = (id) => {
-      console.log(id)
       const index = id;
       if (index > -1) {
         charts.splice(index, 1);
         layout.value.splice(index, 1);
       }
-      hasChanges.value = true;      
+      hasChanges.value = true;
     };
 
-    const testFunction = (value) => { console.log(`Testing ${value}`) };
+    const navigateToView = (value) => { 
+      router.push({ path: `/dashboard/viewPanel/${value}` });
+    };
+
+    const navigateToEdit = (value) => { 
+      router.push({ path: `/dashboard/editPanel/${value}` });
+    };
 
     // Objeto para mapear nomes de métodos para funções
     const methods = {
-      testFunction,
+      navigateToView,
+      navigateToEdit,      
       removeItem
     };
 
@@ -666,21 +678,12 @@ export default {
         updateChartsSize();
         updateQueriesWithTimeRange();
       });
-    });
-
-    onMounted(() => {
-      window.addEventListener('resize', updateChartsSize);
 
       window.onbeforeunload = function () {
         if (hasChanges.value) {
           return "É possível que as alterações não sejam salvas. Você realmente deseja recarregar a página?";
         }
       };
-    });
-
-    onUnmounted(() => {
-      window.removeEventListener('resize', updateChartsSize);
-      window.onbeforeunload = null; // Remove o evento onbeforeunload
     });
 
     return {
@@ -694,6 +697,7 @@ export default {
       updateQuerySince,
       fetchChartData,
       addPlaceHolder,
+      placeholderVisible,
       removePlaceHolder,
       addItem,
       removeItem,
@@ -704,13 +708,14 @@ export default {
       listVisibility,
       toggleListVisibility,
       handleItemClick,
-      testFunction,
+      navigateToView,
+      navigateToEdit,
     }
   },
 }
 </script>
 
-<style>
+<style scoped>
 .vue-grid-item:hover {
   opacity: 0.7;
 }
