@@ -41,11 +41,9 @@
         </v-list>
       </v-menu>
 
-
       <v-btn class="text-none rounded-xs custom-border" variant="flat" @click="fetchChartData">
         <v-icon color="#bdbdbd" icon="mdi-sync"></v-icon>
       </v-btn>
-
 
       <div class="pr-3 pl-1">
         <v-menu>
@@ -100,19 +98,41 @@
           </v-container>
         </template>
 
-
         <!-- Se não, mostre o gráfico existente -->
         <template v-else-if="getChartById(chart.i)">
-          <v-hover>
-            <template v-slot:default="{ isHovering, props }">
-              <v-card :color="isHovering ? '#3c3c3c' : undefined" v-bind="props"
-                class="py-1 text-none rounded-xs text-center" variant="flat">
-                <span style="color: #bdbdbd">{{ getChartById(chart.i).options.chartTitle }}</span>
-              </v-card>
-            </template>
-          </v-hover>
-          <Chart class="no-drag" :chartOptions="getChartById(chart.i).options" :chartData="getChartById(chart.i).data"
-            :key="chart.i + '-' + getChartById(chart.i).options.width + '-' + getChartById(chart.i).options.height" />
+          <div @click="toggleListVisibility(chart.i)">
+            <v-hover>
+              <template v-slot:default="{ isHovering, props }">
+                <v-card :color="isHovering ? '#3c3c3c' : undefined" v-bind="props"
+                  class="py-1 text-none rounded-xs text-center" variant="flat">
+                  <span style="color: #bdbdbd">{{ getChartById(chart.i).options.chartTitle }}</span>
+                </v-card>
+              </template>
+            </v-hover>
+          </div>
+          <div class="d-flex justify-center">
+            <v-card class="position-absolute" style="z-index: 10;" max-width="200" :class="['elevation-10']"
+              v-show="listVisibility[chart.i]">
+              <v-list :lines="false" density="compact" nav>
+                <template v-for="(item, index) in listItems" :key="index">
+                  <v-divider v-if="item.type === 'divider'"></v-divider>
+                  <v-list-item v-if="item.title && !item.type" :value="item.value" color="primary"
+                    @click="handleItemClick(item, chart.i)">
+                    <template v-slot:prepend>
+                      <v-icon v-if="item.icon">{{ item.icon }}</v-icon>
+                    </template>
+                    <v-list-item-content>
+                      <v-list-item-title>{{ item.title }}</v-list-item-title>
+                    </v-list-item-content>
+                  </v-list-item>
+                </template>
+              </v-list>
+            </v-card>
+          </div>
+          <v-card class="mx-auto position-relative">
+            <Chart class="no-drag" :chartOptions="getChartById(chart.i).options" :chartData="getChartById(chart.i).data"
+              :key="chart.i + '-' + getChartById(chart.i).options.width + '-' + getChartById(chart.i).options.height" />
+          </v-card>
         </template>
       </grid-item>
     </grid-layout>
@@ -135,7 +155,7 @@
 </template>
 
 <script>
-import { reactive, ref, toRefs, onMounted, onUnmounted, nextTick } from 'vue'
+import { reactive, ref, toRefs, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { GridLayout, GridItem } from "vue-grid-layout"
 import Chart from '@/components/dashboard/Chart.vue'
 
@@ -193,6 +213,27 @@ export default {
       selectedUpdateInterval: 'Off',
       intervalId: null,
     });
+
+    // Estado reativo para controlar a visibilidade das listas
+    const listVisibility = reactive({});
+
+    // Dados da lista
+    const listItems = [
+      { title: 'View', icon: 'mdi mdi-eye-outline', value: 1, method: 'testFunction' },
+      { title: 'Edit', icon: 'mdi-view-dashboard-edit-outline', value: 2, method: 'testFunction' },
+      { type: 'divider' },
+      { title: 'Remove', icon: 'mdi mdi-trash-can-outline', value: 3, method: 'removeItem' },
+    ];
+
+    // Função para alternar a visibilidade
+    const toggleListVisibility = (chartId) => {
+      if (listVisibility[chartId] !== undefined) {
+        listVisibility[chartId] = !listVisibility[chartId];
+      } else {
+        // Se não existir, inicializa como true (se é a primeira vez que clica, mostra a lista)
+        listVisibility[chartId] = true;
+      }
+    };
 
     // Método para registrar os elementos DOM dos grid-items.
     const registerRef = (id, el) => {
@@ -455,13 +496,7 @@ export default {
           ],
         },
         layout: placeholderLayout,  // use o layout existente do placeholder
-        query: `from(bucket: "tomatoes")
-|> range(start: ${timeSince.value}, stop: now())
-|> filter(fn: (r) => r["_measurement"] == "mem")
-|> filter(fn: (r) => r["_field"] == "used")
-|> filter(fn: (r) => r["host"] == "raspberrypi")
-|> aggregateWindow(every: ${timeRange.value}, fn: mean, createEmpty: false)
-|> yield(name: "mean")`,
+        query: ``,
       });
 
       nextTick(() => {
@@ -474,12 +509,29 @@ export default {
     };
 
     const removeItem = (id) => {
-      const index = charts.value.findIndex(c => c.id === id);
+      console.log(id)
+      const index = id;
       if (index > -1) {
         charts.splice(index, 1);
         layout.value.splice(index, 1);
       }
-      hasChanges.value = true;
+      hasChanges.value = true;      
+    };
+
+    const testFunction = (value) => { console.log(`Testing ${value}`) };
+
+    // Objeto para mapear nomes de métodos para funções
+    const methods = {
+      testFunction,
+      removeItem
+    };
+
+    const handleItemClick = (item, chartId) => {
+      if (item.method && typeof methods[item.method] === 'function') {
+        methods[item.method](chartId);
+      } else {
+        console.error(`Method ${item.method} is not a function`);
+      }
     };
 
     const confirmSaveDashboard = () => {
@@ -573,6 +625,13 @@ export default {
       return time * (units[unit] || 0);
     };
 
+    watch(charts, (newCharts) => {
+      newCharts.forEach(chart => {
+        if (listVisibility[chart.id] === undefined) {
+          listVisibility[chart.id] = false;
+        }
+      });
+    }, { deep: true, immediate: true });
 
     onMounted(async () => {
       if (intervalId.value) {
@@ -641,6 +700,11 @@ export default {
       saveDashboard,
       setUpdateInterval,
       confirmSaveDashboard,
+      listItems,
+      listVisibility,
+      toggleListVisibility,
+      handleItemClick,
+      testFunction,
     }
   },
 }

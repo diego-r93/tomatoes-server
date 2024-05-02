@@ -18,7 +18,7 @@
           "label": "pH",
           "scale": "ph",
           "points": {
-            "show": true,
+            "show": false,
             "fill": "rgb(184, 119, 217)"
           },
           "stroke": "rgb(184, 119, 217)",
@@ -51,7 +51,7 @@
           }
         }
       ],
-      "width": 463,
+      "width": 595,
       "height": 287
     },
     "layout": {
@@ -83,7 +83,7 @@
           "label": "TDS",
           "scale": "tds",
           "points": {
-            "show": true,
+            "show": false,
             "fill": "rgb(87, 148, 242)"
           },
           "stroke": "rgb(87, 148, 242)",
@@ -116,7 +116,7 @@
           }
         }
       ],
-      "width": 463,
+      "width": 595,
       "height": 287
     },
     "layout": {
@@ -148,7 +148,7 @@
           "label": "Temperature",
           "scale": "C",
           "points": {
-            "show": true,
+            "show": false,
             "fill": "rgb(250, 222, 42)"
           },
           "stroke": "rgb(250, 222, 42)",
@@ -181,7 +181,7 @@
           }
         }
       ],
-      "width": 463,
+      "width": 595,
       "height": 287
     },
     "layout": {
@@ -213,7 +213,7 @@
           "label": "",
           "scale": "C",
           "points": {
-            "show": true,
+            "show": false,
             "fill": "rgb(242, 73, 92)"
           },
           "stroke": "rgb(242, 73, 92)",
@@ -246,7 +246,7 @@
           }
         }
       ],
-      "width": 463,
+      "width": 595,
       "height": 327
     },
     "data": [],
@@ -272,7 +272,7 @@
         {
           "label": "",
           "points": {
-            "show": true,
+            "show": false,
             "fill": "rgb(87, 148, 242)"
           },
           "stroke": "rgb(87, 148, 242)",
@@ -304,7 +304,7 @@
           }
         }
       ],
-      "width": 463,
+      "width": 595,
       "height": 327
     },
     "data": [],
@@ -336,7 +336,7 @@
           "label": "",
           "scale": "mb",
           "points": {
-            "show": true,
+            "show": false,
             "fill": "rgb(115, 191, 105)"
           },
           "stroke": "rgb(115, 191, 105)",
@@ -369,7 +369,7 @@
           }
         }
       ],
-      "width": 463,
+      "width": 595,
       "height": 327
     },
     "data": [],
@@ -401,7 +401,7 @@
           "label": "",
           "scale": "gb",
           "points": {
-            "show": true,
+            "show": false,
             "fill": "rgb(184, 119, 217)"
           },
           "stroke": "rgb(184, 119, 217)",
@@ -434,7 +434,7 @@
           }
         }
       ],
-      "width": 463,
+      "width": 595,
       "height": 327
     },
     "data": [],
@@ -467,7 +467,7 @@
           "label": "",
           "scale": "mb",
           "points": {
-            "show": true,
+            "show": false,
             "fill": "rgb(255, 152, 48)"
           },
           "stroke": "rgb(255, 152, 48)",
@@ -500,7 +500,7 @@
           }
         }
       ],
-      "width": 463,
+      "width": 595,
       "height": 327
     },
     "data": [],
