@@ -87,32 +87,37 @@ sudo docker-compose down
 - **Iniciar o projeto:** 
 
   ```bash
-  docker-compose up
+  sudo docker-compose up
   ```
 - **Iniciar o projeto em background:** 
 
   ```bash 
-  docker-compose up -d
+  sudo docker-compose up -d
   ```
 - **Parar o projeto:** 
 
   ```bash
-  docker-compose down
+  sudo docker-compose down
   ```
 - **Visualizar logs:** 
 
   ```bash
-  docker container logs
+  sudo docker container logs
   ``` 
   *para seguir os logs em tempo real.*
 
   ```bash
-  docker container logs -f
-  ``` 
+  sudo docker container logs -f  ``` 
   
 
 - **Executar um serviço específico:** 
 
   ```bash
-  docker-compose run NOME_DO_SERVIÇO COMANDO
+  sudo docker-compose run NOME_DO_SERVIÇO COMANDO
+  ```
+
+- **Abrir o terminal em um serviço específico:**
+
+  ```bash
+  sudo docker-compose exec NOME_DO_SERVIÇO bash
   ```
