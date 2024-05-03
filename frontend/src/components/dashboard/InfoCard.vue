@@ -100,7 +100,7 @@
 
         <!-- Se não, mostre o gráfico existente -->
         <template v-else-if="getChartById(chart.i)">
-          <div @click="toggleListVisibility(chart.i)">
+          <div @mousedown="mouseDownHandler(chart.i, $event)" @mouseup="mouseUpHandler(chart.i)">
             <v-hover>
               <template v-slot:default="{ isHovering, props }">
                 <v-card :color="isHovering ? '#3c3c3c' : undefined" v-bind="props"
@@ -221,6 +221,8 @@ export default {
 
     // Estado reativo para controlar a visibilidade das listas
     const listVisibility = reactive({});
+    const mouseDownTime = ref(null);
+    const dragging = ref(false);
 
     // Dados da lista
     const listItems = [
@@ -229,6 +231,19 @@ export default {
       { type: 'divider' },
       { title: 'Remove', icon: 'mdi mdi-trash-can-outline', value: 3, method: 'removeItem' },
     ];
+
+    function mouseDownHandler(chartId, event) {
+      event.preventDefault(); // Impede ações padrões, como a seleção de texto
+      mouseDownTime.value = Date.now(); // Registra o momento do clique
+      dragging.value = false; // Inicializa como não arrastando
+    }
+
+    function mouseUpHandler(chartId) {
+      const clickDuration = Date.now() - mouseDownTime.value;
+      if (clickDuration < 200) { // Considera um clique rápido se for menos de 200ms
+        toggleListVisibility(chartId);
+      }
+    }
 
     // Função para alternar a visibilidade
     const toggleListVisibility = (chartId) => {
@@ -690,13 +705,13 @@ export default {
         updateQueriesWithTimeRange();
       });
 
-      window.onbeforeunload = function (e) {
+      window.onbeforeunload = function (event) {
         if (hasChanges.value) {
           // Mensagem para o usuário
           const confirmationMessage = "É possível que as alterações não sejam salvas. Você realmente deseja recarregar a página?";
 
           // Padrão para alguns navegadores
-          e.returnValue = confirmationMessage;
+          event.returnValue = confirmationMessage;
 
           return confirmationMessage;
         }
@@ -723,6 +738,8 @@ export default {
       confirmSaveDashboard,
       listItems,
       listVisibility,
+      mouseDownHandler,
+      mouseUpHandler,
       toggleListVisibility,
       handleItemClick,
       navigateToView,
@@ -742,7 +759,7 @@ export default {
 }
 
 .vue-grid-item.vue-grid-placeholder {
-  background: rgb(60, 190, 160);
+  background: rgb(60, 190, 160) !important;
 }
 
 .vue-grid-item:not(.vue-grid-placeholder) {
