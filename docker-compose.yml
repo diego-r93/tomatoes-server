@@ -2,7 +2,7 @@ version: "3"
 
 services:
   backend:
-    image: node:18.17.1
+    image: node:20.12.2
     container_name: backend
     restart: unless-stopped
     volumes:
@@ -20,7 +20,7 @@ services:
     command: bash -c "cd /backend && yarn install && yarn start"
 
   frontend:
-    image: node:18.17.1
+    image: node:20.12.2
     container_name: frontend
     restart: unless-stopped
     volumes:
@@ -54,7 +54,7 @@ services:
       - influxdb
 
   mosquitto:
-    image: eclipse-mosquitto:2.0.17
+    image: eclipse-mosquitto:2.0.18
     container_name: mosquitto
     restart: unless-stopped
     volumes:
@@ -87,7 +87,7 @@ services:
     entrypoint: [ "./entrypoint.sh" ]
 
   telegraf:
-    image: telegraf:1.25
+    image: telegraf:1.30
     container_name: telegraf
     restart: unless-stopped
     volumes:
@@ -100,12 +100,16 @@ services:
       - influxdb
 
   grafana:
-    image: grafana/grafana-oss:8.4.3
+    # image: grafana/grafana
+    # image: grafana/grafana-enterprise
+    # image: grafana/grafana-oss
+    image: grafana/grafana-oss:8.4.3 # Versão antiga
     container_name: grafana
     restart: unless-stopped
+    ports:
+      - 3000:3000
     volumes:
       - grafana_data:/var/lib/grafana:rw
-      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
     networks:
       - influxdb_network   
     env_file:
