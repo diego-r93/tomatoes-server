@@ -465,12 +465,29 @@ const addItem = () => {
   // Adicionar novo chart com o novo layout
   charts.push({
     id: newId,
-    data: [],
+    draggable: false,    
     options: {
       chartTitle: "Chart Title",
+      series: [
+        {
+          label: "Date"
+        },
+        {
+          label: "",
+          points: {
+            show: false,
+            fill: "rgb(87, 148, 242)"
+          },
+          stroke: "rgb(87, 148, 242)",
+          fill: "rgba(87, 148, 242, 0.1)"
+        }
+      ],
+      sales: {},
+      axes: [],
     },
+    data: [],
     layout: placeholderLayout,  // use o layout existente do placeholder
-    query: ``,
+    query: "",
   });
 
   nextTick(() => {

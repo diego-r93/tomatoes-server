@@ -9,53 +9,72 @@
       </span>
     </v-app-bar-title>
     <v-btn class="me-2 text-none rounded-xs custom-border" variant="flat">
-        <v-icon color="#bdbdbd" icon="mdi-cog-outline">
-        </v-icon>
+      <v-icon color="#bdbdbd" icon="mdi-cog-outline">
+      </v-icon>
     </v-btn>
-    <v-btn class="me-2 text-none rounded-xs custom-border" color="indigo-darken-3" variant="flat" @click="">
-        Apply
-    </v-btn>   
-    <v-btn class="me-2 text-none rounded-xs custom-border" color="red-darken-3" variant="flat" @click="">
-        Discard
-    </v-btn>         
+    <v-menu>
+      <template v-slot:activator="{ props }">
+        <v-btn v-bind="props" class="me-2 text-none rounded-xs custom-border" variant="flat">
+          <v-icon class="mr-2" color="#bdbdbd" icon="mdi-clock-outline"></v-icon>
+          <span style="color: #bdbdbd">{{ state.selectedLabel }}</span>
+        </v-btn>
+      </template>
+      <v-list>
+        <v-list-item v-for="(item, index) in state.timeOptions" :key="index" :value="item.value"
+          @click="updateQuerySince(item.value)">
+          <v-list-item-title>{{ item.label }}</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-menu>
+    <v-btn class="text-none rounded-xs custom-border" variant="flat" @click="fetchChartData">
+      <v-icon color="#bdbdbd" icon="mdi-sync"></v-icon>
+    </v-btn>
+    <v-btn class="mx-2 text-none rounded-xs custom-border" color="indigo-darken-3" variant="flat" @click="applyChanges">
+      Apply
+    </v-btn>
+    <v-btn class="me-2 text-none rounded-xs custom-border" color="red-darken-3" variant="flat" @click="discardChanges">
+      Discard
+    </v-btn>
   </v-app-bar>
 
-  <v-container fluid>    
+  <v-container fluid>
     <v-row no-gutters>
       <v-col cols="9">
         <v-row no-gutters>
-          <v-col cols="12">
-            <v-card ref="chartCardRef" height="300px" v-if="selectedChart" class="custom-border">
+          <v-col cols="12 mb-10">
+            <v-card ref="chartCardRef" min-height="300" v-if="selectedChart" class="custom-border">
               <v-hover>
                 <template v-slot:default="{ isHovering, props }">
                   <v-card :color="isHovering ? '#3c3c3c' : undefined" v-bind="props"
-                  class="py-1 text-none rounded-xs text-center" variant="flat">
+                    class="py-1 text-none rounded-xs text-center" variant="flat">
                     <span style="color: #bdbdbd">{{ selectedChart.options.chartTitle }}</span>
                   </v-card>
                 </template>
               </v-hover>
-              <Chart ref="chartCardRef" class="no-drag" :chartOptions="selectedChart.options" :chartData="selectedChart.data"
-              :key="selectedChart.id + '-' + selectedChart.options.width + '-' + selectedChart.options.height" />
+              <Chart ref="chartCardRef" class="no-drag" :chartOptions="selectedChart.options"
+                :chartData="selectedChart.data"
+                :key="selectedChart.id + '-' + selectedChart.options.width + '-' + selectedChart.options.height" />
             </v-card>
           </v-col>
           <v-col cols="12">
-            <v-card color="red" height="300px">
-              <!-- Espaço para conteúdo do cartão inferior direito -->
+            <v-card min-height="300" class="custom-border">
+              <v-textarea v-model="getQuery" class="code-editor" rows="10" hide-details outlined bg-color="#121212"
+                color="white" no-resize></v-textarea>
             </v-card>
           </v-col>
         </v-row>
       </v-col>
       <v-col cols="3">
-        <v-card color="green" height="600px">
+        <v-card min-height="800" class="ml-4 custom-border">
           <!-- Espaço para conteúdo do cartão esquerdo grande -->
         </v-card>
-      </v-col>      
+      </v-col>
     </v-row>
   </v-container>
 </template>
 
 <script setup>
-import { onMounted, ref, reactive, nextTick } from 'vue';
+import { onMounted, ref, reactive, nextTick, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import Chart from '@/components/dashboard/Chart.vue';
 import dashboardDataService from '@/services/dashboardDataService';
@@ -66,11 +85,10 @@ const route = useRoute();
 const charts = reactive([]); // Armazena todos os gráficos obtidos
 const selectedChart = ref(null); // Mudar o backend e o servide do frontend para buscar somente um char em dashboardDataService
 const chartCardRef = ref(null);
+const originalQuery = ref(""); // Armazena a consulta original
 
 const timeSince = ref('-5m');
 const timeRange = ref('500ms');
-
-const intervalId = ref(null);
 
 const state = reactive({
   draggable: true,
@@ -89,22 +107,6 @@ const state = reactive({
     { label: '3 days', value: '-3d', range: '5m' },
     { label: '1 week', value: '-1w', range: '15m' },
   ],
-  updateIntervals: [
-    { label: 'Off', value: null },
-    { label: '2s', value: '2s' },
-    { label: '5s', value: '5s' },
-    { label: '10s', value: '10s' },
-    { label: '30s', value: '30s' },
-    { label: '1m', value: '1m' },
-    { label: '5m', value: '5m' },
-    { label: '15m', value: '15m' },
-    { label: '30m', value: '30m' },
-    { label: '1h', value: '1h' },
-    { label: '2h', value: '2h' },
-    { label: '6h', value: '6h' },
-  ],
-  selectedUpdateInterval: 'Off',
-  intervalId: null,
 });
 
 const goBack = () => {
@@ -213,36 +215,28 @@ const getFormatFunction = (scale) => {
   }
 };
 
-const setUpdateInterval = (intervalOption) => {
-  state.selectedUpdateInterval = intervalOption.label; // Atualizar o rótulo selecionado
-
-  // Limpa qualquer intervalo existente
-  if (intervalId.value) {
-    clearInterval(intervalId.value);
-  }
-
-  // Configura um novo intervalo se o valor for diferente de 'null'
-  if (intervalOption.value) {
-    const intervalTime = parseInterval(intervalOption.value);
-    intervalId.value = setInterval(fetchChartData, intervalTime);
-  } else {
-    // Se "Off" for selecionado, certifique-se de que não há intervalos ativos
-    if (intervalId.value) {
-      clearInterval(intervalId.value);
+const getQuery = computed({
+  get() {
+    return selectedChart.value ? selectedChart.value.query : '';
+  },
+  set(newValue) {
+    if (selectedChart.value) {
+      selectedChart.value.query = newValue;
     }
+  }
+});
+
+const applyChanges = () => {
+  if (selectedChart.value) {
+    selectedChart.value.query = getQuery.value; // Salva diretamente a consulta do textarea no chart selecionado
+    console.log("Query applied:", selectedChart.value.query); // Debugging
   }
 };
 
-const parseInterval = (intervalString) => {
-  if (!intervalString) return 0;
-  const units = {
-    's': 1000,
-    'm': 60000,
-    'h': 3600000,
-  };
-  const unit = intervalString.slice(-1);
-  const time = parseInt(intervalString.slice(0, -1));
-  return time * (units[unit] || 0);
+const discardChanges = () => {
+  if (selectedChart.value) {
+    selectedChart.value.query = originalQuery.value; // Restaura a consulta original
+  }
 };
 
 onMounted(async () => {
@@ -271,9 +265,28 @@ onMounted(async () => {
     console.error("Error fetching chart data:", error);
   }
 
+  // Armazenando a consulta original quando o gráfico é carregado
+  if (selectedChart.value) {
+    originalQuery.value = selectedChart.value.query;
+  }
+
   updateQuerySince(timeSince.value);
   fetchChartData();
   updateChartsSize();
 
 });
 </script>
+
+<style scoped>
+.code-editor textarea {
+  font-family: 'Fira Code', 'Consolas', monospace;
+}
+
+.code-editor .v-text-field__slot {
+  line-height: 1.5;
+}
+
+.code-editor .v-textarea__wrapper {
+  overflow-x: auto;
+}
+</style>
