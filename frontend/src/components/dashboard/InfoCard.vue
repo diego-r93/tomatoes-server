@@ -68,7 +68,7 @@
 
       <grid-item v-for="chart in layout" :key="chart.i" :x="chart.x" :y="chart.y" :w="chart.w" :h="chart.h" :i="chart.i"
         :ref="el => registerRef(Number(chart.i), el)" drag-ignore-from=".no-drag"
-        :class="{ 'new-chart-border': Number(chart.i) === charts.length && placeholderVisible }">
+        :class="Number(chart.i) === charts.length && placeholderVisible ? 'new-chart-border' : 'custom-border'">
 
         <!-- Se for o ID do novo item placeholder, mostre o card "Add New Chart to Panel" -->
         <template v-if="Number(chart.i) === charts.length && placeholderVisible">
@@ -104,35 +104,33 @@
             <v-hover>
               <template v-slot:default="{ isHovering, props }">
                 <v-card :color="isHovering ? '#3c3c3c' : undefined" v-bind="props"
-                  class="py-1 text-none rounded-xs text-center" variant="flat">
+                  class="py-1 text-none text-center rounded-md" variant="flat">
                   <span style="color: #bdbdbd">{{ getChartById(chart.i).options.chartTitle }}</span>
                 </v-card>
               </template>
             </v-hover>
           </div>
           <div class="d-flex justify-center">
-            <v-card class="position-absolute" style="z-index: 10;" max-width="200" :class="['elevation-14']"
+            <v-card class="position-absolute dropdown-list" :class="['elevation-15']"
               v-show="listVisibility[chart.i]">
-              <v-list :lines="false" density="compact" nav>
+              <v-list density="compact">
                 <template v-for="(item, index) in listItems" :key="index">
                   <v-divider v-if="item.type === 'divider'"></v-divider>
-                  <v-list-item v-if="item.title && !item.type" :value="item.value" color="primary"
+                  <v-list-item v-if="item.title && !item.type" :value="item.value"
                     @click="handleItemClick(item, chart.i)">
                     <template v-slot:prepend>
                       <v-icon size="x-small" v-if="item.icon">{{ item.icon }}</v-icon>
                     </template>
                     <v-list-item-content>
-                      <v-list-item-title>{{ item.title }}</v-list-item-title>
+                      <v-list-item-title class="dropdown-text mx-0">{{ item.title }}</v-list-item-title>
                     </v-list-item-content>
                   </v-list-item>
                 </template>
               </v-list>
             </v-card>
-          </div>
-          <v-card class="mx-auto position-relative">
+          </div>          
             <Chart class="no-drag" :chartOptions="getChartById(chart.i).options" :chartData="getChartById(chart.i).data"
               :key="chart.i + '-' + getChartById(chart.i).options.width + '-' + getChartById(chart.i).options.height" />
-          </v-card>
         </template>
       </grid-item>
     </grid-layout>
@@ -469,47 +467,7 @@ const addItem = () => {
     id: newId,
     data: [],
     options: {
-      chartTitle: "mem_used",
-      padding: [null, null, null, 12],
-      series: [
-        {
-          label: "Date",
-        },
-        {
-          label: "",
-          scale: "mb",
-          points: {
-            show: true,
-            fill: "rgb(115, 191, 105)",
-          },
-          stroke: "rgb(115, 191, 105)",
-          fill: "rgba(115, 191, 105, 0.1)",
-        },
-      ],
-      scales: {
-        x: { time: true }, y: {
-          auto: true,
-          range: [],
-        },
-      },
-      axes: [
-        {
-          stroke: "#bdbdbd",
-          grid: {
-            stroke: '#2C3033',
-            width: 1
-          }
-        },
-        {
-          scale: "mb",
-          values: (self, ticks) => ticks.map(rawValue => (rawValue / 10 ** 6).toFixed(0) + "MB"),
-          stroke: "#bdbdbd",
-          grid: {
-            stroke: '#2C3033',
-            width: 1
-          }
-        },
-      ],
+      chartTitle: "Chart Title",
     },
     layout: placeholderLayout,  // use o layout existente do placeholder
     query: ``,
@@ -517,7 +475,6 @@ const addItem = () => {
 
   nextTick(() => {
     updateChartsSize();
-    fetchChartData();
   });
 
   placeholderAdded.value = false;
@@ -535,10 +492,8 @@ const removeItem = (id) => {
     console.error(`Gráfico com ID ${id} não encontrado.`);
     return; // Se não encontrar o gráfico, retorna e não faz nada
   }
-
   // Remove o gráfico do array de gráficos
   charts.splice(chartIndex, 1);
-
   // Remove o item de layout correspondente
   layout.value = layout.value.filter(item => Number(item.i) !== numericId);
 
@@ -719,10 +674,13 @@ onMounted(async () => {
 <style scoped>
 .vgl-layout {
   --vgl-placeholder-bg: rgb(60, 190, 160);
+  background-color: #121212;
 }
 
-.u-label {
-  color: #bdbdbd;
+.vgl-item {
+  background: #212121;
+  border: 1px solid #3c3c3c;
+  border-radius: 3px;
 }
 
 .new-chart-border {
@@ -734,5 +692,13 @@ onMounted(async () => {
   justify-content: center;
   align-items: center;
   height: 88%;
+}
+
+.dropdown-list {
+  z-index: 10;
+}
+
+.dropdown-text {
+  font-size: 12px;
 }
 </style>

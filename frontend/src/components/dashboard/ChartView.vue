@@ -51,7 +51,7 @@
       </div>
     </v-app-bar>
 
-    <div v-if="selectedChart">
+    <v-card ref="chartCardRef" min-height="700" v-if="selectedChart" class="custom-border">
       <v-hover>
         <template v-slot:default="{ isHovering, props }">
           <v-card :color="isHovering ? '#3c3c3c' : undefined" v-bind="props"
@@ -60,12 +60,9 @@
           </v-card>
         </template>
       </v-hover>
-
-      <v-card ref="chartCardRef" class="mx-auto w-100" min-height="700">
-        <Chart class="no-drag" :chartOptions="selectedChart.options" :chartData="selectedChart.data"
+        <Chart ref="chartCardRef" class="no-drag" :chartOptions="selectedChart.options" :chartData="selectedChart.data"
           :key="selectedChart.id + '-' + selectedChart.options.width + '-' + selectedChart.options.height" />
-      </v-card>
-    </div>
+    </v-card>
   </v-container>
 </template>
 
@@ -130,7 +127,6 @@ const updateChartsSize = () => {
   nextTick(() => {
     if (chartCardRef.value && chartCardRef.value.$el) {
       const rect = chartCardRef.value.$el.getBoundingClientRect();
-      // console.log(`Accessible rect: width - ${rect.width}, height - ${rect.height}`);
       if (selectedChart.value && selectedChart.value.options) {
         selectedChart.value.options.width = rect.width;
         selectedChart.value.options.height = rect.height;
