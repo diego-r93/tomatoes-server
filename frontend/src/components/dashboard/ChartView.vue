@@ -60,8 +60,8 @@
           </v-card>
         </template>
       </v-hover>
-        <Chart ref="chartCardRef" class="no-drag" :chartOptions="selectedChart.options" :chartData="selectedChart.data"
-          :key="selectedChart.id + '-' + selectedChart.options.width + '-' + selectedChart.options.height" />
+      <Chart ref="chartCardRef" class="no-drag" :chartOptions="selectedChart.options" :chartData="selectedChart.data"
+        :key="selectedChart.id + '-' + selectedChart.options.width + '-' + selectedChart.options.height" />
     </v-card>
   </v-container>
 </template>
@@ -70,7 +70,6 @@
 import { onMounted, ref, reactive, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import Chart from '@/components/dashboard/Chart.vue';
-import dashboardDataService from '@/services/dashboardDataService';
 import influxdbDataService from '@/services/influxdbDataService';
 
 const router = useRouter();
@@ -257,38 +256,42 @@ const parseInterval = (intervalString) => {
   return time * (units[unit] || 0);
 };
 
-onMounted(async () => {
+const loadDashboard = async () => {
   const chartId = route.params.id;
+
+  // Limpa o array reativo para evitar duplicação ao recarregar os dados
+  charts.splice(0, charts.length);
   try {
-    const response = await dashboardDataService.getcharts(); // Busca todos os gráficos
-    if (response && response.data) {
-      charts.value = response.data; // Armazena todos os gráficos na referência `charts`
-      selectedChart.value = charts.value.find(c => c.id === Number(chartId)); // Filtra para encontrar o gráfico específico
-      if (!selectedChart.value) {
-        console.error("Chart not found");
-      }
-      response.data.forEach(chartObject => {
+    const storedData = localStorage.getItem('TomatoesDashboard');
+    if (storedData) {
+      const chartsData = JSON.parse(storedData);  // Parse os dados JSON salvos
+      chartsData.forEach(chartObject => {
         // Se o objeto chart tiver um campo scale, ajuste a função values de acordo com o scale
         if (chartObject.options && chartObject.options.axes && chartObject.options.axes[1] && chartObject.options.axes[1].scale) {
           const formatFunction = getFormatFunction(chartObject.options.axes[1].scale);
           chartObject.options.axes[1].values = formatFunction;
         }
-
-        charts.push(chartObject); // Só consegui fazer funcionar com push
+        charts.push(chartObject);  // Adiciona ao array reativo
       });
+
+      // Define o gráfico selecionado com base no ID passado pela rota
+      selectedChart.value = charts.find(c => c.id === Number(chartId));
+      if (!selectedChart.value) {
+        console.error("Chart not found");
+      } 
     } else {
-      console.error("Failed to fetch chart data");
+      console.error("No dashboard data found in localStorage");
     }
   } catch (error) {
-    console.error("Error fetching chart data:", error);
+    console.error("Error parsing chart data from localStorage:", error);
   }
+};
 
-  updateQuerySince(timeSince.value);
-  fetchChartData();
+onMounted(async () => {
+  await loadDashboard();
   updateChartsSize();
-
+  updateQuerySince(timeSince.value);
 });
 </script>
 
-<style>
-</style>
+<style scoped></style>

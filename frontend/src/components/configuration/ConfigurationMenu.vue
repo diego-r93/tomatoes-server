@@ -88,40 +88,27 @@
   </v-container>
 </template>
 
-<script>
+<script setup>
 import { ref } from "vue";
+import { useAppStore } from '@/store/appConfiguration';
 
-import { useAppStore } from '@/store/appConfiguration'
+const userTheme = useAppStore();
+const myThemes = ["light", "dark", "customLightTheme", "customDarkTheme"];
+const selectedTheme = ref(userTheme.theme);
 
-export default {
-  setup() {
-    const userTheme = useAppStore()
-    const myThemes = ["light", "dark", "customLightTheme", "customDarkTheme"]
-    const selectedTheme = ref(userTheme.theme)
+const setTheme = () => {
+  userTheme.theme = selectedTheme.value;
+  localStorage.setItem('TomatoesTheme', userTheme.theme);
+};
 
-    const setTheme = () => {
-      userTheme.theme = selectedTheme.value
-      localStorage.setItem('theme', userTheme.theme)
-    };
-
-    return {
-      // theme,
-      myThemes,
-      selectedTheme,
-      setTheme,
-    }
-  },
-  data: () => ({
-    locations: [
-      'Default',
-      'GMT-03:00',
-      'GMT-02:00',
-      'GMT-01:00',
-      'GMT+00:00',
-      'GMT+01:00',
-      'GMT+02:00',
-      'GMT+03:00',
-    ]
-  })
-}
+const locations = ref([
+  'Default',
+  'GMT-03:00',
+  'GMT-02:00',
+  'GMT-01:00',
+  'GMT+00:00',
+  'GMT+01:00',
+  'GMT+02:00',
+  'GMT+03:00',
+]);
 </script>

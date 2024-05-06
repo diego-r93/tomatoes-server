@@ -159,6 +159,9 @@ import Chart from '@/components/dashboard/Chart.vue'
 import { useRouter } from 'vue-router'
 import influxdbDataService from '@/services/influxdbDataService'
 import dashboardDataService from '@/services/dashboardDataService'
+import { useDashboardStore } from '@/store/dashboardData';
+
+const dashboardStore = useDashboardStore();
 
 const router = useRouter()
 
@@ -474,21 +477,50 @@ const addItem = () => {
         },
         {
           label: "",
+          scale: "",
           points: {
-            show: false,
+            show: true,
             fill: "rgb(87, 148, 242)"
           },
           stroke: "rgb(87, 148, 242)",
           fill: "rgba(87, 148, 242, 0.1)"
         }
       ],
-      sales: {},
-      axes: [],
+      sales: {
+        x: {
+          time: true
+        },
+        y: {
+          auto: true,
+          range: []
+        },
+      },
+      axes: [
+      {
+          stroke: "#bdbdbd",
+          grid: {
+            "stroke": "#2C3033",
+            "width": 1
+          }
+        },
+        {
+          scale: "",
+          stroke: "#bdbdbd",
+          grid: {
+            "stroke": "#2C3033",
+            "width": 1
+          }
+        }
+      ],
     },
     data: [],
     layout: placeholderLayout,  // use o layout existente do placeholder
     query: "",
   });
+
+  // Atualiza o estado do store e salva no localStorage
+  dashboardStore.setDashboard([...charts]);
+  localStorage.setItem('TomatoesDashboard', JSON.stringify(charts));
 
   nextTick(() => {
     updateChartsSize();
@@ -639,7 +671,7 @@ watch(charts, (newCharts) => {
   });
 }, { deep: true, immediate: true });
 
-onMounted(async () => {
+const loadDashboard = async () => {
   if (intervalId.value) {
     clearInterval(intervalId.value);
   }
@@ -657,10 +689,21 @@ onMounted(async () => {
 
         charts.push(chartObject); // Só consegui fazer funcionar com push
       });
+
+      // Salvar os dados no store
+      dashboardStore.setDashboard([...charts]);
+      localStorage.setItem('TomatoesDashboard', JSON.stringify(dashboardStore.dashboard));
+      
+      // Após salvar no store, imprimir o que foi salvo no localStorage
+      // console.log("Dados salvos no localStorage:", JSON.parse(localStorage.getItem('TomatoesDashboard')));
     }
   } catch (error) {
     console.error("Erro ao carregar os gráficos:", error);
   }
+};
+
+onMounted(async () => {
+  await loadDashboard().then();
 
   updateQuerySince(timeSince.value);
   fetchChartData();
@@ -685,7 +728,6 @@ onMounted(async () => {
     }
   };
 });
-
 </script>
 
 <style scoped>
