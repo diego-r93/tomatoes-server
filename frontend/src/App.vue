@@ -41,6 +41,13 @@ const currentLayout = computed(() => {
 </script>
 
 <style>
+@font-face {
+  font-family: 'Fira Code';
+  src: url('./assets/fonts/FiraCode/FiraCode-Regular.ttf');
+  font-weight: normal;
+  font-style: normal;
+}
+
 body::-webkit-scrollbar {
   display: none;
   /* Oculta a barra de rolagem para navegadores WebKit como Chrome e Safari */

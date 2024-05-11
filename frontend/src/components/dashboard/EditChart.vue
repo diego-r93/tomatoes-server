@@ -66,7 +66,27 @@
       </v-col>
       <v-col cols="3">
         <v-card min-height="800" class="ml-4 custom-border">
-          <!-- Espaço para conteúdo do cartão esquerdo grande -->
+          <div>
+            <v-expansion-panels v-model="panels" multiple>
+              <v-expansion-panel title='Panel Title'>
+                <v-expansion-panel-text>
+                  <v-text-field v-model=getChartTitle @input=""></v-text-field>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+
+              <v-expansion-panel title='Standard Options'>
+                <v-expansion-panel-text>
+                  Some content
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+
+              <v-expansion-panel title='Standard Options'>
+                <v-expansion-panel-text>
+                  <v-color-picker v-model=getchartColor @input=""></v-color-picker>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
+          </div>
         </v-card>
       </v-col>
     </v-row>
@@ -85,6 +105,7 @@ const charts = reactive([]); // Armazena todos os gráficos obtidos
 const selectedChart = ref(null); // Mudar o backend e o servide do frontend para buscar somente um char em dashboardDataService
 const chartCardRef = ref(null);
 const originalQuery = ref(""); // Armazena a consulta original
+const panels = ref([0, 1, 2]);
 
 const timeSince = ref('-5m');
 const timeRange = ref('500ms');
@@ -225,6 +246,36 @@ const getQuery = computed({
   }
 });
 
+const getChartTitle = computed({
+  get() {
+    return selectedChart.value ? selectedChart.value.options.chartTitle : '';
+  },
+  set(newValue) {
+    if (selectedChart.value) {
+      selectedChart.value.options.chartTitle = newValue;
+    }
+  }
+});
+
+const getchartColor = computed({
+  get() {
+    return selectedChart.value ? selectedChart.value.options.series[1].stroke : '';
+  },
+  set(newValue) {
+    if (selectedChart.value) {
+      selectedChart.value.options.series[1].stroke = newValue;
+    }
+  }
+});
+
+const updateChartTitle = () => {
+  // Additional logic if needed upon title update
+};
+
+const updateChartColor = () => {
+  // Additional logic if needed upon color update
+};
+
 const applyChanges = () => {
   if (selectedChart.value) {
     selectedChart.value.query = getQuery.value; // Salva diretamente a consulta do textarea no chart selecionado
@@ -275,21 +326,14 @@ const loadDashboard = async () => {
 
 onMounted(async () => {
   await loadDashboard();
-  updateChartsSize();  
-  updateQuerySince(timeSince.value); 
+  updateChartsSize();
+  updateQuerySince(timeSince.value);
 });
 </script>
 
 <style scoped>
-.code-editor textarea {
-  font-family: 'Fira Code', 'Consolas', monospace;
-}
-
-.code-editor .v-text-field__slot {
-  line-height: 1.5;
-}
-
-.code-editor .v-textarea__wrapper {
-  overflow-x: auto;
+.code-editor ::v-deep textarea {
+  font-family: 'Consolas', monospace;
+  font-size: 14px;
 }
 </style>
