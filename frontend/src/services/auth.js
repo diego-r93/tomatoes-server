@@ -5,8 +5,8 @@ class Authentication {
   }
 
   isAuthenticated() {
-    const token = localStorage.getItem('TomatoesAccessToken');
-    const expiration = localStorage.getItem('TomatoesExpiration');
+    const token = localStorage.getItem('tomatoesAccessToken');
+    const expiration = localStorage.getItem('tomatoesExpiration');
     const currentTime = new Date().getTime();
 
     this.authenticated = token && expiration && currentTime < parseInt(expiration);
@@ -20,10 +20,11 @@ class Authentication {
   }
 
   logout() {
-    localStorage.removeItem('TomatoesAccessToken')
-    localStorage.removeItem('TomatoesExpiration')
-    localStorage.removeItem('userId')
-    localStorage.removeItem('userData')
+    localStorage.removeItem('tomatoesAccessToken')
+    localStorage.removeItem('tomatoesExpiration')
+    localStorage.removeItem('tomatoesUserId')
+    localStorage.removeItem('tomatoesUserData')
+    localStorage.removeItem('tomatoesDashboard')
     this.stopTokenRenewal(); // Para a renovação do token
     this.authenticated = false;
   }
@@ -49,7 +50,7 @@ class Authentication {
 
     // Suponha que a nova expiração seja de mais 1 hora
     const newExpiration = new Date().getTime() + (60 * 60 * 1000); // Adiciona 1 hora ao tempo atual
-    localStorage.setItem('expiration', newExpiration);
+    localStorage.setItem('tomatoesExpiration', newExpiration);
 
     // Aqui você também atualizaria o 'accessToken' com o novo token recebido
   }

@@ -520,7 +520,7 @@ const addItem = () => {
 
   // Atualiza o estado do store e salva no localStorage
   dashboardStore.setDashboard([...charts]);
-  localStorage.setItem('TomatoesDashboard', JSON.stringify(charts));
+  localStorage.setItem('tomatoesDashboard', JSON.stringify(charts));
 
   nextTick(() => {
     updateChartsSize();
@@ -692,7 +692,7 @@ const loadDashboard = async () => {
 
       // Salvar os dados no store
       dashboardStore.setDashboard([...charts]);
-      localStorage.setItem('TomatoesDashboard', JSON.stringify(dashboardStore.dashboard));
+      localStorage.setItem('tomatoesDashboard', JSON.stringify(dashboardStore.dashboard));
       
       // Após salvar no store, imprimir o que foi salvo no localStorage
       // console.log("Dados salvos no localStorage:", JSON.parse(localStorage.getItem('TomatoesDashboard')));

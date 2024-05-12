@@ -262,7 +262,7 @@ const loadDashboard = async () => {
   // Limpa o array reativo para evitar duplicação ao recarregar os dados
   charts.splice(0, charts.length);
   try {
-    const storedData = localStorage.getItem('TomatoesDashboard');
+    const storedData = localStorage.getItem('tomatoesDashboard');
     if (storedData) {
       const chartsData = JSON.parse(storedData);  // Parse os dados JSON salvos
       chartsData.forEach(chartObject => {
@@ -278,7 +278,7 @@ const loadDashboard = async () => {
       selectedChart.value = charts.find(c => c.id === Number(chartId));
       if (!selectedChart.value) {
         console.error("Chart not found");
-      } 
+      }
     } else {
       console.error("No dashboard data found in localStorage");
     }

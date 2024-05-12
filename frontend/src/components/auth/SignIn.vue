@@ -63,10 +63,10 @@ const signin = async () => {
 
     const expiration = new Date().getTime() + 3600 * 1000;
 
-    localStorage.setItem('TomatoesAccessToken', user.accessToken);
-    localStorage.setItem('TomatoesExpiration', expiration.toString());
-    localStorage.setItem('userId', user._id);
-    localStorage.setItem('userData', JSON.stringify({
+    localStorage.setItem('tomatoesAccessToken', user.accessToken);
+    localStorage.setItem('tomatoesExpiration', expiration.toString());
+    localStorage.setItem('tomatoesUserId', user._id);
+    localStorage.setItem('tomatoesUserData', JSON.stringify({
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
@@ -95,8 +95,8 @@ const required = (v) => !!v || 'Field is required';
 
 // Verificação de autenticação ao montar o componente
 onMounted(() => {
-  const token = localStorage.getItem('accessToken');
-  const expiration = localStorage.getItem('expiration');
+  const token = localStorage.getItem('tomatoesAccessToken');
+  const expiration = localStorage.getItem('tomatoesExpiration');
 
   if (token && expiration) {
     const currentTime = new Date().getTime();

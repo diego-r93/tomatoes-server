@@ -83,8 +83,8 @@ const required = (v) => !!v || 'Field is required';
 
 // Verificação de autenticação ao montar o componente
 onMounted(() => {
-  const token = localStorage.getItem('TomatoesAccessToken');
-  const expiration = localStorage.getItem('TomatoesExpiration');
+  const token = localStorage.getItem('tomatoesAccessToken');
+  const expiration = localStorage.getItem('tomatoesExpiration');
 
   if (token && expiration) {
     const currentTime = new Date().getTime();

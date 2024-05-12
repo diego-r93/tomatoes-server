@@ -296,7 +296,7 @@ const loadDashboard = async () => {
   charts.splice(0, charts.length);
 
   try {
-    const storedData = localStorage.getItem('TomatoesDashboard');
+    const storedData = localStorage.getItem('tomatoesDashboard');
     if (storedData) {
       const chartsData = JSON.parse(storedData);  // Parse os dados JSON salvos
       chartsData.forEach(chartObject => {
