@@ -3,11 +3,7 @@
     <v-row>
       <v-col>
         <div class="text-center">
-          <v-progress-circular
-            :size="80"
-            color="primary"
-            indeterminate
-          ></v-progress-circular>
+          <v-progress-circular :size="80" color="primary" indeterminate></v-progress-circular>
         </div>
       </v-col>
     </v-row>
@@ -24,11 +20,7 @@
         <v-icon color="#bdbdbd" icon="mdi-cog-outline"> </v-icon>
       </v-btn>
       <div class="pr-5">
-        <v-btn
-          class="text-none rounded-xs custom-border"
-          variant="flat"
-          @click="fetchDevices"
-        >
+        <v-btn class="text-none rounded-xs custom-border" variant="flat" @click="fetchDevices">
           <v-icon color="#bdbdbd" icon="mdi-sync"></v-icon>
         </v-btn>
       </div>
@@ -41,45 +33,37 @@
   </v-container>
 </template>
 
-<script>
+<script setup>
 import { ref, onMounted } from "vue";
 import DeviceCard from "@/components/device/DeviceCard.vue";
 import mqttDataService from "@/services/mqttDataService";
 
-export default {
-  name: "DeviceCardList",
-  components: { DeviceCard },
-  setup() {
-    const loading = ref(true);
-    const devices = ref([]);
+const loading = ref(true);
+const devices = ref([]);
 
-    const fetchDevices = async () => {
-      loading.value = true;
-      try {
-        const { data } = await mqttDataService.getAll();
-        devices.value = data.devicesInformation.map((device) => ({
-          host: device.host,
-          ip: device.ip,
-          mac: device.mac,
-          rssi: device.rssi,
-          datetime: device.datetime,
-          ports: device.ports,
-        }));
-      } catch (error) {
-        console.error(error);
-        // alert('Houve um erro ao carregar os dispositivos.');
-      } finally {
-        loading.value = false;
-      }
-    };
-
-    onMounted(() => {
-      fetchDevices();
-    });
-
-    return { loading, devices, fetchDevices };
-  },
+const fetchDevices = async () => {
+  loading.value = true;
+  try {
+    const { data } = await mqttDataService.getAll();
+    devices.value = data.devicesInformation.map((device) => ({
+      host: device.host,
+      ip: device.ip,
+      mac: device.mac,
+      rssi: device.rssi,
+      datetime: device.datetime,
+      ports: device.ports,
+    }));
+  } catch (error) {
+    console.error(error);
+    // alert('Houve um erro ao carregar os dispositivos.');
+  } finally {
+    loading.value = false;
+  }
 };
+
+onMounted(() => {
+  fetchDevices();
+});
 </script>
 
 <style scoped>

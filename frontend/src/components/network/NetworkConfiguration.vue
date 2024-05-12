@@ -19,7 +19,7 @@
       </v-tabs>
 
       <v-card class="custom-border">
-        <v-card-text class="scroll-container">          
+        <v-card-text class="scroll-container">
           <router-view></router-view>
         </v-card-text>
         <v-card-actions class="pt-12">
@@ -32,40 +32,29 @@
   </v-container>
 </template>
 
-<script>
+<script setup>
 import { ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
-export default {
-  name: 'NetworkConfig',
-  setup() {
-    const router = useRouter()
-    const route = useRoute()
+const router = useRouter()
+const route = useRoute()
 
-    const tab = ref(route.path)
+const tab = ref(route.path)
 
-    const items = [
-      { id: 1, name: 'Lan', route: '/network/lan' },
-      { id: 2, name: 'DNS', route: '/network/dns' },
-      { id: 3, name: 'WPA Supplicant', route: '/network/wpa' },
-      { id: 4, name: 'DHCP', route: '/network/dhcp' },
-    ]
+const items = [
+  { id: 1, name: 'Lan', route: '/network/lan' },
+  { id: 2, name: 'DNS', route: '/network/dns' },
+  { id: 3, name: 'WPA Supplicant', route: '/network/wpa' },
+  { id: 4, name: 'DHCP', route: '/network/dhcp' },
+]
 
-    const navigateTo = route => {
-      router.push(route)
-    }
-
-    watch(() => route.path, newPath => {
-      tab.value = newPath
-    })
-
-    return {
-      items,
-      tab,
-      navigateTo
-    }
-  }
+const navigateTo = route => {
+  router.push(route)
 }
+
+watch(() => route.path, newPath => {
+  tab.value = newPath
+})
 </script>
 
 <style scoped>
@@ -74,6 +63,7 @@ export default {
   overflow-y: auto;
   overflow-x: hidden;
 }
+
 .scroll-container::-webkit-scrollbar {
   width: 3px;
 }

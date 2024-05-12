@@ -24,36 +24,25 @@
   </v-container>
 </template>
 
-<script>
-import { ref, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+<script setup>
+import { ref, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 
-export default {
-  name: 'UsersConfiguration',
-  setup() {
-    const router = useRouter()
-    const route = useRoute()
+const router = useRouter();
+const route = useRoute();
 
-    const tab = ref(route.path)  // inicia a tab com a rota atual
+const tab = ref(route.path);  // Inicia a tab com a rota atual
 
-    const items = [
-      { id: 1, name: 'Users', route: '/users/users' },
-      { id: 2, name: 'Teams', route: '/users/teams' },
-    ]
+const items = [
+  { id: 1, name: 'Users', route: '/users/users' },
+  { id: 2, name: 'Teams', route: '/users/teams' },
+];
 
-    const navigateTo = route => {
-      router.push(route)
-    }
+const navigateTo = (route) => {
+  router.push(route);
+};
 
-    watch(() => route.path, newPath => {
-      tab.value = newPath
-    })
-
-    return {
-      items,
-      tab,
-      navigateTo
-    }
-  }
-}
+watch(() => route.path, (newPath) => {
+  tab.value = newPath;
+});
 </script>

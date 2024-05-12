@@ -35,73 +35,73 @@
   </v-container>
 </template>
 
-<script>
-import router from '@/router'
-import Authentication from '@/services/auth'
-import UserService from "@/services/userService.js"
+<script setup>
+import { ref, onMounted } from 'vue';
+import router from '@/router';
+import Authentication from '@/services/auth';
+import UserService from "@/services/userService.js";
 
-export default {
-  name: 'SignUp',
-  data() {
-    return {
-      show: false,
-      form: false,
-      email: '',
-      firstName: '',
-      lastName: '',
-      password: '',
-      loading: false,
-    }
-  },
-  mounted() {
-    const token = localStorage.getItem('accessToken')
-    const expiration = localStorage.getItem('expiration')
+// Definindo estados reativos com `ref`
+const show = ref(false);
+const form = ref(false);
+const email = ref('');
+const firstName = ref('');
+const lastName = ref('');
+const password = ref('');
+const loading = ref(false);
 
-    if (token && expiration) {
-      const currentTime = new Date().getTime()
-      const authenticated = Authentication.isAuthenticated()
+// Função para registro de usuário
+const signup = async () => {
+  const userData = {
+    email: email.value,
+    firstName: firstName.value,
+    lastName: lastName.value,
+    password: password.value,
+  };
 
-      if (currentTime < parseInt(expiration)) {
-        if (!authenticated) {
-          Authentication.login()
-        }
-        router.push('/')
-      } else {
-        Authentication.logout()
+  try {
+    const userCredential = await UserService.create(userData);
+    console.log(userCredential);
+    alert("Cadastro realizado com sucesso! Faça seu login.");
+    router.push('/login');
+  } catch (error) {
+    alert(error.message);
+    loading.value = false;
+  }
+};
+
+// Função para submeter o formulário
+const onSubmit = () => {
+  if (!form.value) return;
+
+  loading.value = true;
+  signup();
+};
+
+// Função para validação de campos requeridos
+const required = (v) => !!v || 'Field is required';
+
+// Verificação de autenticação ao montar o componente
+onMounted(() => {
+  const token = localStorage.getItem('TomatoesAccessToken');
+  const expiration = localStorage.getItem('TomatoesExpiration');
+
+  if (token && expiration) {
+    const currentTime = new Date().getTime();
+    const authenticated = Authentication.isAuthenticated();
+
+    if (currentTime < parseInt(expiration)) {
+      if (!authenticated) {
+        Authentication.login();
       }
-    }
-  },
-  methods: {
-    signup() {
-      const userData = {
-        email: this.email,
-        firstName: this.firstName,
-        lastName: this.lastName,
-        password: this.password,
-      }
-      UserService.create(userData)
-        .then((userCredential) => {
-          console.log(userCredential);
-          alert("Cadastro realizado com sucesso! Faça seu login.");
-          router.push('/login');
-        })
-        .catch((error) => {
-          alert(error.message);
-          this.loading = false
-        })
-    },
-    onSubmit() {
-      if (!this.form) return
-
-      this.loading = true
-      this.signup()
-    },
-    required(v) {
-      return !!v || 'Field is required'
+      router.push('/');
+    } else {
+      Authentication.logout();
     }
   }
-}
+});
 </script>
+
 
 <style>
 .gradient-container {

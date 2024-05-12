@@ -24,38 +24,27 @@
   </v-container>
 </template>
 
-<script>
+<script setup>
 import { ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
-export default {
-  name: 'AlertingConfiguration',
-  setup() {
-    const router = useRouter()
-    const route = useRoute()
+const router = useRouter()
+const route = useRoute()
 
-    const tab = ref(route.path)  // inicia a tab com a rota atual
+const tab = ref(route.path)  // inicia a tab com a rota atual
 
-    const items = [
-      { id: 1, name: 'Alert rules', route: '/alerting/rules' },
-      { id: 2, name: 'Contact modes', route: '/alerting/modes' },
-      { id: 3, name: 'Silences', route: '/alerting/silences' },
-      { id: 4, name: 'Configuration', route: '/alerting/config' },
-    ]
+const items = [
+  { id: 1, name: 'Alert rules', route: '/alerting/rules' },
+  { id: 2, name: 'Contact modes', route: '/alerting/modes' },
+  { id: 3, name: 'Silences', route: '/alerting/silences' },
+  { id: 4, name: 'Configuration', route: '/alerting/config' },
+]
 
-    const navigateTo = route => {
-      router.push(route)
-    }
-
-    watch(() => route.path, newPath => {
-      tab.value = newPath
-    })
-
-    return {
-      items,
-      tab,
-      navigateTo
-    }
-  }
+const navigateTo = route => {
+  router.push(route)
 }
+
+watch(() => route.path, newPath => {
+  tab.value = newPath
+})
 </script>

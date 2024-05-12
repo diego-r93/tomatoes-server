@@ -5,8 +5,8 @@ class Authentication {
   }
 
   isAuthenticated() {
-    const token = localStorage.getItem('accessToken');
-    const expiration = localStorage.getItem('expiration');
+    const token = localStorage.getItem('TomatoesAccessToken');
+    const expiration = localStorage.getItem('TomatoesExpiration');
     const currentTime = new Date().getTime();
 
     this.authenticated = token && expiration && currentTime < parseInt(expiration);
@@ -20,8 +20,8 @@ class Authentication {
   }
 
   logout() {
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('expiration')
+    localStorage.removeItem('TomatoesAccessToken')
+    localStorage.removeItem('TomatoesExpiration')
     localStorage.removeItem('userId')
     localStorage.removeItem('userData')
     this.stopTokenRenewal(); // Para a renovação do token

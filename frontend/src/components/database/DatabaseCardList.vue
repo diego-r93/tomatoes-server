@@ -62,104 +62,81 @@
   </v-dialog>
 </template>
 
-<script>
+<script setup>
 import { ref, onMounted } from 'vue';
 import DatabaseCard from './DatabaseCard.vue';
 import mongoDataService from "@/services/mongoDataService";
 
-export default {
-  name: "DatabaseCardList",
-  components: { DatabaseCard },
-  setup() {
-    const loading = ref(true);
-    const boards = ref([]);
+const loading = ref(true);
+const boards = ref([]);
 
-    const pumperCode = ref("");
-    const pumperName = ref("");
-    const pulseDuration = ref("");
-    const driveTimes = ref([]);
+const pumperCode = ref("");
+const pumperName = ref("");
+const pulseDuration = ref("");
+const driveTimes = ref([]);
 
-    const addBoardFormIsVisible = ref(false);
-    const form = ref(false);
+const addBoardFormIsVisible = ref(false);
 
-    const addNewBoard = async () => {
-      loading.value = true;
-      try {
-        await mongoDataService.createBoard({
-          pumperCode: pumperCode.value,
-          pumperName: pumperName.value,
-          pulseDuration: pulseDuration.value,
-          driveTimes: [{
-            time: "06:00:00",
-            state: false,
-          }],
-        });
-
-        // Resetar os campos após a adição
-        pumperCode.value = "";
-        pumperName.value = "";
-        pulseDuration.value = "";
-
-        addBoardFormIsVisible.value = false;
-        // Recarregar os boards
-        await loadBoards();
-      } catch (error) {
-        console.error(error);
-      } finally {
-        loading.value = false;
-      }
-    };
-
-
-    const loadBoards = async () => {
-      loading.value = true;
-      try {
-        const response = await mongoDataService.getAllBoards();
-        boards.value = response.data;
-      } catch (error) {
-        console.log(error);
-      } finally {
-        loading.value = false;
-      }
-    };
-
-    const handleUpdateBoard = async () => {
-     await loadBoards();
-    };
-
-    const handleDelete = async (boardId) => {
-      boards.value = boards.value.filter(board => board.id !== boardId);
-      await loadBoards();
-    };
-
-    const handleUpdateDriveTimeState = ({ boardId, index, newState }) => {
-      const boardToUpdate = boards.value.find(board => board.id === boardId.value);
-      if (boardToUpdate) {
-        boardToUpdate.driveTimes[index].state = newState;
-      }
-    };
-
-    onMounted(() => {
-      loadBoards();
+const addNewBoard = async () => {
+  loading.value = true;
+  try {
+    await mongoDataService.createBoard({
+      pumperCode: pumperCode.value,
+      pumperName: pumperName.value,
+      pulseDuration: pulseDuration.value,
+      driveTimes: [{
+        time: "06:00:00",
+        state: false,
+      }],
     });
 
-    return {
-      boards,
-      addBoardFormIsVisible,
-      pumperCode,
-      pumperName,
-      pulseDuration,
-      driveTimes,
-      form,
-      loading,
-      addNewBoard,
-      loadBoards,
-      handleUpdateBoard,
-      handleDelete,
-      handleUpdateDriveTimeState,
-    };
-  },
+    // Resetar os campos após a adição
+    pumperCode.value = "";
+    pumperName.value = "";
+    pulseDuration.value = "";
+
+    addBoardFormIsVisible.value = false;
+    // Recarregar os boards
+    await loadBoards();
+  } catch (error) {
+    console.error(error);
+  } finally {
+    loading.value = false;
+  }
 };
+
+
+const loadBoards = async () => {
+  loading.value = true;
+  try {
+    const response = await mongoDataService.getAllBoards();
+    boards.value = response.data;
+  } catch (error) {
+    console.log(error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+const handleUpdateBoard = async () => {
+  await loadBoards();
+};
+
+const handleDelete = async (boardId) => {
+  boards.value = boards.value.filter(board => board.id !== boardId);
+  await loadBoards();
+};
+
+const handleUpdateDriveTimeState = ({ boardId, index, newState }) => {
+  const boardToUpdate = boards.value.find(board => board.id === boardId.value);
+  if (boardToUpdate) {
+    boardToUpdate.driveTimes[index].state = newState;
+  }
+};
+
+onMounted(() => {
+  loadBoards();
+});
 </script>
 
 <style scoped>

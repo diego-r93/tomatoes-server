@@ -37,47 +37,42 @@
   </v-navigation-drawer>
 </template>
 
-<script>
-import router from '@/router'
-import Authentication from '@/services/auth'
+<script setup>
+import { ref } from 'vue';
+import router from '@/router';
+import Authentication from '@/services/auth';
 
-export default {
-  data() {
-    return {
-      drawer: true,
-      items: [
-        { title: 'DashBoards', icon: 'mdi-view-dashboard', value: "dashboards", path: '/dashboard' },
-        { title: 'Device configuration', icon: 'mdi-chip', value: "device", path: '/device' },
-        { title: 'Database configuration', icon: 'mdi-database', value: "database", path: '/database' },
-        { title: 'Alerting', icon: 'mdi-bell', value: "alerting", path: '/alerting' },
-        { title: 'Network Configuration', icon: 'mdi mdi-lan', value: "network", path: '/network' },
-        { title: 'Users', icon: 'mdi-account', value: "users", path: '/users' },
-        { title: 'Configuration', icon: 'mdi-cog', value: "configuration", path: '/configuration' },
-      ],
+// Define os estados reativos com `ref`
+const drawer = ref(true);
+const rail = ref(true);
+const selectedItem = ref('dashboard');
+const items = ref([
+  { title: 'DashBoards', icon: 'mdi-view-dashboard', value: "dashboards", path: '/dashboard' },
+  { title: 'Device configuration', icon: 'mdi-chip', value: "device", path: '/device' },
+  { title: 'Database configuration', icon: 'mdi-database', value: "database", path: '/database' },
+  { title: 'Alerting', icon: 'mdi-bell', value: "alerting", path: '/alerting' },
+  { title: 'Network Configuration', icon: 'mdi mdi-lan', value: "network", path: '/network' },
+  { title: 'Users', icon: 'mdi-account', value: "users", path: '/users' },
+  { title: 'Configuration', icon: 'mdi-cog', value: "configuration", path: '/configuration' },
+]);
 
-      itemsHelp: [
-        { title: 'Vue.js', icon: 'mdi-open-in-new', url: 'https://vuejs.org/' },
-        { title: 'Vuetify', icon: 'mdi-open-in-new', url: 'https://vuetifyjs.com/' },
-        { title: 'Node.js', icon: 'mdi-open-in-new', url: 'https://nodejs.org/' },
-        { title: 'Express.js', icon: 'mdi-open-in-new', url: 'https://expressjs.com/' },
-        { title: 'MongoDB', icon: 'mdi-open-in-new', url: 'https://www.mongodb.com/' },
-        { title: 'Documentation', icon: 'mdi-open-in-new', url: 'https://github.com/diego-r93/tomatoes-server' },
-      ],
+const itemsHelp = ref([
+  { title: 'Vue.js', icon: 'mdi-open-in-new', url: 'https://vuejs.org/' },
+  { title: 'Vuetify', icon: 'mdi-open-in-new', url: 'https://vuetifyjs.com/' },
+  { title: 'Node.js', icon: 'mdi-open-in-new', url: 'https://nodejs.org/' },
+  { title: 'Express.js', icon: 'mdi-open-in-new', url: 'https://expressjs.com/' },
+  { title: 'MongoDB', icon: 'mdi-open-in-new', url: 'https://www.mongodb.com/' },
+  { title: 'Documentation', icon: 'mdi-open-in-new', url: 'https://github.com/diego-r93/tomatoes-server' },
+]);
 
-      rail: true,
-      selectedItem: 'dashboard',
-    }
-  },
-  methods: {
-    selectItem(itemValue) {
-      this.selectedItem = itemValue
-    },
-    logoutUser() {
-      Authentication.logout()
-      router.push('/login')
-    },
+// Define os métodos
+function selectItem(itemValue) {
+  selectedItem.value = itemValue;
+}
 
-  },
+function logoutUser() {
+  Authentication.logout();
+  router.push('/login');
 }
 </script>
 

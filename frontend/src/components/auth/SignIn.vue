@@ -36,83 +36,82 @@
   </v-container>
 </template>
 
-<script>
-import router from '@/router'
-import Authentication from '@/services/auth'
-import UserService from '@/services/userService'
+<script setup>
+import { ref, onMounted } from 'vue';
+import router from '@/router';
+import Authentication from '@/services/auth';
+import UserService from '@/services/userService';
 
-export default {
-  name: "SignIn",
-  data() {
-    return {
-      show: false,
-      form: false,
-      email: "",
-      password: "",
-      loading: false,
-    }
-  },
-  mounted() {
-    const token = localStorage.getItem('accessToken')
-    const expiration = localStorage.getItem('expiration')
+// Definindo estados reativos com `ref`
+const show = ref(false);
+const form = ref(false);
+const email = ref("");
+const password = ref("");
+const loading = ref(false);
 
-    if (token && expiration) {
-      const currentTime = new Date().getTime()
-      const authenticated = Authentication.isAuthenticated()
+// Função para autenticação de usuário
+const signin = async () => {
+  try {
+    const res = await UserService.login({
+      email: email.value,
+      password: password.value,
+    });
+    loading.value = false;
+    Authentication.login();
 
-      if (currentTime < parseInt(expiration)) {
-        if (!authenticated) {
-          Authentication.login()
-        }
-        router.push('/')
-      } else {
-        Authentication.logout()        
-      }
-    }    
-  },
-  methods: {
-    signin() {
-      UserService.login({
-        email: this.email,
-        password: this.password,
-      }).then(res => {
-        this.loading = false;
-        Authentication.login();
-        
-        const user = res.data;       
+    const user = res.data;
 
-        const expiration = new Date().getTime() + 3600 * 1000;
-        
-        localStorage.setItem('accessToken', user.accessToken);
-        localStorage.setItem('expiration', expiration);
-        localStorage.setItem('userId', user._id);
-        localStorage.setItem('userData', JSON.stringify({
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          phone: user.phone,
-          state: user.state,
-        }));
+    const expiration = new Date().getTime() + 3600 * 1000;
 
-        router.push('/');
-      })
-      .catch((error) => {
-        console.log(error.code);
-        alert(error.message);
-        this.loading = false
-      });      
-    },
-    onSubmit() {
-      if (!this.form) return
+    localStorage.setItem('TomatoesAccessToken', user.accessToken);
+    localStorage.setItem('TomatoesExpiration', expiration.toString());
+    localStorage.setItem('userId', user._id);
+    localStorage.setItem('userData', JSON.stringify({
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      state: user.state,
+    }));
 
-      this.loading = true
-      this.signin()
-    },
-    required(v) {
-      return !!v || 'Field is required'
-    },
+    router.push('/');
+  } catch (error) {
+    console.error(error.code);
+    alert(error.message);
+    loading.value = false;
   }
-}
+};
+
+// Função para submeter formulário
+const onSubmit = () => {
+  if (!form.value) return;
+
+  loading.value = true;
+  signin();
+};
+
+// Função para validação de campos requeridos
+const required = (v) => !!v || 'Field is required';
+
+// Verificação de autenticação ao montar o componente
+onMounted(() => {
+  const token = localStorage.getItem('accessToken');
+  const expiration = localStorage.getItem('expiration');
+
+  if (token && expiration) {
+    const currentTime = new Date().getTime();
+    const authenticated = Authentication.isAuthenticated();
+
+    if (currentTime < parseInt(expiration)) {
+      if (!authenticated) {
+        Authentication.login();
+      }
+      router.push('/');
+    } else {
+      Authentication.logout();
+    }
+  }
+});
 </script>
 
 <style>
