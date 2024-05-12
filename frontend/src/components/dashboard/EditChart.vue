@@ -42,7 +42,7 @@
       <v-col cols="9">
         <v-row no-gutters>
           <v-col cols="12 mb-10">
-            <v-card ref="chartCardRef" min-height="300" v-if="selectedChart" class="custom-border">
+            <v-card ref="vCardRef" min-height="300" v-if="selectedChart" class="custom-border">
               <v-hover>
                 <template v-slot:default="{ isHovering, props }">
                   <v-card :color="isHovering ? '#3c3c3c' : undefined" v-bind="props"
@@ -51,7 +51,7 @@
                   </v-card>
                 </template>
               </v-hover>
-              <Chart ref="chartCardRef" class="no-drag" :chartOptions="selectedChart.options"
+              <Chart ref="chartComponentRef" class="no-drag" :chartOptions="selectedChart.options"
                 :chartData="selectedChart.data"
                 :key="selectedChart.id + '-' + selectedChart.options.width + '-' + selectedChart.options.height" />
             </v-card>
@@ -98,12 +98,17 @@ import { onMounted, ref, reactive, nextTick, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import Chart from '@/components/dashboard/Chart.vue';
 import influxdbDataService from '@/services/influxdbDataService';
+import { useDashboardStore } from '@/store/dashboardData';
+
+const vCardRef = ref(null);
+const chartComponentRef = ref(null);
+
+const dashboardStore = useDashboardStore();
 
 const router = useRouter();
 const route = useRoute();
 const charts = reactive([]); // Armazena todos os gráficos obtidos
-const selectedChart = ref(null); // Mudar o backend e o servide do frontend para buscar somente um char em dashboardDataService
-const chartCardRef = ref(null);
+const selectedChart = ref(null);
 const originalQuery = ref(""); // Armazena a consulta original
 const panels = ref([0, 1, 2]);
 
@@ -129,20 +134,22 @@ const state = reactive({
   ],
 });
 
+selectedChart.value = dashboardStore.currentChart || null;
+
 const goBack = () => {
   router.go(-1);
 };
 
 const updateChartsSize = () => {
   nextTick(() => {
-    if (chartCardRef.value && chartCardRef.value.$el) {
-      const rect = chartCardRef.value.$el.getBoundingClientRect();
+    if (vCardRef.value && vCardRef.value.$el) {
+      const rect = vCardRef.value.$el.getBoundingClientRect();
       if (selectedChart.value && selectedChart.value.options) {
         selectedChart.value.options.width = rect.width;
         selectedChart.value.options.height = rect.height;
       }
     } else {
-      console.error('chartCardRef is not available or $el is not accessible.');
+      console.error('vCardRef is not available or $el is not accessible.');
     }
   });
 };
@@ -251,19 +258,27 @@ const getChartTitle = computed({
     return selectedChart.value ? selectedChart.value.options.chartTitle : '';
   },
   set(newValue) {
-    if (selectedChart.value) {
-      selectedChart.value.options.chartTitle = newValue;
+    if (dashboardStore.currentChart) {
+      dashboardStore.currentChart.options.chartTitle = newValue;
+      // Aqui você pode adicionar lógicas adicionais, como registrar a mudança, etc.
     }
   }
 });
 
 const getchartColor = computed({
   get() {
+    // Retorna a cor atual da segunda série do gráfico selecionado
     return selectedChart.value ? selectedChart.value.options.series[1].stroke : '';
   },
   set(newValue) {
+    // Define a nova cor na segunda série do gráfico atual no store
     if (selectedChart.value) {
       selectedChart.value.options.series[1].stroke = newValue;
+      selectedChart.value.options.series[1].points.fill = newValue;
+      // Atualiza o gráfico no dashboardStore para refletir a nova cor
+      dashboardStore.setCurrentChart(selectedChart.value);
+      // Chama uma função adicional, se necessário (removendo a chamada anterior problemática)
+      updateChartColor(); // Esta função pode conter outras ações relacionadas à mudança de cor
     }
   }
 });
@@ -273,7 +288,9 @@ const updateChartTitle = () => {
 };
 
 const updateChartColor = () => {
-  // Additional logic if needed upon color update
+  // Aqui você pode implementar ações adicionais necessárias após a mudança de cor.
+  // Por exemplo, salvar o estado atual no localStorage ou notificar o usuário.
+  // console.log("Cor do gráfico atualizada com sucesso.");
 };
 
 const applyChanges = () => {
@@ -308,11 +325,15 @@ const loadDashboard = async () => {
         charts.push(chartObject);  // Adiciona ao array reativo
       });
 
-      // Define o gráfico selecionado com base no ID passado pela rota
-      selectedChart.value = charts.find(c => c.id === Number(chartId));
-      if (!selectedChart.value) {
+      // Tenta encontrar o gráfico com base no ID passado pela rota
+      const foundChart = charts.find(c => c.id === Number(chartId));
+      if (!foundChart) {
         console.error("Chart not found");
       } else {
+        // Salva o gráfico encontrado no dashboardStore
+        dashboardStore.setCurrentChart(foundChart);
+        // Carrega o gráfico do dashboardStore em selectedChart
+        selectedChart.value = dashboardStore.currentChart;
         // Armazena a consulta original quando o gráfico é carregado
         originalQuery.value = selectedChart.value.query;
       }
@@ -325,7 +346,10 @@ const loadDashboard = async () => {
 };
 
 onMounted(async () => {
-  await loadDashboard();
+  if (!dashboardStore.currentChart) {
+    await loadDashboard();  // Carrega os dados do dashboard se ainda não estiverem carregados
+  }
+
   updateChartsSize();
   updateQuerySince(timeSince.value);
 });

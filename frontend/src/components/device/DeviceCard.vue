@@ -67,6 +67,7 @@ function navigateToOTA(deviceData) {
 }
 
 function navigateToInfo(deviceData) {
+  deviceStore.setDeviceData(deviceData);
   router.push({ path: `/device/${deviceData.host}/info` });
 }
 

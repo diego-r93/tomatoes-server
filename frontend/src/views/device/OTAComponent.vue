@@ -96,7 +96,7 @@ import OTAService from "@/services/OTAService";
 
 const deviceStore = useDeviceStore();
 
-const loading = ref(false); // Colocar true quandoe stiver finalizado
+const loading = ref(false); // Colocar true quando estiver finalizado
 const uploading = ref(false);
 const progress = ref(0);
 const OTAError = ref(null);

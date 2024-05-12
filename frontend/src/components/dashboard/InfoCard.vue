@@ -549,12 +549,16 @@ const removeItem = (id) => {
   hasChanges.value = true;
 };
 
-const navigateToView = (value) => {
-  router.push({ path: `/dashboard/viewPanel/${value}` });
+const navigateToView = (chartId) => {
+  const chart = charts.find(c => c.id === Number(chartId));
+  dashboardStore.setCurrentChart(chart);
+  router.push({ path: `/dashboard/viewPanel/${chartId}` });
 };
 
-const navigateToEdit = (value) => {
-  router.push({ path: `/dashboard/editPanel/${value}` });
+const navigateToEdit = (chartId) => {
+  const chart = charts.find(c => c.id === Number(chartId));
+  dashboardStore.setCurrentChart(chart);
+  router.push({ path: `/dashboard/editPanel/${chartId}` });
 };
 
 // Objeto para mapear nomes de métodos para funções
@@ -695,7 +699,8 @@ const loadDashboard = async () => {
       localStorage.setItem('tomatoesDashboard', JSON.stringify(dashboardStore.dashboard));
       
       // Após salvar no store, imprimir o que foi salvo no localStorage
-      // console.log("Dados salvos no localStorage:", JSON.parse(localStorage.getItem('TomatoesDashboard')));
+      // console.log("Dados salvos no localStorage:", JSON.parse(localStorage.getItem('tomatoesDashboard')));
+      // console.log("Dados salvos no store:", dashboardStore.dashboard);
     }
   } catch (error) {
     console.error("Erro ao carregar os gráficos:", error);
@@ -703,7 +708,7 @@ const loadDashboard = async () => {
 };
 
 onMounted(async () => {
-  await loadDashboard().then();
+  await loadDashboard()
 
   updateQuerySince(timeSince.value);
   fetchChartData();
