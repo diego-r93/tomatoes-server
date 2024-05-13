@@ -63,8 +63,8 @@
       </div>
     </v-app-bar>
 
-    <grid-layout :layout="layout" @update:modelValue="updateLayout" :col-num="12" :row-height="30"
-      :is-draggable="draggable" :is-resizable="resizable" :vertical-compact="true" :use-css-transforms="true">
+    <grid-layout :layout="layout" @update:modelValue="updateLayout" :col-num="12" :row-height="30" is-draggable
+      is-resizable vertical-compact use-css-transforms>
 
       <grid-item v-for="chart in layout" :key="chart.i" :x="chart.x" :y="chart.y" :w="chart.w" :h="chart.h" :i="chart.i"
         :ref="el => registerRef(Number(chart.i), el)" drag-ignore-from=".no-drag"
@@ -111,8 +111,7 @@
             </v-hover>
           </div>
           <div class="d-flex justify-center">
-            <v-card class="position-absolute dropdown-list" :class="['elevation-15']"
-              v-show="listVisibility[chart.i]">
+            <v-card class="position-absolute dropdown-list" :class="['elevation-15']" v-show="listVisibility[chart.i]">
               <v-list density="compact">
                 <template v-for="(item, index) in listItems" :key="index">
                   <v-divider v-if="item.type === 'divider'"></v-divider>
@@ -121,16 +120,14 @@
                     <template v-slot:prepend>
                       <v-icon size="x-small" v-if="item.icon">{{ item.icon }}</v-icon>
                     </template>
-                    <v-list-item-content>
-                      <v-list-item-title class="dropdown-text mx-0">{{ item.title }}</v-list-item-title>
-                    </v-list-item-content>
+                    <v-list-item-title class="dropdown-text mx-0">{{ item.title }}</v-list-item-title>
                   </v-list-item>
                 </template>
               </v-list>
             </v-card>
-          </div>          
-            <Chart class="no-drag" :chartOptions="getChartById(chart.i).options" :chartData="getChartById(chart.i).data"
-              :key="chart.i + '-' + getChartById(chart.i).options.width + '-' + getChartById(chart.i).options.height" />
+          </div>
+          <Chart class="no-drag" :chartOptions="getChartById(chart.i).options" :chartData="getChartById(chart.i).data"
+            :key="chart.i + '-' + getChartById(chart.i).options.width + '-' + getChartById(chart.i).options.height" />
         </template>
       </grid-item>
     </grid-layout>
@@ -183,7 +180,6 @@ const hasChanges = ref(false);
 
 const state = reactive({
   draggable: true,
-  resizable: true,
   index: 3,
   selectedLabel: '5 minutes',
   timeOptions: [
@@ -468,7 +464,7 @@ const addItem = () => {
   // Adicionar novo chart com o novo layout
   charts.push({
     id: newId,
-    draggable: false,    
+    draggable: false,
     options: {
       chartTitle: "Chart Title",
       series: [
@@ -496,7 +492,7 @@ const addItem = () => {
         },
       },
       axes: [
-      {
+        {
           stroke: "#bdbdbd",
           grid: {
             "stroke": "#2C3033",
@@ -697,7 +693,7 @@ const loadDashboard = async () => {
       // Salvar os dados no store
       dashboardStore.setDashboard([...charts]);
       localStorage.setItem('tomatoesDashboard', JSON.stringify(dashboardStore.dashboard));
-      
+
       // Após salvar no store, imprimir o que foi salvo no localStorage
       // console.log("Dados salvos no localStorage:", JSON.parse(localStorage.getItem('tomatoesDashboard')));
       // console.log("Dados salvos no store:", dashboardStore.dashboard);

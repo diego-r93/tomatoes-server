@@ -2,6 +2,14 @@ class Authentication {
   constructor() {
     this.authenticated = false;
     this.tokenRenewalInterval = null; // Guarda a referência do intervalo para renovação do token
+    this.initialize();
+  }
+
+  initialize() {
+    if (this.isAuthenticated()) {
+      this.startTokenRenewal();
+      console.log('Usuário autenticado, renovação do token iniciada após o refresh.');
+    }
   }
 
   isAuthenticated() {
@@ -17,6 +25,7 @@ class Authentication {
   login() {
     this.authenticated = true;
     this.startTokenRenewal(); // Inicia a renovação do token
+    console.log('Login efetuado, início da renovação do token.');
   }
 
   logout() {
@@ -27,19 +36,26 @@ class Authentication {
     localStorage.removeItem('tomatoesDashboard')
     this.stopTokenRenewal(); // Para a renovação do token
     this.authenticated = false;
+    console.log('Logout efetuado, renovação do token parada.');
   }
 
   startTokenRenewal() {
-    // Define o intervalo para renovar o token a cada 5 minutos, por exemplo
+    if (this.tokenRenewalInterval) {
+      clearInterval(this.tokenRenewalInterval);
+    }
+
+    // Define o intervalo para renovar o token a cada 5 minutos
     this.tokenRenewalInterval = setInterval(() => {
       this.renewToken();
     }, 5 * 60 * 1000);
+    console.log('Renovação do token iniciada.');
   }
 
   stopTokenRenewal() {
     if (this.tokenRenewalInterval) {
       clearInterval(this.tokenRenewalInterval);
       this.tokenRenewalInterval = null;
+      console.log('Renovação do token parada.');
     }
   }
 
@@ -53,6 +69,7 @@ class Authentication {
     localStorage.setItem('tomatoesExpiration', newExpiration);
 
     // Aqui você também atualizaria o 'accessToken' com o novo token recebido
+    console.log('Token renovado. Nova expiração: ' + newExpiration);
   }
 }
 
