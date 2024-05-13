@@ -74,15 +74,23 @@
                 </v-expansion-panel-text>
               </v-expansion-panel>
 
-              <v-expansion-panel title='Standard Options'>
+              <v-expansion-panel title='Unit'>
                 <v-expansion-panel-text>
-                  Some content
+                  <v-text-field v-model=getChartScale @input=""></v-text-field>
                 </v-expansion-panel-text>
               </v-expansion-panel>
 
               <v-expansion-panel title='Standard Options'>
                 <v-expansion-panel-text>
                   <v-color-picker v-model=getchartColor @input=""></v-color-picker>
+                  <v-card-text>
+                    <v-slider v-model="fill" :max="1" :step="0.1" class="ma-4" label="Fill opacity" hide-details>
+                      <template v-slot:append>
+                        <v-text-field v-model="fill" density="compact" style="width: 80px" type="number"
+                          variant="outlined" hide-details></v-text-field>
+                      </template>
+                    </v-slider>
+                  </v-card-text>
                 </v-expansion-panel-text>
               </v-expansion-panel>
             </v-expansion-panels>
@@ -111,6 +119,7 @@ const charts = reactive([]); // Armazena todos os gráficos obtidos
 const selectedChart = ref(null);
 const originalQuery = ref(""); // Armazena a consulta original
 const panels = ref([0, 1, 2]);
+const fill = ref(0.1);
 
 const timeSince = ref('-5m');
 const timeRange = ref('500ms');
@@ -265,33 +274,49 @@ const getChartTitle = computed({
   }
 });
 
+const getChartScale = computed({
+  get() {
+    return selectedChart.value ? selectedChart.value.options.series[1].scale : '';
+  },
+  set(newValue) {
+    if (dashboardStore.currentChart) {
+      dashboardStore.currentChart.options.series[1].scale = newValue;
+      // Aqui você pode adicionar lógicas adicionais, como registrar a mudança, etc.
+    }
+  }
+});
+
 const getchartColor = computed({
   get() {
     // Retorna a cor atual da segunda série do gráfico selecionado
     return selectedChart.value ? selectedChart.value.options.series[1].stroke : '';
   },
   set(newValue) {
-    // Define a nova cor na segunda série do gráfico atual no store
+    // Converte a cor hexadecimal para rgba e define a nova cor na segunda série do gráfico atual no store
     if (selectedChart.value) {
-      selectedChart.value.options.series[1].stroke = newValue;
-      selectedChart.value.options.series[1].points.fill = newValue;
-      // Atualiza o gráfico no dashboardStore para refletir a nova cor
+      const hexToRgb = (hex) => {
+        let r = 0, g = 0, b = 0;
+        if (hex.length === 4) {
+          r = parseInt(hex[1] + hex[1], 16);
+          g = parseInt(hex[2] + hex[2], 16);
+          b = parseInt(hex[3] + hex[3], 16);
+        } else if (hex.length === 7) {
+          r = parseInt(hex[1] + hex[2], 16);
+          g = parseInt(hex[3] + hex[4], 16);
+          b = parseInt(hex[5] + hex[6], 16);
+        }
+        return `rgb(${r}, ${g}, ${b})`;
+      };
+      const rgbColor = hexToRgb(newValue);
+      
+      selectedChart.value.options.series[1].stroke = rgbColor;
+      selectedChart.value.options.series[1].points.fill = rgbColor;
+      selectedChart.value.options.series[1].fill = `rgba(${rgbColor.match(/\d+/g).join(', ')}, ${fill.value})`;
+      
       dashboardStore.setCurrentChart(selectedChart.value);
-      // Chama uma função adicional, se necessário (removendo a chamada anterior problemática)
-      updateChartColor(); // Esta função pode conter outras ações relacionadas à mudança de cor
     }
   }
 });
-
-const updateChartTitle = () => {
-  // Additional logic if needed upon title update
-};
-
-const updateChartColor = () => {
-  // Aqui você pode implementar ações adicionais necessárias após a mudança de cor.
-  // Por exemplo, salvar o estado atual no localStorage ou notificar o usuário.
-  // console.log("Cor do gráfico atualizada com sucesso.");
-};
 
 const applyChanges = () => {
   if (selectedChart.value) {
