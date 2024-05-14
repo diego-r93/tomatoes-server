@@ -57,44 +57,48 @@
             </v-card>
           </v-col>
           <v-col cols="12">
-            <v-card min-height="300" class="custom-border">
-              <v-textarea v-model="getQuery" class="code-editor" rows="10" hide-details outlined bg-color="#121212"
-                color="white" no-resize></v-textarea>
+            <v-card class="custom-border">
+              <v-textarea v-model="getQuery" class="code-editor" rows="10" hide-details variant="solo"
+                bg-color="#121212" color="white" no-resize></v-textarea>
             </v-card>
           </v-col>
         </v-row>
       </v-col>
       <v-col cols="3">
         <v-card min-height="800" class="ml-4 custom-border">
-          <div>
-            <v-expansion-panels v-model="panels" multiple>
-              <v-expansion-panel title='Panel Title'>
-                <v-expansion-panel-text>
-                  <v-text-field v-model=getChartTitle @input=""></v-text-field>
-                </v-expansion-panel-text>
-              </v-expansion-panel>
+          <v-virtual-scroll class="scroll-container" :items="[1]" height="800px">
+            <template v-slot:default>
+              <v-expansion-panels v-model="panels" variant="accordion" multiple>
+                <v-expansion-panel title='Panel Title' static>
+                  <v-expansion-panel-text>
+                    <v-text-field class="mt-2" v-model=getChartTitle @input="" variant="outlined"></v-text-field>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
 
-              <v-expansion-panel title='Unit'>
-                <v-expansion-panel-text>
-                  <v-text-field v-model=getChartScale @input=""></v-text-field>
-                </v-expansion-panel-text>
-              </v-expansion-panel>
+                <v-expansion-panel title='Unit'>
+                  <v-expansion-panel-text>
+                    <v-text-field class="mt-2" v-model=getChartScale @input="" variant="outlined"></v-text-field>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
 
-              <v-expansion-panel title='Standard Options'>
-                <v-expansion-panel-text>
-                  <v-color-picker v-model=getchartColor @input=""></v-color-picker>
-                  <v-card-text>
-                    <v-slider v-model="fill" :max="1" :step="0.1" class="ma-4" label="Fill opacity" hide-details>
-                      <template v-slot:append>
-                        <v-text-field v-model="fill" density="compact" style="width: 80px" type="number"
-                          variant="outlined" hide-details></v-text-field>
-                      </template>
-                    </v-slider>
-                  </v-card-text>
-                </v-expansion-panel-text>
-              </v-expansion-panel>
-            </v-expansion-panels>
-          </div>
+                <v-expansion-panel title='Standard Options'>
+                  <v-expansion-panel-text>
+                    <div class="d-flex justify-center">
+                      <v-color-picker elevation="0" class="mt-4" v-model="getchartColor" @input=""></v-color-picker>
+                    </div>
+                    <v-card-text>
+                      <v-slider v-model="fill" :max="1" :step="0.1" class="ma-4" label="Fill opacity" hide-details>
+                        <template v-slot:append>
+                          <v-text-field v-model="fill" density="compact" style="width: 80px" type="number"
+                            variant="outlined" hide-details></v-text-field>
+                        </template>
+                      </v-slider>
+                    </v-card-text>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+              </v-expansion-panels>
+            </template>
+          </v-virtual-scroll>
         </v-card>
       </v-col>
     </v-row>
@@ -308,11 +312,11 @@ const getchartColor = computed({
         return `rgb(${r}, ${g}, ${b})`;
       };
       const rgbColor = hexToRgb(newValue);
-      
+
       selectedChart.value.options.series[1].stroke = rgbColor;
       selectedChart.value.options.series[1].points.fill = rgbColor;
       selectedChart.value.options.series[1].fill = `rgba(${rgbColor.match(/\d+/g).join(', ')}, ${fill.value})`;
-      
+
       dashboardStore.setCurrentChart(selectedChart.value);
     }
   }
@@ -384,5 +388,24 @@ onMounted(async () => {
 .code-editor ::v-deep textarea {
   font-family: 'Consolas', monospace;
   font-size: 14px;
+}
+
+.scroll-container {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.scroll-container::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.scroll-container::-webkit-scrollbar-thumb {
+  background-color: #3c3c3c;
+  border-radius: 4px;
+}
+
+.scroll-container::-webkit-scrollbar-track {
+  background: transparent;
 }
 </style>

@@ -48,9 +48,22 @@ const currentLayout = computed(() => {
   font-style: normal;
 }
 
-body::-webkit-scrollbar {
-  display: none;
-  /* Oculta a barra de rolagem para navegadores WebKit como Chrome e Safari */
+ /* Oculta a barra de rolagem para navegadores WebKit como Chrome e Safari */
+::-webkit-scrollbar {
+  /* display: none; */
+  height: 6px;
+  width: 6px;
+  background: #000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3c3c3c;
+  -webkit-border-radius: 1ex;
+  -webkit-box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.75);
+}
+
+::-webkit-scrollbar-corner {
+  background: #000;
 }
 
 body {
