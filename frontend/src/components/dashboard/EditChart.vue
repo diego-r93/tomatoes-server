@@ -84,13 +84,15 @@
                 <v-expansion-panel title='Standard Options'>
                   <v-expansion-panel-text>
                     <div class="d-flex justify-center">
-                      <v-color-picker elevation="0" class="mt-4" v-model="getchartColor" @input=""></v-color-picker>
+                      <v-color-picker elevation="0" class="mt-4" v-model="getChartStrokeColor"
+                        @input="updateChartColors"></v-color-picker>
                     </div>
                     <v-card-text>
-                      <v-slider v-model="fill" :max="1" :step="0.1" class="ma-4" label="Fill opacity" hide-details>
+                      <v-slider v-model="fillOpacity" :max="1" :min="0" :step="0.1" class="ma-4" label="Fill opacity"
+                        hide-details>
                         <template v-slot:append>
-                          <v-text-field v-model="fill" density="compact" style="width: 80px" type="number"
-                            variant="outlined" hide-details></v-text-field>
+                          <v-text-field v-model="fillOpacity" density="compact" :max="1" :min="0" :step="0.1" style="width: 80px"
+                            type="number" variant="outlined" hide-details></v-text-field>
                         </template>
                       </v-slider>
                     </v-card-text>
@@ -106,7 +108,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, reactive, nextTick, computed } from 'vue';
+import { onMounted, ref, reactive, toRefs, nextTick, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import Chart from '@/components/dashboard/Chart.vue';
 import influxdbDataService from '@/services/influxdbDataService';
@@ -123,7 +125,7 @@ const charts = reactive([]); // Armazena todos os gráficos obtidos
 const selectedChart = ref(null);
 const originalQuery = ref(""); // Armazena a consulta original
 const panels = ref([0, 1, 2]);
-const fill = ref(0.1);
+const fillOpacity = ref(0.1);
 
 const timeSince = ref('-5m');
 const timeRange = ref('500ms');
@@ -290,36 +292,84 @@ const getChartScale = computed({
   }
 });
 
-const getchartColor = computed({
+const hexToRgb = (hex) => {
+  // Remove o # se estiver presente
+  hex = hex.replace(/^#/, '');
+
+  // Verifica o comprimento da string hexadecimal
+  if (hex.length !== 6 && hex.length !== 8) {
+    throw new Error('Formato hexadecimal inválido');
+  }
+
+  // Converte os valores hexadecimais para decimais
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+
+  if (hex.length === 8) {
+    const a = parseInt(hex.substring(6, 8), 16) / 255;
+    // Retorna a string no formato RGBA
+    return `rgba(${r}, ${g}, ${b}, ${a})`;
+  } else {
+    // Retorna a string no formato RGB
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+};
+
+const getChartStrokeColor = computed({
   get() {
     // Retorna a cor atual da segunda série do gráfico selecionado
     return selectedChart.value ? selectedChart.value.options.series[1].stroke : '';
   },
-  set(newValue) {
+  set(newColor) {
     // Converte a cor hexadecimal para rgba e define a nova cor na segunda série do gráfico atual no store
     if (selectedChart.value) {
-      const hexToRgb = (hex) => {
-        let r = 0, g = 0, b = 0;
-        if (hex.length === 4) {
-          r = parseInt(hex[1] + hex[1], 16);
-          g = parseInt(hex[2] + hex[2], 16);
-          b = parseInt(hex[3] + hex[3], 16);
-        } else if (hex.length === 7) {
-          r = parseInt(hex[1] + hex[2], 16);
-          g = parseInt(hex[3] + hex[4], 16);
-          b = parseInt(hex[5] + hex[6], 16);
-        }
-        return `rgb(${r}, ${g}, ${b})`;
-      };
-      const rgbColor = hexToRgb(newValue);
-
-      selectedChart.value.options.series[1].stroke = rgbColor;
-      selectedChart.value.options.series[1].points.fill = rgbColor;
-      selectedChart.value.options.series[1].fill = `rgba(${rgbColor.match(/\d+/g).join(', ')}, ${fill.value})`;
-
-      dashboardStore.setCurrentChart(selectedChart.value);
+      updateChartColors(newColor);
     }
   }
+});
+
+const updateChartColors = (newColor) => {
+  if (selectedChart.value) {
+    selectedChart.value.options.series[1].stroke = hexToRgb(newColor);
+    selectedChart.value.options.series[1].points.fill = hexToRgb(newColor);
+
+    let strokeColor = selectedChart.value.options.series[1].stroke;
+    
+    // Verifica se é rgba ou rgb e ajusta a opacidade
+    if (strokeColor.startsWith('rgba')) {
+      selectedChart.value.options.series[1].fill = strokeColor;
+    } else {
+      strokeColor = strokeColor.replace(/rgb\((\d+), (\d+), (\d+)\)/, `rgba($1, $2, $3, ${fillOpacity.value})`);
+      selectedChart.value.options.series[1].fill = strokeColor;
+    }
+
+    selectedChart.value.options.series[1].fill = strokeColor;
+    dashboardStore.setCurrentChart(selectedChart.value);
+    selectedChart.value = JSON.parse(JSON.stringify(selectedChart.value));
+  }
+};
+
+const updateChartFill = (newOpacity) => {
+  if (selectedChart.value) {
+    const limitedOpacity = Math.min(Math.max(newOpacity, 0), 1); // Garante que o valor esteja entre 0 e 1
+    let strokeColor = selectedChart.value.options.series[1].stroke;
+
+    // Verifica se é rgba ou rgb e ajusta a opacidade
+    if (strokeColor.startsWith('rgba')) {
+      strokeColor = strokeColor.replace(/rgba\((\d+), (\d+), (\d+), ([^)]+)\)/, `rgba($1, $2, $3, ${limitedOpacity})`);
+    } else {
+      strokeColor = strokeColor.replace(/rgb\((\d+), (\d+), (\d+)\)/, `rgba($1, $2, $3, ${limitedOpacity})`);
+    }
+
+    selectedChart.value.options.series[1].fill = strokeColor;
+    dashboardStore.setCurrentChart(selectedChart.value);
+    selectedChart.value = JSON.parse(JSON.stringify(selectedChart.value));
+  }
+};
+
+watch(fillOpacity, (newValue) => {
+  updateChartFill(newValue);
 });
 
 const applyChanges = () => {
@@ -373,6 +423,8 @@ const loadDashboard = async () => {
     console.error("Error parsing chart data from localStorage:", error);
   }
 };
+
+
 
 onMounted(async () => {
   if (!dashboardStore.currentChart) {

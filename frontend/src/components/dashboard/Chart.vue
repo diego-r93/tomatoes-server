@@ -27,10 +27,10 @@ const data = ref([...(chartData.value || [])]);
 
 watch(chartOptions, (newVal) => {
   options.value = {...newVal};
-});
+}, { deep: true });
 
 watch(chartData, (newVal) => {
   data.value = [...newVal];
-});
+}, { deep: true });
 
 </script>

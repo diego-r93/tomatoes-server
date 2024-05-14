@@ -3,7 +3,7 @@
     <v-row>
       <v-col>
         <div class="text-center">
-          <v-progress-circular :size="80" color="primary" indeterminate></v-progress-circular>
+          <v-progress-circular :size="80" color="secondary" indeterminate></v-progress-circular>
         </div>
       </v-col>
     </v-row>
