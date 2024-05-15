@@ -133,6 +133,7 @@
     </grid-layout>
   </v-container>
 
+  <!-- Diálogo de Confirmação de salvamento do Dashboard -->
   <v-dialog v-model="showSaveDialog" persistent max-width="340px">
     <v-card>
       <v-card-title class="headline">Save Dashboard</v-card-title>
@@ -142,6 +143,25 @@
           Save
         </v-btn>
         <v-btn color="red darken-1" text @click="showSaveDialog = false">
+          Cancel
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+
+  <!-- Diálogo de Remoção de Chart -->
+  <v-dialog v-model="isDeleteDialogOpen" persistent max-width="300px">
+    <v-card>
+      <v-card-title class="headline">Remove Panel</v-card-title>
+      <v-card-text>
+        Are you sure you want to delete this card?
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn color="green darken-1" text @click="removeItem()">
+          Confirm
+        </v-btn>
+        <v-btn color="red darken-1" text @click="isDeleteDialogOpen = false">
           Cancel
         </v-btn>
       </v-card-actions>
@@ -176,6 +196,8 @@ const placeholderAdded = ref(false);
 const placeholderVisible = ref(false);
 
 const showSaveDialog = ref(false);
+const isDeleteDialogOpen = ref(false);
+const chartToDeleteId = ref(null);
 const hasChanges = ref(false);
 
 const state = reactive({
@@ -222,7 +244,7 @@ const listItems = [
   { title: 'View', icon: 'mdi mdi-eye-outline', value: 1, method: 'navigateToView' },
   { title: 'Edit', icon: 'mdi-view-dashboard-edit-outline', value: 2, method: 'navigateToEdit' },
   { type: 'divider' },
-  { title: 'Remove', icon: 'mdi mdi-trash-can-outline', value: 3, method: 'removeItem' },
+  { title: 'Remove', icon: 'mdi mdi-trash-can-outline', value: 3, method: 'confirmDeleteChart' },
 ];
 
 function mouseDownHandler(chartId, event) {
@@ -238,14 +260,12 @@ function mouseUpHandler(chartId) {
   }
 }
 
-// Função para alternar a visibilidade
+// Função para alternar a visibilidade e fechar as outras listas
 const toggleListVisibility = (chartId) => {
-  if (listVisibility[chartId] !== undefined) {
+  closeAllChartLists();
+  nextTick(() => {
     listVisibility[chartId] = !listVisibility[chartId];
-  } else {
-    // Se não existir, inicializa como true (se é a primeira vez que clica, mostra a lista)
-    listVisibility[chartId] = true;
-  }
+  });
 };
 
 // Método para registrar os elementos DOM dos grid-items.
@@ -527,21 +547,34 @@ const addItem = () => {
   hasChanges.value = true;
 };
 
-const removeItem = (id) => {
-  // Certifique-se de que o ID seja um número, já que os IDs nos objetos de layout são strings
-  const numericId = Number(id);
+const closeAllChartLists = () => {
+  for (let key in listVisibility) {
+    if (listVisibility.hasOwnProperty(key)) {
+      listVisibility[key] = false;
+    }
+  }
+};
 
-  // Encontrar o índice do gráfico com o ID correspondente
+const confirmDeleteChart = (chartId) => {
+  chartToDeleteId.value = chartId; // Converte para número ao definir
+  isDeleteDialogOpen.value = true;
+};
+
+const removeItem = () => {
+  isDeleteDialogOpen.value = false;
+
+  const numericId = Number(chartToDeleteId.value); // Converte para número ao usar
+  if (isNaN(numericId)) {
+    console.error(`ID inválido: ${id}`);
+    return;
+  }
   const chartIndex = charts.findIndex(chart => chart.id === numericId);
   if (chartIndex === -1) {
     console.error(`Gráfico com ID ${id} não encontrado.`);
-    return; // Se não encontrar o gráfico, retorna e não faz nada
+    return;
   }
-  // Remove o gráfico do array de gráficos
   charts.splice(chartIndex, 1);
-  // Remove o item de layout correspondente
   layout.value = layout.value.filter(item => Number(item.i) !== numericId);
-
   hasChanges.value = true;
 };
 
@@ -561,12 +594,15 @@ const navigateToEdit = (chartId) => {
 const methods = {
   navigateToView,
   navigateToEdit,
-  removeItem
+  confirmDeleteChart
 };
 
 const handleItemClick = (item, chartId) => {
   if (item.method && typeof methods[item.method] === 'function') {
-    methods[item.method](chartId);
+    closeAllChartLists();
+    nextTick(() => {
+      methods[item.method](chartId);
+    });
   } else {
     console.error(`Method ${item.method} is not a function`);
   }

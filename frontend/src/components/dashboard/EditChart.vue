@@ -42,7 +42,7 @@
       <v-col cols="9">
         <v-row no-gutters>
           <v-col cols="12 mb-10">
-            <v-card ref="vCardRef" min-height="300" v-if="selectedChart" class="custom-border">
+            <v-card ref="vCardRef" min-height="400" v-if="selectedChart" class="custom-border">
               <v-hover>
                 <template v-slot:default="{ isHovering, props }">
                   <v-card :color="isHovering ? '#3c3c3c' : undefined" v-bind="props"
@@ -91,8 +91,8 @@
                       <v-slider v-model="fillOpacity" :max="1" :min="0" :step="0.1" class="ma-4" label="Fill opacity"
                         hide-details>
                         <template v-slot:append>
-                          <v-text-field v-model="fillOpacity" density="compact" :max="1" :min="0" :step="0.1" style="width: 80px"
-                            type="number" variant="outlined" hide-details></v-text-field>
+                          <v-text-field v-model="fillOpacity" density="compact" :max="1" :min="0" :step="0.1"
+                            style="width: 80px" type="number" variant="outlined" hide-details></v-text-field>
                         </template>
                       </v-slider>
                     </v-card-text>
@@ -174,15 +174,15 @@ const fetchChartData = async () => {
 
   if (!query) {
     console.error(`Dados ausentes para o gráfico ${selectedChart.value.id}`);
+  } else {
+    try {
+      const response = await influxdbDataService.getData({ query });
+      const influxData = response.data;
+      updateChartData(influxData, selectedChart.value);
+    } catch (error) {
+      console.error(`Erro ao buscar os dados do InfluxDB para o gráfico ${selectedChart.value.id}:`, error);
+    }
   }
-  try {
-    const response = await influxdbDataService.getData({ query });
-    const influxData = response.data;
-    updateChartData(influxData, selectedChart.value);
-  } catch (error) {
-    console.error(`Erro ao buscar os dados do InfluxDB para o gráfico ${selectedChart.value.id}:`, error);
-  }
-
 }
 
 const updateChartData = (influxData, chart) => {
@@ -335,7 +335,7 @@ const updateChartColors = (newColor) => {
     selectedChart.value.options.series[1].points.fill = hexToRgb(newColor);
 
     let strokeColor = selectedChart.value.options.series[1].stroke;
-    
+
     // Verifica se é rgba ou rgb e ajusta a opacidade
     if (strokeColor.startsWith('rgba')) {
       selectedChart.value.options.series[1].fill = strokeColor;
