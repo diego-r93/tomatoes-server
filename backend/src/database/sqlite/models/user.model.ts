@@ -39,6 +39,50 @@ export class User {
     });
   }
 
+  static async findById(id: number): Promise<User | null> {
+    return new Promise((resolve, reject) => {
+      db.get('SELECT * FROM users WHERE id = ?', [id], (err, row) => {
+        if (err) reject(err);
+        resolve(row ? new User(row) : null);
+      });
+    });
+  }
+
+  static async findAll(): Promise<User[]> {
+    return new Promise((resolve, reject) => {
+      db.all('SELECT * FROM users', (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows.map(row => new User(row as Partial<User>)));
+        }
+      });
+    });
+  }
+
+  async update(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const { email, firstName, lastName, phone, state, fbId, password } = this;
+      db.run(
+        'UPDATE users SET email = ?, firstName = ?, lastName = ?, phone = ?, state = ?, fbId = ?, password = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?',
+        [email, firstName, lastName, phone, state, fbId, password, this.id],
+        (err) => {
+          if (err) reject(err);
+          resolve();
+        }
+      );
+    });
+  }
+
+  async delete(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      db.run('DELETE FROM users WHERE id = ?', [this.id], (err) => {
+        if (err) reject(err);
+        resolve();
+      });
+    });
+  }
+
   async save(): Promise<number> {
     if (this.id) {
       // Implemente um método de atualização se necessário

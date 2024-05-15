@@ -1,11 +1,7 @@
 <template>
-  <v-card-text>
-    Teams
-  </v-card-text>
+  <TeamsCard />
 </template>
 
-<script>
-export default {
-  name: "TeamsComponent"
-};
+<script setup>
+  import TeamsCard from '@/components/users/TeamCard.vue'
 </script>
