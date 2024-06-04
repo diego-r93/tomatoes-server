@@ -5,7 +5,7 @@ import DashboardRoutes from "@/router/dashboard.routes"
 import DeviceRoutes from "@/router/device.routes"
 import DatabaseRoutes from "@/router/database.routes"
 import AlertingRoutes from "@/router/alerting.routes"
-import NetworkRoutes from "@/router/network.routes"
+import MDDRoutes from "@/router/mdd.routes"
 import UsersRoutes from "@/router/users.routes"
 import ConfigurationRoutes from "@/router/configuration.routes"
 import AuthRoutes from "@/router/auth.routes"
@@ -28,7 +28,7 @@ const routes = [
   ...DeviceRoutes,
   ...DatabaseRoutes,
   ...AlertingRoutes,
-  ...NetworkRoutes,
+  ...MDDRoutes,
   ...UsersRoutes,
   ...ConfigurationRoutes,
   ...AuthRoutes,

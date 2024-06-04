@@ -51,7 +51,7 @@ const items = ref([
   { title: 'Device configuration', icon: 'mdi-chip', value: "device", path: '/device' },
   { title: 'Database configuration', icon: 'mdi-database', value: "database", path: '/database' },
   { title: 'Alerting', icon: 'mdi-bell', value: "alerting", path: '/alerting' },
-  { title: 'Network Configuration', icon: 'mdi mdi-lan', value: "network", path: '/network' },
+  { title: 'Boards MDD Configuration', icon: 'mdi mdi-lan', value: "mdd", path: '/mdd' },
   { title: 'Users', icon: 'mdi-account', value: "users", path: '/users' },
   { title: 'Configuration', icon: 'mdi-cog', value: "configuration", path: '/configuration' },
 ]);
