@@ -71,6 +71,10 @@ import { onMounted, ref, reactive, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import Chart from '@/components/dashboard/Chart.vue';
 import influxdbDataService from '@/services/influxdbDataService';
+import { useDashboardStore } from '@/store/dashboardData';
+import { useChart } from '@/composables/useChart';
+
+const dashboardStore = useDashboardStore();
 
 const router = useRouter();
 const route = useRoute();
@@ -78,45 +82,9 @@ const charts = reactive([]); // Armazena todos os gráficos obtidos
 const selectedChart = ref(null); // Mudar o backend e o servide do frontend para buscar somente um char em dashboardDataService
 const chartCardRef = ref(null);
 
-const timeSince = ref('-5m');
-const timeRange = ref('500ms');
-
 const intervalId = ref(null);
 
-const state = reactive({
-  draggable: true,
-  resizable: true,
-  index: 3,
-  selectedLabel: '5 minutes',
-  timeOptions: [
-    { label: '5 minutes', value: '-5m', range: '500ms' },
-    { label: '15 minutes', value: '-15m', range: '1s' },
-    { label: '30 minutes', value: '-30m', range: '2s' },
-    { label: '1 hour', value: '-1h', range: '5s' },
-    { label: '3 hours', value: '-3h', range: '20s' },
-    { label: '6 hours', value: '-6h', range: '30s' },
-    { label: '12 hours', value: '-12h', range: '1m' },
-    { label: '24 hours', value: '-24h', range: '2m' },
-    { label: '3 days', value: '-3d', range: '5m' },
-    { label: '1 week', value: '-1w', range: '15m' },
-  ],
-  updateIntervals: [
-    { label: 'Off', value: null },
-    { label: '2s', value: '2s' },
-    { label: '5s', value: '5s' },
-    { label: '10s', value: '10s' },
-    { label: '30s', value: '30s' },
-    { label: '1m', value: '1m' },
-    { label: '5m', value: '5m' },
-    { label: '15m', value: '15m' },
-    { label: '30m', value: '30m' },
-    { label: '1h', value: '1h' },
-    { label: '2h', value: '2h' },
-    { label: '6h', value: '6h' },
-  ],
-  selectedUpdateInterval: 'Off',
-  intervalId: null,
-});
+const { timeSince, timeRange, state, getFormatFunction } = useChart();
 
 const goBack = () => {
   router.go(-1);
@@ -206,24 +174,6 @@ const updateQuerySince = (value) => {
   fetchChartData();
 };
 
-const getFormatFunction = (scale) => {
-  switch (scale) {
-    case 'C':
-      return (self, ticks) => ticks.map(rawValue => rawValue.toFixed(1) + "° C");
-    case 'tds':
-      // return (self, ticks) => ticks.map(rawValue => rawValue.toFixed(0) + "µS/cm");
-      return (self, ticks) => ticks.map(rawValue => rawValue.toFixed(0) + "µS");
-    case 'ph':
-      return (self, ticks) => ticks.map(rawValue => rawValue.toFixed(1));
-    case 'mb':
-      return (self, ticks) => ticks.map(rawValue => (rawValue / 10 ** 6).toFixed(0) + "MB");
-    case 'gb':
-      return (self, ticks) => ticks.map(rawValue => (rawValue / 10 ** 9).toFixed(2) + "GB");
-    default:
-      return (self, ticks) => ticks.map(rawValue => rawValue.toFixed(2)); // formato padrão
-  }
-};
-
 const setUpdateInterval = (intervalOption) => {
   state.selectedUpdateInterval = intervalOption.label; // Atualizar o rótulo selecionado
 
@@ -262,25 +212,49 @@ const loadDashboard = async () => {
   // Limpa o array reativo para evitar duplicação ao recarregar os dados
   charts.splice(0, charts.length);
   try {
-    const storedData = localStorage.getItem('tomatoesDashboard');
-    if (storedData) {
-      const chartsData = JSON.parse(storedData);  // Parse os dados JSON salvos
-      chartsData.forEach(chartObject => {
-        // Se o objeto chart tiver um campo scale, ajuste a função values de acordo com o scale
-        if (chartObject.options && chartObject.options.axes && chartObject.options.axes[1] && chartObject.options.axes[1].scale) {
-          const formatFunction = getFormatFunction(chartObject.options.axes[1].scale);
-          chartObject.options.axes[1].values = formatFunction;
-        }
-        charts.push(chartObject);  // Adiciona ao array reativo
-      });
-
-      // Define o gráfico selecionado com base no ID passado pela rota
-      selectedChart.value = charts.find(c => c.id === Number(chartId));
-      if (!selectedChart.value) {
-        console.error("Chart not found");
-      }
+    // Primeiro tenta carregar do useDashboardStore
+    let storedDashboard = dashboardStore.getDashboard();
+    if (storedDashboard && storedDashboard.length > 0) {
+      charts.push(...storedDashboard);
+      console.log("Carregado do useDashboardStore");
     } else {
-      console.error("No dashboard data found in localStorage");
+      // Se não encontrar no store, tenta carregar do localStorage
+      console.log("Carregando do localStorage");
+      const storedDashboard = localStorage.getItem('tomatoesDashboard');
+      if (storedDashboard) {
+        const storedData = JSON.parse(storedDashboard);
+        storedData.forEach(chartObject => {
+          if (chartObject.options && chartObject.options.axes && chartObject.options.axes[1] && chartObject.options.axes[1].scale) {
+            const formatFunction = getFormatFunction(chartObject.options.axes[1].scale);
+            chartObject.options.axes[1].values = formatFunction;
+          }
+          charts.push(chartObject);
+        });
+        dashboardStore.setDashboard([...charts]);
+      } else {
+        // Carregar gráficos do backend
+        console.log("Carregando do backend");
+        const response = await dashboardDataService.getcharts();
+        if (response && response.data) {
+          response.data.forEach(chartObject => {
+            // Se o objeto chart tiver um campo scale, ajuste a função values de acordo com o scale
+            if (chartObject.options && chartObject.options.axes && chartObject.options.axes[1] && chartObject.options.axes[1].scale) {
+              const formatFunction = getFormatFunction(chartObject.options.axes[1].scale);
+              chartObject.options.axes[1].values = formatFunction;
+            }
+
+            charts.push(chartObject); // Só consegui fazer funcionar com push
+          });
+          // Salvar os dados no store
+          dashboardStore.setDashboard([...charts]);
+          localStorage.setItem('tomatoesDashboard', JSON.stringify(dashboardStore.dashboard));
+        }
+      }
+    }
+    // Define o gráfico selecionado com base no ID passado pela rota
+    selectedChart.value = charts.find(c => c.id === Number(chartId));
+    if (!selectedChart.value) {
+      console.error("Chart not found");
     }
   } catch (error) {
     console.error("Error parsing chart data from localStorage:", error);

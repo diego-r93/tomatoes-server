@@ -11,6 +11,9 @@ export const useDashboardStore = defineStore('dashboard', {
     },
     setCurrentChart(chart) {
       this.currentChart = chart;
+    },
+    getDashboard() {
+      return this.dashboard;
     }
   },
 });
