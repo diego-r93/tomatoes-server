@@ -84,8 +84,7 @@
                 <v-expansion-panel title='Standard Options'>
                   <v-expansion-panel-text>
                     <div class="d-flex justify-center">
-                      <v-color-picker elevation="0" class="mt-4" v-model="getChartStrokeColor"
-                        @input="updateChartColors"></v-color-picker>
+                      <v-color-picker elevation="0" class="mt-4" v-model="getChartStrokeColor"></v-color-picker>
                     </div>
                     <v-card-text>
                       <v-slider v-model="fillOpacity" :max="1" :min="0" :step="0.1" class="ma-4" label="Fill opacity"
@@ -253,14 +252,11 @@ const getChartScale = computed({
 
 const getChartStrokeColor = computed({
   get() {
-    // Retorna a cor atual da segunda série do gráfico selecionado
     return selectedChart.value ? selectedChart.value.options.series[1].stroke : '';
   },
   set(newValue) {
-    // Converte a cor hexadecimal para rgba e define a nova cor na segunda série do gráfico atual no store
     if (dashboardStore.currentChart) {
-      updateChartColors(newValue);
-      dashboardStore.currentChart.options.series[1].stroke = newValue;
+      updateChartColors(newValue);      
     }
   }
 });
@@ -292,7 +288,10 @@ const hexToRgb = (hex) => {
 const updateChartColors = (newColor) => {
   if (selectedChart.value) {
     selectedChart.value.options.series[1].stroke = hexToRgb(newColor);
+    dashboardStore.currentChart.options.series[1].stroke = hexToRgb(newColor);
+
     selectedChart.value.options.series[1].points.fill = hexToRgb(newColor);
+    dashboardStore.currentChart.options.series[1].points.fill = hexToRgb(newColor);
 
     let strokeColor = selectedChart.value.options.series[1].stroke;
 
@@ -302,9 +301,11 @@ const updateChartColors = (newColor) => {
     } else {
       strokeColor = strokeColor.replace(/rgb\((\d+), (\d+), (\d+)\)/, `rgba($1, $2, $3, ${fillOpacity.value})`);
       selectedChart.value.options.series[1].fill = strokeColor;
+      
     }
 
     selectedChart.value.options.series[1].fill = strokeColor;
+    dashboardStore.currentChart.options.series[1].fill = strokeColor;    
     selectedChart.value = JSON.parse(JSON.stringify(selectedChart.value));
   }
 };
@@ -322,14 +323,14 @@ const updateChartFill = (newOpacity) => {
     }
 
     selectedChart.value.options.series[1].fill = strokeColor;
+    dashboardStore.currentChart.options.series[1].fill = strokeColor;
     selectedChart.value = JSON.parse(JSON.stringify(selectedChart.value));
   }
 };
 
-// watch(fillOpacity, (newValue) => {
-//   updateChartColors(newValue);
-//   updateChartFill(newValue);
-// });
+watch(fillOpacity, (newValue) => {
+  updateChartFill(newValue);
+});
 
 const applyChanges = () => {
   if (selectedChart.value) {
