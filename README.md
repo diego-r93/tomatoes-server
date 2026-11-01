@@ -60,7 +60,22 @@ Lembre-se de substituir URL_DO_REPOSITÓRIO_DO_GITHUB pelo URL do seu repositór
 
 ##### 3. Configurando o projeto
 
-Certifique-se de verificar qualquer arquivo de configuração específico ou variáveis de ambiente que precisem ser ajustadas antes de prosseguir.
+Antes da primeira inicialização, crie sua configuração local a partir do exemplo:
+
+```bash
+cp .env_example .env
+chmod 600 .env
+```
+
+Execute a cópia somente em uma instalação nova, sem um `.env` existente. Edite o `.env` e substitua **todos** os valores `CHANGE_ME` antes de iniciar os serviços. Use credenciais únicas por instalação. Para gerar cada senha, segredo JWT ou token, execute `openssl rand -hex 32` separadamente. Uma senha hexadecimal evita problemas de codificação na URI do MongoDB.
+
+O Compose expande as referências `${VARIAVEL}` do exemplo. Mantenha os aliases `MONGO_INITDB_ROOT_USERNAME` e `MONGO_INITDB_ROOT_PASSWORD` alinhados com `MONGO_ROOT_USERNAME` e `MONGO_ROOT_PASSWORD`. O backend atual utiliza a conta root do MongoDB; não há script de criação automática de um usuário de aplicação.
+
+Os nomes `mongo`, `mosquitto` e `influxdb` são endereços internos do Compose. Mantenha `BACKEND_PORT=3333` alinhado com o Nginx e `DOCKER_INFLUXDB_INIT_PORT=8086` alinhado com o Telegraf. Confira também o endereço MQTT em `telegraf/telegraf.conf`: ele ainda é configurado separadamente e não utiliza `MQTT_HOST_NAME`.
+
+A retenção inicial do bucket é de **180 dias**, definida por `DOCKER_INFLUXDB_INIT_RETENTION=4320h`. Alterar essa variável não atualiza um bucket existente; nesse caso, aplique a retenção pela API ou CLI do InfluxDB.
+
+O `.env` está ignorado pelo Git. Versione somente `.env_example`, sem credenciais reais.
 
 ##### 4. Executando o projeto
 

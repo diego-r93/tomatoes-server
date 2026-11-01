@@ -219,3 +219,36 @@ export const deleteAll = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+export const findBoards = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { database, collection, filter } = req.body || {};
+
+    // validações básicas
+    if (!database || typeof database !== 'string') {
+      res.status(400).send({ message: "database is required" });
+      return;
+    }
+    if (!collection || typeof collection !== 'string') {
+      res.status(400).send({ message: "collection is required" });
+      return;
+    }
+    if (!filter || typeof filter.pumperCode !== 'string') {
+      res.status(400).send({ message: "filter.pumperCode (string) is required" });
+      return;
+    }
+
+    // Busca direta no banco MongoDB já conectado via mongoose
+    const data = await Board.findOne({ pumperCode: filter.pumperCode });
+
+    if (!data) {
+      res.status(404).send({ message: "Board not found for given pumperCode." });
+      return;
+    }
+
+    // mantém o formato esperado pelo ESP32
+    res.send({ document: data });
+  } catch (error) {
+    console.error("Error in findByPumperCode:", error);
+    res.status(500).send({ message: "Internal server error" });
+  }
+};

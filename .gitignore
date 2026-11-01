@@ -32,3 +32,6 @@ pnpm-debug.log*
 # Local Mosquitto Configurations
 *.log
 passwd
+
+# Local MongoDB database files
+/mongo/data/

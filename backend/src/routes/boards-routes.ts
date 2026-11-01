@@ -37,6 +37,10 @@ const boardRoutes = (app: Express) => {
     // Delete all Boards
     router.delete("/", board.deleteAll);
 
+    // Find boards on local MongoDB
+    router.post("/find", board.findBoards);
+
+
     app.use("/boards", router);
 };
 
