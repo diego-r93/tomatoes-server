@@ -12,6 +12,16 @@ type Registration = Metadata & {
 const registry = () => mongoose.connection.collection<Registration>('device_registry');
 const hostname = /^esp32[A-Za-z0-9]*-[A-Za-z0-9][A-Za-z0-9._-]{0,100}$/;
 
+export function isFactoryHostname(host: unknown): host is string {
+  return typeof host === 'string' && hostname.test(host);
+}
+
+export async function deviceAdmission(host: string): Promise<RegistrationStatus> {
+  const row = await registry().findOne({ _id: host }, { projection: { status: 1 }, maxTimeMS: 2000 });
+  if (!row) return 'pending';
+  return row.status === 'approved' || row.status === 'pending' ? row.status : 'removed';
+}
+
 function metadata(report: Record<string, unknown>): Metadata {
   const result: Metadata = {};
   for (const key of ['model', 'fw', 'auth'] as const) {

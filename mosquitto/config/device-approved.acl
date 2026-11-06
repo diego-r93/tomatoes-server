@@ -1,0 +1,6 @@
+pattern write %u/status
+pattern read getdevices
+pattern write devices/%u
+pattern write sensors/%u/#
+pattern read %u/output
+pattern read %u/config/#

@@ -101,17 +101,22 @@ password_file /mosquitto/config/passwd
 acl_file /mosquitto/config/acl
 EOF
     if [ -n "${MQTT_DEVICE_BIND_IP:-}" ]; then
+        chown mosquitto:mosquitto /run/tomatoes-mqtt
+        chmod 700 /run/tomatoes-mqtt
+        for policy in device.acl device-approved.acl; do
+            cp "/mosquitto/config/$policy" "/run/tomatoes-mqtt/$policy"
+            chown mosquitto:mosquitto "/run/tomatoes-mqtt/$policy"
+            chmod 600 "/run/tomatoes-mqtt/$policy"
+        done
+        rm -f /run/tomatoes-mqtt/pending.sock /run/tomatoes-mqtt/approved.sock
         cat > "$LISTENER_DIR/factory.conf" <<'EOF'
-listener 8884
-cafile /mosquitto/config/device-ca.pem
-certfile /mosquitto/config/tls/broker.pem
-keyfile /mosquitto/config/tls/broker.key
-require_certificate true
-use_identity_as_username true
-use_username_as_clientid true
-tls_version tlsv1.2
-allow_anonymous false
-acl_file /mosquitto/config/device.acl
+listener 0 /run/tomatoes-mqtt/pending.sock
+allow_anonymous true
+acl_file /run/tomatoes-mqtt/device.acl
+
+listener 0 /run/tomatoes-mqtt/approved.sock
+allow_anonymous true
+acl_file /run/tomatoes-mqtt/device-approved.acl
 EOF
     else
         rm -f "$LISTENER_DIR/factory.conf"

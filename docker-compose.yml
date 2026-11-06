@@ -5,9 +5,14 @@ services:
     restart: unless-stopped
     volumes:
       - ./backend:/backend
+      - factory_mqtt:/run/tomatoes-mqtt:ro
+      - ./mosquitto/config/tls:/run/tomatoes-tls:ro
+      - ./mosquitto/config/device-ca.pem:/run/tomatoes-device-ca.pem:ro
       - /etc/dhcpcd.conf:/etc/dhcpcd.conf
       - /etc/dnsmasq.conf:/etc/dnsmasq.conf
       - /etc/wpa_supplicant/wpa_supplicant.conf:/etc/wpa_supplicant/wpa_supplicant.conf
+    ports:
+      - "${MQTT_DEVICE_BIND_IP:-127.0.0.1}:8884:8884"
     networks:
       - backend_network
       - nginx_network
@@ -53,9 +58,9 @@ services:
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
       - ./mosquitto.sh:/mosquitto.sh
+      - factory_mqtt:/run/tomatoes-mqtt
     ports:
       - 8883:8883
-      - "${MQTT_DEVICE_BIND_IP:-127.0.0.1}:8884:8884"
     networks:
       - mosquitto_network
     environment:
@@ -163,6 +168,7 @@ services:
       - backend_network
 
 volumes:
+  factory_mqtt:
   influxdb_data:
   grafana_data:
 

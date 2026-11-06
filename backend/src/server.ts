@@ -21,6 +21,7 @@ import setupBoardsRoutes from './routes/boards-routes';
 import { migrateCharts } from './database/dashboard/migrate';
 import setupDashBoardsRoutes from './routes/dashboards-routes';
 import setupMqttRoutes from './routes/mqtt-routes';
+import { startFactoryAdmission } from './mqtt/factoryAdmission';
 import { startScheduleSync } from './mqtt/schedules';
 import { migrateRegisteredDevices } from './mqtt/deviceRegistry';
 import setupInfluxRoutes from './routes/influxdb-routes';
@@ -113,6 +114,7 @@ Promise.all([usersReady, alertsReady, mongoReady]).then(async () => {
     console.error('Alert monitor startup failed:', error instanceof Error ? error.name : 'Unknown error');
   }
   startScheduleSync();
+  startFactoryAdmission();
   app.listen(port, host, () => console.log('Server listening on ' + host + ':' + port));
 }).catch((error: unknown) => {
   console.error('Backend initialization failed:', error instanceof Error ? error.name : 'Unknown error');
