@@ -1,29 +1,37 @@
 <template>
-  <v-container fluid class="configuration-page app-page">
-    <AppPageHeader title="Configuration" icon="mdi-cog-outline"/>
+  <v-container fluid :lang="language" class="configuration-page app-page">
+    <AppPageHeader :title="t('configuration')" icon="mdi-cog-outline"/>
     <div class="configuration-content">
-      <header class="configuration-heading"><h1 class="app-page-title">Make yourself at home.</h1><p>Personalize your workspace. Changes apply instantly.</p></header>
+      <header class="configuration-heading"><h1 class="app-page-title">{{ t('welcome') }}</h1><p>{{ t('intro') }}</p></header>
       <v-card elevation="0" class="appearance-section custom-border">
-        <div class="section-heading"><div><h2>Appearance</h2><p>Choose a palette for the entire application.</p></div><v-chip size="small" color="primary" variant="tonal">{{ currentTheme.title }}</v-chip></div>
-        <div class="theme-choices" role="group" aria-label="Choose a theme">
+        <div class="section-heading"><div><h2>{{ t('appearance') }}</h2><p>{{ t('palette') }}</p></div><v-chip size="small" color="primary" variant="tonal">{{ currentTheme.title }}</v-chip></div>
+        <div class="theme-choices" role="group" :aria-label="t('chooseTheme')">
           <button v-for="option in themeCatalog" :key="option.value" type="button" class="theme-choice" :data-theme-choice="option.value" :aria-pressed="appearance.theme === option.value" @click="appearance.changeTheme(option.value)">
             <span class="theme-swatch" :class="`theme-swatch--${option.value}`" aria-hidden="true"><span class="swatch-sidebar" /><span class="swatch-content"><span class="swatch-title" /><span class="swatch-panels"><span /><span /></span><span class="swatch-action" /></span></span>
             <span class="theme-name">{{ option.title }}<v-icon v-if="appearance.theme === option.value" icon="mdi-check" size="16" aria-hidden="true" /></span>
-            <span class="theme-description">{{ option.description }}</span>
+            <span class="theme-description">{{ t(option.value) }}</span>
           </button>
         </div>
-        <div class="preference-row"><div><h3>Follow system appearance</h3><p>Automatically switch between Classic Light and Classic Dark.</p></div><v-switch :model-value="appearance.followSystem" color="primary" hide-details aria-label="Follow system appearance" @update:model-value="appearance.setFollowSystem" /></div>
+        <div class="preference-row"><div><h3>{{ t('followSystem') }}</h3><p>{{ t('followSystemHelp') }}</p></div><v-switch :model-value="appearance.followSystem" color="primary" hide-details :aria-label="t('followSystem')" @update:model-value="appearance.setFollowSystem" /></div>
       </v-card>
       <v-card elevation="0" class="appearance-section custom-border">
-        <h2>Display</h2>
-        <div class="preference-row"><div><h3>Interface density</h3><p>Adjust spacing in lists and tables.</p></div><v-select :model-value="appearance.density" :items="densityOptions" variant="outlined" hide-details aria-label="Interface density" @update:model-value="appearance.setDensity" /></div>
-        <div class="preference-row"><div><h3>Show sidebar labels</h3><p>Expand navigation labels on desktop.</p></div><v-switch :model-value="appearance.sidebarExpanded" color="primary" hide-details aria-label="Show sidebar labels" @update:model-value="appearance.setSidebarExpanded" /></div>
-        <div class="preference-row"><div><h3>Reduce motion</h3><p>Keep decorative animations still. Your system preference is also respected.</p></div><v-switch :model-value="appearance.reduceMotion" color="primary" hide-details aria-label="Reduce motion" @update:model-value="appearance.setReduceMotion" /></div>
+        <h2>{{ t('display') }}</h2>
+        <div class="preference-row"><div><h3>{{ t('density') }}</h3><p>{{ t('densityHelp') }}</p></div><v-select :model-value="appearance.density" :items="densityOptions" variant="outlined" hide-details :aria-label="t('density')" @update:model-value="appearance.setDensity" /></div>
+        <div class="preference-row"><div><h3>{{ t('sidebarLabels') }}</h3><p>{{ t('sidebarHelp') }}</p></div><v-switch :model-value="appearance.sidebarExpanded" color="primary" hide-details :aria-label="t('sidebarLabels')" @update:model-value="appearance.setSidebarExpanded" /></div>
+        <div class="preference-row"><div><h3>{{ t('reduceMotion') }}</h3><p>{{ t('motionHelp') }}</p></div><v-switch :model-value="appearance.reduceMotion" color="primary" hide-details :aria-label="t('reduceMotion')" @update:model-value="appearance.setReduceMotion" /></div>
       </v-card>
-      <footer class="preferences-footer"><p aria-live="polite">{{ currentTheme.title }} applied · {{ appearance.storageUnavailable ? 'Browser storage is unavailable; changes last for this session.' : 'Saved in this browser' }}</p><v-btn variant="outlined" @click="resetOpen = true">Reset appearance</v-btn></footer>
+      <v-card elevation="0" class="appearance-section custom-border">
+        <h2>{{ t('language') }}</h2>
+        <div class="preference-row">
+          <p>{{ t('languageHelp') }}</p>
+          <v-select :model-value="language" :items="languageOptions" variant="outlined" hide-details :aria-label="t('language')" @update:model-value="setLanguage" />
+        </div>
+        <p v-if="languageStorageUnavailable" role="status">{{ t('storageUnavailable') }}</p>
+      </v-card>
+      <footer class="preferences-footer"><p aria-live="polite">{{ currentTheme.title }} {{ t('applied') }} · {{ t(appearance.storageUnavailable ? 'storageUnavailable' : 'saved') }}</p><v-btn variant="outlined" @click="resetOpen = true">{{ t('reset') }}</v-btn></footer>
     </div>
     <v-dialog v-model="resetOpen" max-width="440">
-      <v-card><v-card-title>Reset appearance?</v-card-title><v-card-text>Restore Classic Dark and default display preferences? Your boards, schedules and saved dashboards will not be changed.</v-card-text><v-card-actions><v-spacer /><v-btn @click="resetOpen = false">Cancel</v-btn><v-btn color="primary" @click="resetAppearance">Reset appearance</v-btn></v-card-actions></v-card>
+      <v-card><v-card-title>{{ t('resetTitle') }}</v-card-title><v-card-text>{{ t('resetHelp') }}</v-card-text><v-card-actions><v-spacer /><v-btn @click="resetOpen = false">{{ t('cancel') }}</v-btn><v-btn color="primary" @click="resetAppearance">{{ t('reset') }}</v-btn></v-card-actions></v-card>
     </v-dialog>
   </v-container>
 </template>
@@ -33,9 +41,11 @@ import AppPageHeader from '@/components/navigation/AppPageHeader.vue';
 import { computed, ref } from 'vue';
 import { useAppStore } from '@/store/appConfiguration';
 import { themeCatalog } from '@/styles/themes';
+import { languageOptions, useLanguage } from '@/composables/useLanguage';
 const appearance = useAppStore();
+const { language, languageStorageUnavailable, setLanguage, t } = useLanguage();
 const currentTheme = computed(() => themeCatalog.find(option => option.value === appearance.theme) || themeCatalog[0]);
-const densityOptions = [{ title: 'Comfortable', value: 'comfortable' }, { title: 'Compact', value: 'compact' }];
+const densityOptions = computed(() => ['comfortable', 'compact'].map(value => ({ title: t(value), value })));
 const resetOpen = ref(false);
 function resetAppearance() { appearance.resetAppearance(); resetOpen.value = false; }
 </script>
