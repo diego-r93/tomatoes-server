@@ -1,1 +1,3 @@
 pattern write %u/status
+pattern read getdevices
+pattern write devices/%u
