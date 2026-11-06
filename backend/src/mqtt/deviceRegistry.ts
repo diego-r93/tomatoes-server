@@ -5,14 +5,14 @@ import { access, run } from '../users/database';
 import Board from '../database/mongodb/models/board.model';
 
 type RegistrationStatus = 'pending' | 'approved' | 'removed';
-type Metadata = { model?: string; fw?: string; psramMB?: number; auth?: string };
+type Metadata = { model?: string; fw?: string; psramMB?: number; auth?: string; bootId?: string; reset?: string; uptime_s?: number };
 type Registration = Metadata & {
   _id: string; host: string; status: RegistrationStatus; online: boolean;
   firstSeen: Date | null; lastSeen: Date | null;
   approvedAt?: Date; approvedBy?: string;
   removedAt?: Date; removedBy?: string; restoredAt?: Date; restoredBy?: string;
   factoryAuthenticated?: boolean;
-  report?: Record<string, unknown>; reportAt?: Date;
+  report?: Record<string, unknown>; reportAt?: Date; bootObservedAt?: Date;
 };
 const registry = () => mongoose.connection.collection<Registration>('device_registry');
 const hostname = /^esp32[A-Za-z0-9]*-[A-Za-z0-9][A-Za-z0-9._-]{0,100}$/;
@@ -29,10 +29,12 @@ export async function deviceAdmission(host: string): Promise<RegistrationStatus>
 
 function metadata(report: Record<string, unknown>): Metadata {
   const result: Metadata = {};
-  for (const key of ['model', 'fw', 'auth'] as const) {
+  for (const key of ['model', 'fw', 'auth', 'reset'] as const) {
     const value = report[key];
     if (typeof value === 'string' && value.length > 0 && value.length <= 100) result[key] = value;
   }
+  if (typeof report.bootId === 'string' && /^[a-f0-9]{8}$/i.test(report.bootId)) result.bootId = report.bootId.toLowerCase();
+  if (typeof report.uptime_s === 'number' && Number.isFinite(report.uptime_s) && report.uptime_s >= 0) result.uptime_s = report.uptime_s;
   const memory = report.psramMB;
   if (typeof memory === 'number' && Number.isFinite(memory) && memory >= 0 && memory <= 128) result.psramMB = memory;
   return result;
@@ -73,7 +75,7 @@ export async function changeRegistration(host: string, action: unknown, operator
       if (row.status !== 'removed') throw new HttpError(409, 'Only removed boards can be restored.');
       const restored = await registry().updateOne({ _id: host, status: 'removed' }, {
         $set: { status: 'pending', online: false, lastSeen: null, factoryAuthenticated: false, restoredAt: new Date(), restoredBy: operator },
-        $unset: { report: '', reportAt: '' },
+        $unset: { report: '', reportAt: '', bootId: '', bootObservedAt: '', reset: '', uptime_s: '' },
       });
       if (!restored.matchedCount) throw new HttpError(409, 'The board registration has changed. Refresh and try again.');
       return;
@@ -129,8 +131,10 @@ export async function observeDeviceStatus(topic: string, payload: Buffer, retain
     });
     return;
   }
+  const fields = metadata(data);
   await registry().updateOne({ _id: host, status: { $ne: 'removed' }, $or: [{ lastSeen: null }, { lastSeen: { $lte: at } }] }, [
-    { $set: { ...Object.fromEntries(Object.entries(metadata(data)).map(([key, value]) => [key, { $literal: value }])),
+    { $set: { ...Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, { $literal: value }])),
+      ...(data.online && fields.bootId ? { bootObservedAt: at } : {}),
       online: data.online, firstSeen: { $ifNull: ['$firstSeen', at] }, lastSeen: at } },
   ]);
 }
@@ -139,12 +143,14 @@ export async function observeDeviceDiscovery(host: string, data: Record<string, 
   if (!hostname.test(host)) return false;
   const at = new Date(time);
   await ensureRegistered(host, at);
+  const fields = metadata(data);
   const row = await registry().findOneAndUpdate({
     _id: host, status: { $ne: 'removed' }, $or: [{ lastSeen: null }, { lastSeen: { $lte: at } }],
   }, [{ $set: {
-    ...Object.fromEntries(Object.entries(metadata(data)).map(([key, value]) => [key, { $literal: value }])),
+    ...Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, { $literal: value }])),
     online: true, firstSeen: { $ifNull: ['$firstSeen', at] }, lastSeen: at,
     report: { $literal: data }, reportAt: at,
+    ...(fields.bootId ? { bootObservedAt: at } : {}),
   } }], { returnDocument: 'after' });
   return row?.status === 'approved';
 }
@@ -161,7 +167,9 @@ export async function installedDeviceInventory(connected: boolean, processStarte
     const online = Boolean(connected && entry.online && receivedAt !== null &&
       receivedAt >= processStarted && now - receivedAt < 90000);
     return { ...entry.report, host: entry.host, model: entry.model, fw: entry.fw,
-      psramMB: entry.psramMB, auth: entry.auth, receivedAt, online };
+      psramMB: entry.psramMB, auth: entry.auth, receivedAt, online,
+      bootId: entry.bootId, reset: entry.reset, uptime_s: entry.uptime_s,
+      bootObservedAt: connected && entry.online ? entry.bootObservedAt?.getTime() : undefined };
   });
 }
 

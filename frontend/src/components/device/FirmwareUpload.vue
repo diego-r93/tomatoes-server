@@ -28,6 +28,7 @@
             : 'The board confirmed the firmware was installed and verified. It will restart shortly.' }}
         </v-alert>
         <p class="firmware-note" role="status">{{ restartMessage }}</p>
+        <v-btn v-if="!waitingForRestart && !onlineFirmware && online" variant="text" :loading="refreshing" @click="emit('refresh')">Refresh connection</v-btn>
         <div class="upload-action"><v-btn variant="outlined" :disabled="waitingForRestart" @click="reset">Choose another file</v-btn></div>
       </v-col>
       <v-col v-else-if="phase === 'error' || phase === 'unconfirmed'" cols="12" class="result-state">
@@ -70,10 +71,17 @@ const onlineFirmware = ref('');
 const waitingForRestart = computed(() => restart.value && !onlineFirmware.value && props.clock < restart.value.deadline);
 const restartMessage = computed(() => {
   if (onlineFirmware.value) return `Back online, firmware ${onlineFirmware.value}`;
-  return waitingForRestart.value ? 'Waiting for the board to restart' : 'The board has not reported its firmware after the restart yet.';
+  return waitingForRestart.value ? 'Waiting for the board to restart' : 'The board did not restart yet';
 });
 watch([() => props.device, () => props.online, restart], ([device, online, update]) => {
-  if (!update || !online || !device.fw || !(device.receivedAt > update.receivedAt && device.receivedAt >= update.startedAt)) return;
+  if (!update || !device.fw || onlineFirmware.value) return;
+  const bootChanged = update.bootId && device.bootId && device.bootId !== update.bootId
+    && device.bootObservedAt > update.bootObservedAt && device.bootObservedAt >= update.startedAt;
+  if (bootChanged) {
+    onlineFirmware.value = device.fw;
+    return;
+  }
+  if (!online || !(device.receivedAt > update.receivedAt && device.receivedAt >= update.startedAt)) return;
   const uptimeReset = typeof device.uptime === 'number' && typeof update.uptime === 'number' && device.uptime >= 0 && device.uptime < update.uptime;
   const reportedAfterConfirmation = confirmedByRestart.value && device.receivedAt >= update.confirmedAt;
   if (reportedAfterConfirmation || (update.fw && device.fw !== update.fw) || uptimeReset) onlineFirmware.value = device.fw;
@@ -107,8 +115,8 @@ function updateUploadProgress({ loaded, total }) {
 async function submit() {
   if (busy.value || !selectedFile.value || !props.online || !props.device.ip) return;
 
-  const { fw, uptime, receivedAt } = props.device;
-  const beforeUpload = { fw, uptime, receivedAt: receivedAt ?? 0, startedAt: Date.now() };
+  const { fw, uptime, receivedAt, bootId, bootObservedAt } = props.device;
+  const beforeUpload = { fw, uptime, bootId, bootObservedAt: bootObservedAt ?? 0, receivedAt: receivedAt ?? 0, startedAt: Date.now() };
   const formData = new FormData();
   formData.append('file', selectedFile.value);
   phase.value = 'uploading';
@@ -128,7 +136,7 @@ async function submit() {
     confirmedByRestart.value = data.confirmation === 'restart';
     phase.value = 'success';
     const confirmedAt = Date.now();
-    restart.value = { ...beforeUpload, confirmedAt, deadline: confirmedAt + 120_000 };
+    restart.value = { ...beforeUpload, confirmedAt, deadline: confirmedAt + 180_000 };
     emit('refresh');
   } catch (issue) {
     const status = issue.response?.status;
