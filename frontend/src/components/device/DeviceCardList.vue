@@ -40,7 +40,7 @@
 
         </div>
 
-        <DeviceDetails v-if="selectedDevice" :device="selectedDevice" :online="responding(selectedDevice)" :clock="clock" :pending="pending" :sending="sending" :can-update-firmware="canManage" @close="selectedKey = ''" @change="openCommand" @information="openInformation" @firmware="openFirmware" />
+        <DeviceDetails v-if="selectedDevice" :device="selectedDevice" :online="responding(selectedDevice)" :clock="clock" :pending="pending" :sending="sending" :all-off-pending="Boolean(pendingAll[selectedDevice.key])" @all-off="openCommand" :can-update-firmware="canManage" @close="selectedKey = ''" @change="openCommand" @information="openInformation" @firmware="openFirmware" />
 
       </div>
 
@@ -54,7 +54,7 @@
 
     <v-dialog v-model="settingsOpen" max-width="480"><v-card title="Device display settings"><v-card-text><v-select v-model="settings.layout" label="Layout" :items="layoutOptions" /><v-select v-model="settings.refreshSeconds" label="Auto-refresh" :items="refreshOptions" /><v-switch v-model="settings.showMac" label="Show MAC addresses" color="primary" hide-details /><p class="settings-note">Preferences are saved in this browser. Connection status is based on discovery responses, not a continuous heartbeat. A refresh failure keeps the last known data.</p></v-card-text><v-card-actions><v-spacer /><v-btn color="primary" @click="settingsOpen = false">Done</v-btn></v-card-actions></v-card></v-dialog>
 
-    <v-dialog v-model="commandOpen" max-width="480" persistent><v-card title="Confirm manual output"><v-card-text><p>Set <strong>{{ command?.host }} · GPIO {{ command?.gpio }}</strong> to <strong>{{ command?.target ? 'ON' : 'OFF' }}</strong>?</p><p class="settings-note">This sends a real manual command to the ESP32. The displayed state changes only when the device reports it.</p><v-alert v-if="commandError" type="error" variant="tonal" class="mt-4">{{ commandError }}</v-alert></v-card-text><v-card-actions><v-spacer /><v-btn :disabled="sending" @click="commandOpen = false">Cancel</v-btn><v-btn color="primary" :disabled="sending" :loading="sending" @click="confirmCommand">Confirm {{ command?.target ? 'ON' : 'OFF' }}</v-btn></v-card-actions></v-card></v-dialog>
+    <v-dialog v-model="commandOpen" max-width="480" persistent><v-card :title="command?.allOff ? 'Turn all outputs off?' : 'Confirm manual output'"><v-card-text><p v-if="command?.allOff">Turn off every reported output on <strong>{{ command.host }}</strong>?</p><p v-else>Set <strong>{{ command?.host }} · GPIO {{ command?.gpio }}</strong> to <strong>{{ command?.target ? 'ON' : 'OFF' }}</strong>?</p><p class="settings-note">This sends a real manual command to the ESP32. The displayed state changes only when the device reports it.</p><v-alert v-if="commandError" type="error" variant="tonal" class="mt-4">{{ commandError }}</v-alert></v-card-text><v-card-actions><v-spacer /><v-btn :disabled="sending" @click="commandOpen = false">Cancel</v-btn><v-btn color="primary" :disabled="sending" :loading="sending" @click="confirmCommand">{{ command?.allOff ? 'Confirm all OFF' : command?.target ? 'Confirm ON' : 'Confirm OFF' }}</v-btn></v-card-actions></v-card></v-dialog>
 
   </v-container>
 
@@ -85,7 +85,7 @@ import { useDeviceStore } from '@/store/deviceData';
 
 const router = useRouter(), route = useRoute(), deviceStore = useDeviceStore();
 
-const { devices, loading, initialLoading, hasLoaded, error, notice, clock, lastRefresh, pending, sending, refresh, setRefreshInterval, sendOutput } = useDeviceInventory();
+const { devices, loading, initialLoading, hasLoaded, error, notice, clock, lastRefresh, pending, pendingAll, sending, refresh, setRefreshInterval, sendOutput, sendAllOff } = useDeviceInventory();
 
 const query = ref(''), filter = ref('all'), page = ref(1), selectedKey = ref(''), settingsOpen = ref(false), commandOpen = ref(false), command = ref(null), commandError = ref('');
 
@@ -137,7 +137,7 @@ function clearSearch() { query.value = ''; filter.value = 'all'; }
 
 function openCommand(draft) { command.value = draft; commandError.value = ''; commandOpen.value = true; }
 
-async function confirmCommand() { if (!command.value || sending.value) return; commandError.value = ''; try { const draft = command.value; await sendOutput(draft.deviceKey, draft.gpio, draft.target, draft.originalState); commandOpen.value = false; } catch (issue) { commandError.value = issue.response?.data?.message || issue.message || 'The command could not be submitted.'; } }
+async function confirmCommand() { if (!command.value || sending.value) return; commandError.value = ''; try { const draft = command.value; if (draft.allOff) await sendAllOff(draft.deviceKey); else await sendOutput(draft.deviceKey, draft.gpio, draft.target, draft.originalState); commandOpen.value = false; } catch (issue) { commandError.value = issue.response?.data?.message || issue.message || 'The command could not be submitted.'; } }
 
 const overlayKind = ref(''), overlayHost = ref(''), firmwareTarget = ref(null), firmwareBusy = ref(false);
 

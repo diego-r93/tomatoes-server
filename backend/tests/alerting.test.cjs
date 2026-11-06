@@ -141,6 +141,14 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
  await t.test('API rejects anonymous writes and member management; administrators can CRUD',async apiTest=>{
   const app=express();app.use(express.json());require('../src/routes/users-routes').default(app);require('../src/routes/alerts-routes').default(app);const setupOta = require('../src/routes/ota-routes').default;
   setupOta(app);
+  const MQTTService = require('../src/mqtt/service/mqttService').default;
+  const publishedOutputs = [];
+  apiTest.mock.method(MQTTService.prototype, 'connect', () => {});
+  apiTest.mock.method(MQTTService.prototype, 'publishWhileConnected', async (topic, message) => {
+   publishedOutputs.push({ topic, command: JSON.parse(message) });
+  });
+  require('../src/routes/mqtt-routes').default(app);
+
   const simulatedOta = express.Router();
   setupOta(simulatedOta);
   app.use('/simulation', simulatedOta);
@@ -156,6 +164,21 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
   assert.equal((await req('GET','/api/alerts/rules',undefined,member.accessToken)).status,200);
   assert.equal((await req('GET','/api/alerts/contacts',undefined,member.accessToken)).status,403);
   assert.equal((await req('POST','/api/alerts/rules',input,member.accessToken)).status,403);
+  await apiTest.test('bulk OFF uses only discovered GPIOs and permits authenticated operators', async () => {
+   const path = '/mqtt/esp32-test-bulk/outputs/off';
+   const connected = sourceHealth.mqttConnected;
+   try {
+    sourceHealth.mqttConnected = true;
+    assert.equal((await req('PATCH', path)).status, 401);
+    assert.equal((await req('PATCH', path, {}, member.accessToken)).status, 409);
+    await ingestDevice(Buffer.from(JSON.stringify({
+     host: 'esp32-test-bulk', ports: { a: { gpio: 0, state: true }, b: { gpio: 3, state: false } },
+    })));
+    const reply = await req('PATCH', path, { 0: true, 99: true }, member.accessToken);
+    assert.deepEqual(reply, { status: 202, body: { gpios: [0, 3] } });
+    assert.deepEqual(publishedOutputs, [{ topic: 'esp32-test-bulk/output', command: { 0: false, 3: false } }]);
+   } finally { sourceHealth.mqttConnected = connected; }
+  });
    await apiTest.test('OTA signing vector and route permissions without contacting a board', async () => {
    const { createHash } = require('node:crypto');
    const { deriveBoardKey, signFirmware } = require('../src/ota/controllers/otaControllers');

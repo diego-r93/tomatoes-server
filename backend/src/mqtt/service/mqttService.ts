@@ -53,6 +53,12 @@ class MQTTService {
     this.mqttClient!.publish(topic, message, options);
   }
 
+  async publishWhileConnected(topic: string, message: string): Promise<void> {
+    const client = this.mqttClient;
+    if (!client?.connected) throw new Error('MQTT is disconnected.');
+    await client.publishAsync(topic, message, { qos: 0, retain: false });
+  }
+
   subscribe(topic: string, options?: IClientOptions): void {
     this.mqttClient!.subscribe(topic, options);
     this.subscriptions.push(topic);

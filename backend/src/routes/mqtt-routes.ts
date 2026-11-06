@@ -7,6 +7,7 @@ const mqttRoutes = (app: Express) => {
 
     router.get("/", authenticate, requireAdmin, publisherController.subscribeMQTTMessage);
     router.post("/", authenticate, requireAdmin, publisherController.publishMQTTMessage);
+    router.patch("/:id/outputs/off", authenticate, publisherController.turnOffAllOutputs);
     router.patch("/:id", authenticate, publisherController.updateGPIO);
     router.get("/getdevices", authenticate, publisherController.getDevices);
 

@@ -1,4 +1,4 @@
-import { discoverDevices, recentDevice } from '../../alerts/sources';
+import { discoverDevices, observedOutputs, recentDevice } from '../../alerts/sources';
 import MQTTService from '../service/mqttService';
 import { Request, Response } from 'express';
 import { MQTT_HOST_NAME, MQTT_USER_NAME, MQTT_PASSWORD } from '../config/mqtt.config';
@@ -60,6 +60,27 @@ export const updateGPIO = async (req: Request, res: Response): Promise<void> => 
         res.status(400).json({ status: 400, message: error.message });
     }
 }
+
+export const turnOffAllOutputs = async (req: Request, res: Response): Promise<void> => {
+    const host = req.params.id;
+    if (!/^[a-zA-Z0-9._-]{1,128}$/.test(host)) {
+        res.status(400).json({ message: 'Select a valid device.' });
+        return;
+    }
+    try {
+        const device = await recentDevice(host);
+        const gpios = Object.keys(observedOutputs(device?.ports, {}, false, Date.now())).map(Number);
+        if (!gpios.length) {
+            res.status(409).json({ message: 'The device has no recently reported outputs.' });
+            return;
+        }
+        const command = Object.fromEntries(gpios.map(gpio => [gpio, false]));
+        await mqttClient.publishWhileConnected(`${host}/output`, JSON.stringify(command));
+        res.status(202).json({ gpios });
+    } catch {
+        res.status(503).json({ message: 'Could not send the OFF command. Check the MQTT connection.' });
+    }
+};
 
 export const getDevices = async (_req: Request, res: Response): Promise<void> => {
     try {
