@@ -4,7 +4,7 @@ class OTAService {
   uploadFile(host, formData, onUploadProgress) {
     return http.post(`/ota/${encodeURIComponent(host)}/firmware`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress, timeout: 135000, skipUnauthorized: true,
+      onUploadProgress, timeout: 200000, skipUnauthorized: true,
     });
   }
 }

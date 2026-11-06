@@ -193,7 +193,24 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
    const image = Buffer.concat([Buffer.from([0xe9]), Buffer.from('tomatoes'.repeat(4))]);
    const inserted = [], completed = [];
    const realFetch = globalThis.fetch;
-   let mode = 'success', uploads = 0, requests = 0;
+   const http = require('node:http');
+   const realRequest = http.request;
+   let mode = 'success', uploads = 0, requests = 0, probes = 0;
+   const wire = [];
+   const fakeBoard = http.createServer((request, response) => {
+    const chunks = [];
+    request.on('data', chunk => chunks.push(chunk));
+    request.on('end', () => {
+     uploads++;
+     wire.push({ method: request.method, headers: request.headers, body: Buffer.concat(chunks) });
+     if (mode === 'disconnect') return request.socket.destroy();
+     if (mode === 'upload-503') { response.writeHead(503).end(); return; }
+     if (mode === 'busy') { response.writeHead(409).end(JSON.stringify({ ok: false, error: 'Pump is running' })); return; }
+     response.writeHead(200).end(JSON.stringify({ ok: true, restart_in_ms: 2000 }));
+    });
+   });
+   await new Promise(resolve => fakeBoard.listen(0, '127.0.0.1', resolve));
+   test.after(() => new Promise(resolve => fakeBoard.close(resolve)));
    test.mock.method(mongoose.connection, 'collection', name => {
     assert.equal(name, 'ota_logs');
     return {
@@ -201,26 +218,17 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
      async updateOne(filter, update) { completed.push({ id: filter._id, ...update.$set }); },
     };
    });
+   test.mock.method(http, 'request', (url, options, callback) => {
+    assert.equal(url, 'http://192.168.0.250/update');
+    return realRequest(`http://127.0.0.1:${fakeBoard.address().port}/update`, options, callback);
+   });
    test.mock.method(globalThis, 'fetch', async (url, options) => {
     if (url.startsWith(origin + '/')) return realFetch(url, options);
+    assert.equal(url, 'http://192.168.0.250/update/nonce');
     requests++;
-    if (url === 'http://192.168.0.250/update/nonce') {
-     if (mode === 'nonce-503') return new Response(null, { status: 503 });
-     return Response.json({ host: mode === 'wrong-host' ? 'unexpected-board' : host, nonce });
-    }
-    assert.equal(url, 'http://192.168.0.250/update');
-    assert.equal(options.method, 'POST');
-    assert.equal(options.redirect, 'error');
-    assert.deepEqual(options.headers, {
-     'X-OTA-Nonce': nonce, 'X-OTA-Size': '33', 'X-OTA-SHA256': sha256, 'X-OTA-Signature': signature,
-    });
-    const file = options.body.get('file');
-    assert.equal(file.name, 'firmware.bin');
-    assert.deepEqual(Buffer.from(await file.arrayBuffer()), image);
-    uploads++;
-    if (mode === 'upload-503') return new Response(null, { status: 503 });
-    if (mode === 'busy') return Response.json({ ok: false, error: 'Pump is running' }, { status: 409 });
-    return Response.json({ ok: true, restart_in_ms: 2000 });
+    if (mode === 'nonce-503') return new Response(null, { status: 503 });
+    if (mode === 'disconnect' && ++probes === 2) throw new Error('Simulated offline board');
+    return Response.json({ host: mode === 'wrong-host' ? 'unexpected-board' : host, nonce });
    });
    try {
     process.env.OTA_MASTER_KEY = masterKey;
@@ -229,7 +237,7 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
     for (const [scenario, status, expected] of [
      ['success', 200, { ok: true, restart_in_ms: 2000 }],
      ['wrong-host', 502, { ok: false, error: 'The board returned an invalid identity or nonce.' }],
-     ['nonce-503', 503, { ok: false, error: 'Placa sem chave de OTA; grave a chave pela USB' }],
+     ['disconnect', 200, { ok: true, confirmation: 'restart' }],
      ['upload-503', 503, { ok: false, error: 'Placa sem chave de OTA; grave a chave pela USB' }],
      ['busy', 409, { ok: false, error: 'Pump is running' }],
     ]) {
@@ -242,9 +250,24 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
      assert.equal(response.status, status, scenario);
      assert.deepEqual(await response.json(), { ...expected, sha256 });
     }
-    assert.equal(requests, 8);
-    assert.equal(uploads, 3);
-    assert.deepEqual(completed.map(entry => entry.status), [200, 502, 503, 503, 409]);
+    assert.equal(requests, 7);
+    assert.equal(uploads, 4);
+    assert.deepEqual(completed.map(entry => entry.status), [200, 502, 200, 503, 409]);
+    assert.equal(completed[2].confirmation, 'restart');
+    for (const packet of wire) {
+     const { headers, body } = packet;
+     const boundary = headers['content-type'].match(/^multipart\/form-data; boundary=(.+)$/)[1];
+     const preamble = Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="firmware"; filename="firmware.bin"\r\nContent-Type: application/octet-stream\r\n\r\n`);
+     assert.equal(packet.method, 'POST');
+     assert.equal(Number(headers['content-length']), body.length);
+     assert.equal(headers['transfer-encoding'], undefined);
+     assert.equal(headers.expect, undefined);
+     assert.equal(headers['x-ota-nonce'], nonce);
+     assert.equal(headers['x-ota-size'], '33');
+     assert.equal(headers['x-ota-sha256'], sha256);
+     assert.equal(headers['x-ota-signature'], signature);
+     assert.deepEqual(body, Buffer.concat([preamble, image, Buffer.from(`\r\n--${boundary}--\r\n`)]));
+    }
     for (const entry of inserted) {
      assert.equal(entry.host, host);
      assert.equal(entry.username, 'admin');

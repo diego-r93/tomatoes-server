@@ -95,5 +95,6 @@ export const knownDevices=()=>access(()=>all<{host:string;received_at:number}>('
 export async function recentDevice(host: string) {
   const row = await access(() => get<DeviceRow>('SELECT * FROM alert_devices WHERE host=?', [host]));
   if (!sourceHealth.mqttConnected || !row || row.received_at < processStarted || Date.now() - row.received_at >= 90000) return null;
-  return JSON.parse(row.payload) as { ip?: string; ports?: Record<string, { gpio?: unknown; state?: unknown }> };
+  const payload = JSON.parse(row.payload) as { ip?: string; uptime?: unknown; ports?: Record<string, { gpio?: unknown; state?: unknown }> };
+  return { ...payload, receivedAt: row.received_at };
 }

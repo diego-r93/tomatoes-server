@@ -23,7 +23,9 @@
       </v-col>
       <v-col v-else-if="phase === 'success'" cols="12" class="result-state">
         <v-alert type="success" variant="tonal" title="Firmware installed" role="status">
-          The board confirmed the firmware was installed and verified. It will restart shortly.
+          {{ confirmedByRestart
+            ? 'The board came back online after the transfer. The update was confirmed by its restart.'
+            : 'The board confirmed the firmware was installed and verified. It will restart shortly.' }}
         </v-alert>
         <div class="upload-action"><v-btn variant="outlined" @click="reset">Choose another file</v-btn></div>
       </v-col>
@@ -58,6 +60,7 @@ import OTAService from '@/services/OTAService';
 const props = defineProps({ device: { type: Object, required: true }, online: Boolean });
 const emit = defineEmits(['busy', 'completed']);
 const sha256 = ref('');
+const confirmedByRestart = ref(false);
 const selectedFile = ref(null), fileKey = ref(0), validationError = ref(''), error = ref(''), progress = ref(null), phase = ref('ready');
 const busy = computed(() => phase.value === 'uploading' || phase.value === 'verifying');
 const formatSize = bytes => bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(2)} MB`;
@@ -101,6 +104,7 @@ async function submit() {
       phase.value = 'unconfirmed';
       return;
     }
+    confirmedByRestart.value = data.confirmation === 'restart';
     phase.value = 'success';
     emit('completed');
   } catch (issue) {
