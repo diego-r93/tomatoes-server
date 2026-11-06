@@ -52,3 +52,8 @@ passwd
 # Generated Telegraf-only MQTT credentials
 /telegraf/.mqtt.env
 /telegraf/..mqtt.env.*
+
+# Local MQTT TLS material and listener configuration
+/mosquitto/config/.tls-stage.*/
+/mosquitto/config/tls/
+/mosquitto/config/listeners/*.conf

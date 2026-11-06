@@ -68,6 +68,7 @@ services:
       - ./mosquitto.sh:/mosquitto.sh
     ports:
       - 1883:1883
+      - 8883:8883
       - 9001:9001
     networks:
       - mosquitto_network
