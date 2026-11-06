@@ -33,7 +33,7 @@
               <td>{{ board.fw || '—' }}</td>
               <td>{{ board.psramMB == null ? '—' : board.psramMB + ' MB' }}</td>
               <td>{{ formatDateTime(board.firstSeen, 'Browser', 'Not observed') }}</td>
-              <td>{{ board.status === 'removed' ? 'Blocked' : board.online ? 'Online' : 'Not seen' }}</td>
+              <td>{{ connectionLabel(board) }}</td>
               <td>
                 <v-btn v-if="board.status === 'removed'" size="small" variant="text" color="primary" @click="confirm = { board, action: 'restore' }">Restore to pending</v-btn>
                 <template v-else-if="board.factoryAuthenticated">
@@ -41,7 +41,7 @@
                   <v-btn v-if="board.status === 'pending'" size="small" variant="text" color="error" @click="confirm = { board, action: 'reject' }">Reject</v-btn>
                   <v-btn v-else size="small" variant="text" color="error" @click="confirm = { board, action: 'remove' }">Remove</v-btn>
                 </template>
-                <span v-else>Factory certificate not observed</span>
+                <span v-else-if="!waitingForReconnect(board)">Factory certificate not observed</span>
               </td>
             </tr>
             <tr v-if="!section.boards.length && !loading">
@@ -57,7 +57,7 @@
           <strong>{{ confirm.board.host }}</strong>
           <p v-if="confirm.action === 'approve'">This grants operational access and creates any missing outputs with empty schedules.</p>
           <p v-else-if="confirm.action === 'restore'">The board can connect with its factory certificate and will need approval again. Existing pump records are kept.</p>
-          <p v-else>This blocks the board at the next MQTT connection. Existing pump records are kept.</p>
+          <p v-else>The board is disconnected immediately and future MQTT connections are refused. Existing pump records are kept.</p>
           <v-alert v-if="actionError" type="error" variant="tonal" class="mt-3">{{ actionError }}</v-alert>
         </v-card-text>
         <v-card-actions>
@@ -83,7 +83,11 @@ const confirm = ref(null);
 const saving = ref(false);
 const actionError = ref('');
 const actionLabels = { approve: 'Approve', reject: 'Reject', remove: 'Remove', restore: 'Restore' };
+const reconnectWaitMs = 120_000;
+const now = ref(Date.now());
 let controller;
+let reconnectTimer;
+let disposed = false;
 watch(confirm, () => { actionError.value = ''; });
 
 async function applyAction() {
@@ -94,7 +98,7 @@ async function applyAction() {
   try {
     await http.patch('/mqtt/registry/' + encodeURIComponent(board.host), { action }, { timeout: 10000 });
     confirm.value = null;
-    await refresh();
+    await refresh(true);
   } catch (issue) {
     actionError.value = issue.response?.data?.message || 'Could not update board registration.';
   } finally {
@@ -108,21 +112,49 @@ const sections = computed(() => [
   { status: 'removed', title: 'Removed boards', empty: 'No removed boards.' },
 ].map(section => ({ ...section, boards: boards.value.filter(board => board.status === section.status) })));
 
-async function refresh() {
-  if (loading.value) return;
-  controller = new AbortController();
+function waitingForReconnect(board) {
+  const since = board.status === 'pending' ? board.restoredAt : board.approvedAt;
+  return board.status !== 'removed' && !board.online && since
+    && now.value - Date.parse(since) < reconnectWaitMs;
+}
+
+function connectionLabel(board) {
+  if (board.status === 'removed') return 'Blocked';
+  if (board.online) return 'Online';
+  return waitingForReconnect(board) ? 'Waiting for the board to reconnect (up to 2 min)' : 'Not seen';
+}
+
+async function refresh(force = false) {
+  if (disposed || (loading.value && force !== true)) return;
+  controller?.abort();
+  const request = new AbortController();
+  controller = request;
   loading.value = true;
   error.value = '';
   try {
-    const { data } = await http.get('/mqtt/registry', { signal: controller.signal, timeout: 10000 });
-    boards.value = data;
+    const { data } = await http.get('/mqtt/registry', { signal: request.signal, timeout: 10000 });
+    if (controller === request && !request.signal.aborted) {
+      now.value = Date.now();
+      boards.value = data;
+    }
   } catch (issue) {
-    if (issue.code !== 'ERR_CANCELED') error.value = 'Could not load board registration. Try refreshing.';
+    if (controller === request && !request.signal.aborted && issue.code !== 'ERR_CANCELED') error.value = 'Could not load board registration. Try refreshing.';
   } finally {
-    loading.value = false;
+    if (controller === request) loading.value = false;
   }
 }
 
-onMounted(refresh);
-onBeforeUnmount(() => controller?.abort());
+onMounted(() => {
+  refresh();
+  reconnectTimer = setInterval(() => {
+    const wasWaiting = boards.value.some(waitingForReconnect);
+    now.value = Date.now();
+    if (wasWaiting && !saving.value) refresh();
+  }, 5000);
+});
+onBeforeUnmount(() => {
+  disposed = true;
+  clearInterval(reconnectTimer);
+  controller?.abort();
+});
 </script>
