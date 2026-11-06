@@ -1,6 +1,6 @@
 services:
   backend:
-    image: node:20.12.2
+    image: node:24.22.2
     container_name: backend
     restart: unless-stopped
     volumes:
