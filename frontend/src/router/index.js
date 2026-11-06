@@ -35,49 +35,31 @@ const routes = [
   ...HelpRoutes,
 ]
 
-let authInterval = null;
-
-const startAuthInterval = () => {
-  if (authInterval) {
-    clearInterval(authInterval);
-  }
-  authInterval = setInterval(() => {
-    const isAuthenticated = Authentication.isAuthenticated();
-    if (!isAuthenticated) {
-      clearInterval(authInterval);  // Parar de verificar uma vez que não está mais autenticado.
-    }
-  }, 1000 * 60);  // A cada 1 minuto
-};
-
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes: routes,
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {
       return savedPosition;
+    } else if (to.hash && document.getElementById(to.hash.slice(1))) {
+      return { el: to.hash, top: 88 };
     } else {
       return { top: 0 };
     }
   },
 })
 
-router.beforeEach(async (to, from, next) => {
-  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
-
-  const authenticated = Authentication.isAuthenticated()
-
-  if (requiresAuth) {
-    if (!authenticated) {
-      clearInterval(authInterval);  // Certificar-se de limpar o intervalo se não estiver autenticado.
-      next('/login');
-    } else {
-      startAuthInterval();  // Iniciar o intervalo se estiver autenticado.
-      next();
-    }
-  } else {
-    clearInterval(authInterval);  // Limpar o intervalo se a rota não requer autenticação.
-    next();
+router.beforeEach(async to => {
+  if (!to.matched.some(record => record.meta.requiresAuth)) return;
+  try {
+    const user = await Authentication.validateSession();
+    if (!user) return '/login';
+  } catch {
+    // Keep the current page when the server is temporarily unavailable.
+    return false;
   }
-})
-
-export default router
+});
+window.addEventListener('tomatoes:session-ended', () => {
+  if (router.currentRoute.value.matched.some(record => record.meta.requiresAuth)) router.replace('/login');
+});
+export default router;

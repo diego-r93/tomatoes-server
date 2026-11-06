@@ -1,24 +1,29 @@
-import axios from "axios"
+import axios from 'axios';
 
-const baseURL = `http://${window.location.hostname}/server`;
+const configuration = { baseURL: `${window.location.origin}/server`, headers: { 'Content-Type': 'application/json' } };
+const http = axios.create(configuration);
+const httpWithAuthorization = axios.create(configuration);
 
-const http = axios.create({
-  baseURL: baseURL,
-  headers: {
-    "Content-type": "application/json"
-  }
-})
-
-const httpWithAuthorization = axios.create({
-  baseURL: baseURL,
-  headers: {
-    "Content-type": "application/json"
-  }
-})
-
-// Função para definir o cabeçalho de autorização
-export function setAuthorizationHeader(token) {
-  httpWithAuthorization.defaults.headers.common['Authorization'] = token
+for (const client of [http, httpWithAuthorization]) {
+  client.interceptors.request.use(config => {
+    const token = localStorage.getItem('tomatoesAccessToken');
+    if (!config.skipAuth && token) config.headers.set('Authorization', `Bearer ${token}`);
+    return config;
+  });
+  client.interceptors.response.use(response => response, error => {
+    if (error.response?.status === 401 && !error.config?.skipAuth && !error.config?.skipUnauthorized) {
+      window.dispatchEvent(new Event('tomatoes:unauthorized'));
+    }
+    return Promise.reject(error);
+  });
 }
 
-export { http, httpWithAuthorization }
+export function setAuthorizationHeader(token) {
+  if (token) httpWithAuthorization.defaults.headers.common.Authorization = `Bearer ${String(token).replace(/^Bearer\s+/i, '')}`;
+  else delete httpWithAuthorization.defaults.headers.common.Authorization;
+}
+export function clearAuthorizationHeaders() {
+  delete http.defaults.headers.common.Authorization;
+  delete httpWithAuthorization.defaults.headers.common.Authorization;
+}
+export { http, httpWithAuthorization };

@@ -1,150 +1,84 @@
 <template>
-  <v-container v-if="loading" class="d-flex fill-height" fluid>
-    <v-row>
-      <v-col>
-        <div class="text-center">
-          <v-progress-circular :size="80" color="secondary" indeterminate></v-progress-circular>
-        </div>
-      </v-col>
-    </v-row>
+  <v-container fluid class="boards-page app-page">
+    <AppPageHeader title="Database / Boards" icon="mdi-database"><template #actions><v-btn variant="outlined" size="small" icon rounded="sm" aria-label="Add pump" :disabled="locked" @click="requestCreate"><v-icon icon="mdi-timer-plus-outline"/><v-tooltip activator="parent" location="bottom">Add pump</v-tooltip></v-btn><v-btn variant="outlined" size="small" icon rounded="sm" aria-label="Page settings" :disabled="locked" @click="settingsOpen = true"><v-icon icon="mdi-cog-outline"/><v-tooltip activator="parent" location="bottom">Page settings</v-tooltip></v-btn><v-btn variant="outlined" size="small" icon rounded="sm" aria-label="Refresh boards" :disabled="locked || Boolean(selectedBoard)" :loading="loading" @click="loadBoards"><v-icon icon="mdi-sync"/><v-tooltip activator="parent" location="bottom">{{ selectedBoard ? 'Return to All pumps to refresh' : 'Refresh boards' }}</v-tooltip></v-btn></template></AppPageHeader>
+    <v-alert v-if="error" type="error" variant="tonal" class="mb-4" role="alert">{{ error }}</v-alert>
+    <div class="connection-summary"><span :class="{'connection-unavailable': connectionError}">{{ connectionError || (connectionsLoading ? 'Checking board connections…' : 'Board connection status · discovery responses within 90 seconds · refreshes every 30 seconds') }}</span><v-btn variant="text" size="small" prepend-icon="mdi-refresh" :loading="connectionsLoading" :disabled="connectionsLoading" @click="refreshConnections">Refresh connections</v-btn></div>
+    <DatabaseCard v-if="selectedBoard" :key="selectedKey" ref="editor" :card-data="selectedBoard" :connection="connectionFor(selectedBoard.pumperCode)" :query="safeQuery" :status="status" :rows="settings.pageSize" :show-seconds="settings.showSeconds" :duration-unit="settings.durationUnit" @busy="mutationBusy = $event" @dirty="dirty = $event" @updated="handleUpdated" @delete="handleDeleted" @back="backToDirectory"/>
+    <template v-else>
+      <div class="page-heading"><div><h1 class="app-page-title">Pump schedules</h1><p>Choose a pump to manage its schedule.</p></div><v-btn color="primary" prepend-icon="mdi-plus" :disabled="locked" @click="openCreate">Add pump</v-btn></div>
+      <div class="search-tools"><v-text-field v-model="query" label="Search pumps or times" placeholder="Pump name, device ID or 07:30" prepend-inner-icon="mdi-magnify" clearable hide-details variant="outlined" :disabled="locked"/><v-select v-model="boardFilter" label="Board" :items="boardOptions" hide-details variant="outlined" :disabled="locked"/><v-select v-model="status" label="Schedules" :items="statusOptions" hide-details variant="outlined" :disabled="locked"/></div>
+      <div class="directory-summary"><span aria-live="polite">{{ filtered.length }} of {{ boards.length }} pumps</span><span>Schedules grouped by board</span></div>
+      <v-progress-linear v-if="loading" indeterminate color="primary" aria-label="Loading pumps"/>
+      <div class="directory-table"><table><thead><tr><th>Pump</th><th class="channel">Channel</th><th class="count">Schedules</th><th class="pulse">Pulse</th><th><span class="sr-only">Manage</span></th></tr></thead><tbody v-for="group in grouped" :key="group.code"><tr class="board-group"><td colspan="5"><v-icon icon="mdi-chip" size="17"/><span>{{ group.code }}</span></td></tr><tr v-for="board in group.items" :key="boardId(board)" class="pump-row"><td class="pump-copy"><strong>{{ board.pumperName }}</strong><span>{{ board.pumperCode }}</span><BoardConnectionBadge :connection="connectionFor(board.pumperCode)" class="pump-connection"/><div class="mobile-summary">{{ (board.driveTimes || []).length }} schedules · {{ enabled(board) }} enabled<br>Pulse: {{ pulseLabel(board.pulseDuration, settings.durationUnit) }}</div></td><td class="channel">{{ channelOf(board) }}</td><td class="count"><strong>{{ (board.driveTimes || []).length }}</strong><span class="muted"> · {{ enabled(board) }} enabled</span></td><td class="pulse">{{ pulseLabel(board.pulseDuration, settings.durationUnit) }}</td><td class="manage"><v-btn variant="outlined" size="small" append-icon="mdi-chevron-right" :aria-label="`Manage ${board.pumperCode}`" :disabled="locked" @click="manage(board)">Manage</v-btn></td></tr></tbody><tbody v-if="!filtered.length && !loading"><tr><td colspan="5" class="empty">{{ boards.length ? 'No pumps match these filters.' : 'No pumps yet. Use Add pump to register your first pump.' }}</td></tr></tbody></table></div>
+      <nav v-if="filtered.length" class="pager" aria-label="Pump list pages"><span>{{ rangeStart }}–{{ rangeEnd }} of {{ filtered.length }}</span><div><v-btn icon="mdi-chevron-left" variant="outlined" size="small" aria-label="Previous pumps" :disabled="locked || page === 1" @click="page--"/><span>Page {{ page }} of {{ pageCount }}</span><v-btn icon="mdi-chevron-right" variant="outlined" size="small" aria-label="Next pumps" :disabled="locked || page === pageCount" @click="page++"/></div></nav>
+    </template>
   </v-container>
-  <v-container v-else class="d-flex fill-height align-start" fluid>
-    <v-app-bar color="#121212" flat>
-      <template v-slot:prepend>
-        <v-icon color="#bdbdbd" icon="mdi-database" size="small"></v-icon>
-      </template>
-      <v-app-bar-title class="text-h6">
-        <span style="color: #bdbdbd">
-          Database / Boards
-        </span>
-      </v-app-bar-title>
-      <v-btn class="me-2 text-none rounded-xs custom-border" variant="flat" @click="addBoardFormIsVisible = true">
-        <v-icon color="#bdbdbd" icon="mdi-timer-plus-outline">
-        </v-icon>
-      </v-btn>
-      <v-btn class="me-2 text-none rounded-xs custom-border" variant="flat">
-        <v-icon color="#bdbdbd" icon="mdi-cog-outline">
-        </v-icon>
-      </v-btn>
-      <div class="pr-5">
-        <v-btn class="text-none rounded-xs custom-border" variant="flat" @click="loadBoards">
-          <v-icon color="#bdbdbd" icon="mdi-sync"></v-icon>
-        </v-btn>
-      </div>
-    </v-app-bar>
-    <v-row>
-      <v-col v-for="board in boards" :key="board.id" cols="3">
-        <DatabaseCard :cardData="board" @delete="handleDelete" @updateBoard="handleUpdateBoard"
-          @updateDriveTimeState="handleUpdateDriveTimeState" />
-      </v-col>
-    </v-row>
-  </v-container>
-
-  <!-- Diálogo de Adição -->
-  <v-dialog v-model="addBoardFormIsVisible" persistent max-width="400px">
-    <v-card>
-      <v-card-title>Add New Board</v-card-title>
-      <v-card-text>
-        <v-text-field v-model="pumperCode" label="Pumper Code" type="text"></v-text-field>
-        <v-text-field v-model="pumperName" label="Pumper Name" type="text"></v-text-field>
-        <v-text-field v-model="pulseDuration" label="Pulse Duration" type="text"></v-text-field>
-      </v-card-text>
-      <v-card-actions>
-        <v-spacer></v-spacer>
-        <v-btn color="red darken-1" text @click="addBoardFormIsVisible = false">
-          Cancel
-        </v-btn>
-        <v-btn color="green darken-1" text @click="addNewBoard">
-          Add
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+  <v-dialog v-model="leaveOpen" max-width="460" persistent><v-card><v-card-title>Unsaved changes</v-card-title><v-card-text>Save changes to {{ selectedBoard?.pumperName }} before leaving?</v-card-text><v-card-actions class="leave-actions"><v-btn :disabled="locked" @click="finishLeave(false)">Keep editing</v-btn><v-spacer/><v-btn :disabled="locked" @click="editor?.discard(); finishLeave(true)">Discard</v-btn><v-btn color="primary" :disabled="locked" :loading="mutationBusy" @click="saveAndLeave">Save and continue</v-btn></v-card-actions></v-card></v-dialog>
+  <v-dialog v-model="settingsOpen" max-width="480"><v-card><v-card-title>Page settings</v-card-title><v-card-text><v-switch v-model="settings.showSeconds" label="Show seconds (HH:mm:ss)" color="primary" hide-details class="mb-4"/><v-select v-model="settings.durationUnit" label="Pulse duration unit" :items="[{title:'Minutes',value:'minutes'},{title:'Milliseconds',value:'milliseconds'}]"/><v-select v-model="settings.order" label="Pump order" :items="[{title:'Original order',value:'original'},{title:'Pump name',value:'name'},{title:'Device code',value:'code'}]"/><v-select v-model="settings.pageSize" label="Rows per page" :items="[8, 12, 16]"/><p class="muted">Display preferences are saved in this browser. Stored times and pulse durations stay unchanged.</p></v-card-text><v-card-actions><v-spacer/><v-btn color="primary" @click="settingsOpen = false">Done</v-btn></v-card-actions></v-card></v-dialog>
+  <v-dialog v-model="createOpen" max-width="480" persistent><v-card><v-card-title>Add pump</v-card-title><v-card-text><v-form @submit.prevent="createBoard"><v-text-field v-model="nameDraft" label="Pump name" :disabled="locked"/><v-text-field v-model="codeDraft" label="Device and channel" placeholder="esp32s3-07945C#01" hint="Use the exact device code and channel. This identifier cannot be changed later." persistent-hint :disabled="locked" class="mb-4"/><v-text-field v-model="durationDraft" label="Pulse duration (min)" type="number" min="0" step="any" :disabled="locked"/><p class="muted mb-4">The pump starts with one disabled schedule at 06:00:00.</p><v-alert v-if="createError" type="error" variant="tonal" role="alert">{{ createError }}</v-alert><div class="dialog-actions"><v-btn :disabled="locked" @click="createOpen = false">Cancel</v-btn><v-btn type="submit" color="primary" :disabled="locked" :loading="creating">Create pump</v-btn></div></v-form></v-card-text></v-card></v-dialog>
 </template>
-
 <script setup>
-import { ref, onMounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { onBeforeRouteLeave } from 'vue-router';
+import AppPageHeader from '@/components/navigation/AppPageHeader.vue';
 import DatabaseCard from './DatabaseCard.vue';
-import mongoDataService from "@/services/mongoDataService";
-
-const loading = ref(true);
-const boards = ref([]);
-
-const pumperCode = ref("");
-const pumperName = ref("");
-const pulseDuration = ref("");
-const driveTimes = ref([]);
-
-const addBoardFormIsVisible = ref(false);
-
-const addNewBoard = async () => {
-  loading.value = true;
-  try {
-    await mongoDataService.createBoard({
-      pumperCode: pumperCode.value,
-      pumperName: pumperName.value,
-      pulseDuration: pulseDuration.value,
-      driveTimes: [{
-        time: "06:00:00",
-        state: false,
-      }],
-    });
-
-    // Resetar os campos após a adição
-    pumperCode.value = "";
-    pumperName.value = "";
-    pulseDuration.value = "";
-
-    addBoardFormIsVisible.value = false;
-    // Recarregar os boards
-    await loadBoards();
-  } catch (error) {
-    console.error(error);
-  } finally {
-    loading.value = false;
-  }
-};
-
-
-const loadBoards = async () => {
-  loading.value = true;
-  try {
-    const response = await mongoDataService.getAllBoards();
-    boards.value = response.data;
-  } catch (error) {
-    console.log(error);
-  } finally {
-    loading.value = false;
-  }
-};
-
-const handleUpdateBoard = async () => {
-  await loadBoards();
-};
-
-const handleDelete = async (boardId) => {
-  boards.value = boards.value.filter(board => board.id !== boardId);
-  await loadBoards();
-};
-
-const handleUpdateDriveTimeState = ({ boardId, index, newState }) => {
-  const boardToUpdate = boards.value.find(board => board.id === boardId.value);
-  if (boardToUpdate) {
-    boardToUpdate.driveTimes[index].state = newState;
-  }
-};
-
-onMounted(() => {
-  loadBoards();
-});
-</script>
-
-<style scoped>
-.v-btn--size-default {
-  --v-btn-size: 0.875rem;
-  --v-btn-height: 32px;
-  font-size: var(--v-btn-size);
-  min-width: 36px;
-  padding: 0 8px;
+import BoardConnectionBadge from './BoardConnectionBadge.vue';
+import { useBoardConnections } from '@/composables/useBoardConnections';
+import mongoDataService from '@/services/mongoDataService';
+import { boardId, boardDetails, matchingBoards, normalizeSearch, pulseLabel } from '@/composables/boardScheduleUtils';
+const { connectionFor, refreshConnections, loading: connectionsLoading, error: connectionError } = useBoardConnections();
+const boards = ref([]), loading = ref(false), creating = ref(false), mutationBusy = ref(false), error = ref('');
+const locked = computed(() => loading.value || creating.value || mutationBusy.value);
+const query = ref(''), status = ref('all'), boardFilter = ref('all'), page = ref(1), selectedKey = ref(''), dirty = ref(false), editor = ref(null);
+const safeQuery = computed(() => query.value || '');
+const selectedBoard = computed(() => boards.value.find(board => boardId(board) === selectedKey.value));
+const settings = reactive({ showSeconds: false, durationUnit: 'minutes', order: 'original', pageSize: 8 });
+const storageKey = 'tomatoes.boardSchedules.preferences.v2';
+const settingsOpen = ref(false), createOpen = ref(false), createError = ref(''), leaveOpen = ref(false);
+const codeDraft = ref(''), nameDraft = ref(''), durationDraft = ref('15');
+const statusOptions = [{ title: 'All schedules', value: 'all' }, { title: 'Enabled', value: 'enabled' }, { title: 'Disabled', value: 'disabled' }];
+const deviceOf = board => String(board.pumperCode || '').replace(/#[^#]*$/, '') || 'Unassigned';
+const channelOf = board => String(board.pumperCode || '').match(/#[^#]*$/)?.[0] || '—';
+const enabled = board => (board.driveTimes || []).filter(entry => entry.state).length;
+const boardOptions = computed(() => [{ title: 'All boards', value: 'all' }, ...[...new Set(boards.value.map(deviceOf))].sort().map(code => ({ title: code, value: code }))]);
+const filtered = computed(() => matchingBoards(boards.value, safeQuery.value, status.value, settings.order).filter(board => boardFilter.value === 'all' || deviceOf(board) === boardFilter.value));
+// Group before paging so each physical board stays together in the directory.
+const ordered = computed(() => { const groups = new Map(); for (const board of filtered.value) { const key = deviceOf(board); if (!groups.has(key)) groups.set(key, []); groups.get(key).push(board); } return [...groups.values()].flat(); });
+const pageCount = computed(() => Math.max(1, Math.ceil(ordered.value.length / settings.pageSize)));
+const grouped = computed(() => { const groups = []; for (const board of ordered.value.slice((page.value - 1) * settings.pageSize, page.value * settings.pageSize)) { const code = deviceOf(board); let group = groups.at(-1); if (group?.code !== code) { group = { code, items: [] }; groups.push(group); } group.items.push(board); } return groups; });
+const rangeStart = computed(() => filtered.value.length ? (page.value - 1) * settings.pageSize + 1 : 0), rangeEnd = computed(() => Math.min(page.value * settings.pageSize, filtered.value.length));
+watch([safeQuery, status, boardFilter, () => settings.order, () => settings.pageSize], () => { page.value = 1; });
+watch(pageCount, count => { page.value = Math.min(page.value, count); });
+watch(settings, () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch { /* Preferences must not block editing. */ } });
+function manage(board) { selectedKey.value = boardId(board); window.scrollTo({ top: 0 }); }
+async function loadBoards() { if (locked.value) return; loading.value = true; error.value = ''; try { const response = await mongoDataService.getAllBoards(); if (!Array.isArray(response.data)) throw new Error(); boards.value = response.data; } catch { error.value = 'The pump list could not be loaded. Check the connection and try Refresh boards.'; } finally { loading.value = false; } }
+function handleUpdated(board) { boards.value = boards.value.map(current => boardId(current) === boardId(board) ? board : current); }
+function handleDeleted(id) { boards.value = boards.value.filter(board => boardId(board) !== id); selectedKey.value = ''; dirty.value = false; }
+let resolveLeave;
+function confirmLeave() { if (locked.value) return Promise.resolve(false); if (!dirty.value) return Promise.resolve(true); leaveOpen.value = true; return new Promise(resolve => { resolveLeave = resolve; }); }
+function finishLeave(allow) { leaveOpen.value = false; resolveLeave?.(allow); resolveLeave = null; }
+async function saveAndLeave() { if (await editor.value?.save()) finishLeave(true); else finishLeave(false); }
+async function backToDirectory() { if (await confirmLeave()) { selectedKey.value = ''; dirty.value = false; window.scrollTo({ top: 0 }); } }
+async function requestCreate() { if (await confirmLeave()) { selectedKey.value = ''; dirty.value = false; openCreate(); } }
+function openCreate() { createError.value = ''; codeDraft.value = ''; nameDraft.value = ''; durationDraft.value = '15'; createOpen.value = true; }
+async function createBoard() {
+  if (locked.value) return;
+  let details; try { details = boardDetails(nameDraft.value, Math.round(Number(durationDraft.value) * 60000)); } catch (issue) { createError.value = issue.message; return; }
+  const pumperCode = codeDraft.value.trim();
+  if (!pumperCode) { createError.value = 'Device and channel are required.'; return; }
+  if (boards.value.some(board => normalizeSearch(board.pumperCode) === normalizeSearch(pumperCode))) { createError.value = 'A pump with this device and channel already exists.'; return; }
+  creating.value = true; createError.value = '';
+  try { const response = await mongoDataService.createBoard({ ...details, pumperCode, driveTimes: [{ time: '06:00:00', state: false }] }); boards.value = [...boards.value, response.data]; createOpen.value = false; manage(response.data); }
+  catch { createError.value = 'The pump could not be created. Refresh the list before trying again.'; }
+  finally { creating.value = false; }
 }
+function beforeUnload(event) { if (dirty.value || mutationBusy.value) { event.preventDefault(); event.returnValue = ''; } }
+onBeforeRouteLeave(confirmLeave);
+onMounted(() => { try { const saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); if (typeof saved.showSeconds === 'boolean') settings.showSeconds = saved.showSeconds; if (['minutes', 'milliseconds'].includes(saved.durationUnit)) settings.durationUnit = saved.durationUnit; if (['original', 'name', 'code'].includes(saved.order)) settings.order = saved.order; if ([8, 12, 16].includes(saved.pageSize)) settings.pageSize = saved.pageSize; } catch { /* Ignore unavailable preferences. */ } window.addEventListener('beforeunload', beforeUnload); loadBoards(); });
+onBeforeUnmount(() => { window.removeEventListener('beforeunload', beforeUnload); resolveLeave?.(false); });
+</script>
+<style scoped lang="scss">
+.connection-summary{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:rgb(var(--v-theme-muted));margin-bottom:18px}.connection-summary>span{flex:1;min-width:180px}.connection-unavailable{color:rgb(var(--v-theme-warning))}.pump-copy>.pump-connection{margin-top:7px}.app-page.boards-page{width:100%;max-width:var(--app-content-width,1440px);margin-inline:auto}.page-heading{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:28px}.page-heading p{margin:5px 0 0;color:rgb(var(--v-theme-muted))}.search-tools{display:grid;grid-template-columns:minmax(0,1fr) 220px 180px;gap:16px;margin-bottom:20px}.directory-summary,.pager{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;color:rgb(var(--v-theme-muted));font-size:12px;margin:16px 0}.directory-table{border:1px solid rgb(var(--v-theme-border));border-radius:4px;overflow:hidden}.directory-table table{border-collapse:collapse;width:100%;background:rgb(var(--v-theme-surface))}.directory-table th,.directory-table td{padding:14px;border-bottom:1px solid rgb(var(--v-theme-border));text-align:left}.directory-table th{background:rgb(var(--v-theme-table-header));font-size:12px;font-weight:400;color:rgb(var(--v-theme-muted));padding-block:10px}.board-group td{background:rgb(var(--v-theme-table-header));font-size:12px;color:rgb(var(--v-theme-muted));padding-block:10px}.board-group .v-icon{margin-right:8px}.directory-table tbody:last-child tr:last-child td{border-bottom:0}.pump-row{height:68px}.pump-row:hover{background:rgba(var(--v-theme-on-surface),.025)}.pump-copy{width:38%;overflow-wrap:anywhere}.pump-copy>strong{display:block;font-size:14px;font-weight:500}.pump-copy>span:not(.board-connection){display:block;font-size:12px;color:rgb(var(--v-theme-muted));margin-top:5px}.count,.pulse,.channel{font-size:13px;font-variant-numeric:tabular-nums}.count strong{font-weight:500}.directory-table .manage{text-align:right}.mobile-summary{display:none}.pager>div{display:flex;gap:12px;align-items:center}.pager :deep(.v-btn){width:32px;height:30px;border-radius:3px}.muted{font-size:12px;color:rgb(var(--v-theme-muted))}.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.empty{padding:40px!important;text-align:center!important;color:rgb(var(--v-theme-muted))}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}.leave-actions{flex-wrap:wrap}
+@media(max-width:900px){.search-tools{grid-template-columns:minmax(0,1fr) 180px}.search-tools>:first-child{grid-column:1/-1}.count .muted{display:block}.pump-copy{width:34%}}
+@media(max-width:600px){.search-tools{grid-template-columns:1fr}.page-heading{flex-direction:column}.channel,.count,.pulse{display:none}.mobile-summary{display:block;font-size:12px;color:rgb(var(--v-theme-muted));line-height:1.9;margin-top:6px}.pump-copy{width:auto}.directory-table th,.directory-table td{padding-inline:12px}.pump-row{height:120px}.directory-table .manage{width:100px}.directory-summary>span:last-child{display:none}.pager{gap:12px}.boards-page{padding:16px}.page-heading .app-page-title{font-size:24px}}
 </style>

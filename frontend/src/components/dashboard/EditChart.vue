@@ -1,22 +1,19 @@
 <template>
-  <v-app-bar color="#121212" flat>
+  <v-app-bar color="background" flat>
     <template v-slot:prepend>
-      <v-btn density="compact" icon="mdi-arrow-left" size="large" color="#bdbdbd" @click="goBack"></v-btn>
+      <v-btn density="compact" icon="mdi-arrow-left" size="large" color="muted" @click="goBack"></v-btn>
     </template>
-    <v-app-bar-title class="text-h6">
-      <span style="color: #bdbdbd">
-        DashBoard / Home
+    <v-app-bar-title class="text-title-large">
+      <span style="color: rgb(var(--v-theme-muted))">
+        Dashboard / Edit panel
       </span>
     </v-app-bar-title>
-    <v-btn class="me-2 text-none rounded-xs custom-border" variant="flat">
-      <v-icon color="#bdbdbd" icon="mdi-cog-outline">
-      </v-icon>
-    </v-btn>
+    <v-btn class="me-2 custom-border" variant="flat" size="small" icon="mdi-cog-outline" color="muted" aria-label="Panel settings" />
     <v-menu>
       <template v-slot:activator="{ props }">
-        <v-btn v-bind="props" class="me-2 text-none rounded-xs custom-border" variant="flat">
-          <v-icon class="mr-2" color="#bdbdbd" icon="mdi-clock-outline"></v-icon>
-          <span style="color: #bdbdbd">{{ state.selectedLabel }}</span>
+        <v-btn v-bind="props" class="me-2 text-none rounded-xs custom-border" variant="flat" size="small" :icon="smAndDown" :aria-label="`Time range: ${state.selectedLabel}`">
+          <v-icon :class="{ 'mr-2': !smAndDown }" color="muted" icon="mdi-clock-outline"></v-icon>
+          <span v-if="!smAndDown" style="color: rgb(var(--v-theme-muted))">{{ state.selectedLabel }}</span>
         </v-btn>
       </template>
       <v-list>
@@ -26,28 +23,28 @@
         </v-list-item>
       </v-list>
     </v-menu>
-    <v-btn class="text-none rounded-xs custom-border" variant="flat" @click="fetchChartData">
-      <v-icon color="#bdbdbd" icon="mdi-sync"></v-icon>
+    <v-btn class="custom-border" variant="flat" size="small" icon="mdi-sync" color="muted" aria-label="Refresh chart" @click="fetchChartData" />
+    <v-btn class="mx-2 text-none rounded-xs custom-border" color="primary" variant="flat" size="small" :icon="smAndDown" aria-label="Apply changes" @click="applyChanges">
+      <v-icon v-if="smAndDown" icon="mdi-check" />
+      <span v-else>Apply</span>
     </v-btn>
-    <v-btn class="mx-2 text-none rounded-xs custom-border" color="indigo-darken-3" variant="flat" @click="applyChanges">
-      Apply
-    </v-btn>
-    <v-btn class="me-2 text-none rounded-xs custom-border" color="red-darken-3" variant="flat" @click="discardChanges">
-      Discard
+    <v-btn class="me-2 text-none rounded-xs custom-border" color="error" variant="flat" size="small" :icon="smAndDown" aria-label="Discard changes" @click="discardChanges">
+      <v-icon v-if="smAndDown" icon="mdi-close" />
+      <span v-else>Discard</span>
     </v-btn>
   </v-app-bar>
 
   <v-container fluid>
-    <v-row no-gutters>
-      <v-col cols="9">
-        <v-row no-gutters>
-          <v-col cols="12 mb-10">
+    <v-row :gap="24">
+      <v-col cols="12" lg="9">
+        <v-row :gap="24">
+          <v-col cols="12">
             <v-card ref="vCardRef" min-height="400" v-if="selectedChart" class="custom-border">
               <v-hover>
                 <template v-slot:default="{ isHovering, props }">
-                  <v-card :color="isHovering ? '#3c3c3c' : undefined" v-bind="props"
+                  <v-card :color="isHovering ? 'hover' : undefined" v-bind="props"
                     class="py-1 text-none rounded-xs text-center" variant="flat">
-                    <span style="color: #bdbdbd">{{ selectedChart.options.chartTitle }}</span>
+                    <span style="color: rgb(var(--v-theme-muted))">{{ selectedChart.options.chartTitle }}</span>
                   </v-card>
                 </template>
               </v-hover>
@@ -59,47 +56,43 @@
           <v-col cols="12">
             <v-card class="custom-border">
               <v-textarea v-model="getQuery" class="code-editor" rows="10" hide-details variant="solo"
-                bg-color="#121212" color="white" no-resize></v-textarea>
+                bg-color="background" color="on-surface" no-resize></v-textarea>
             </v-card>
           </v-col>
         </v-row>
       </v-col>
-      <v-col cols="3">
-        <v-card min-height="800" class="ml-4 custom-border">
-          <v-virtual-scroll class="scroll-container" :items="[1]" height="800px">
-            <template v-slot:default>
-              <v-expansion-panels v-model="panels" variant="accordion" multiple>
-                <v-expansion-panel title='Panel Title' static>
-                  <v-expansion-panel-text>
-                    <v-text-field class="mt-2" v-model=getChartTitle @input="" variant="outlined"></v-text-field>
-                  </v-expansion-panel-text>
-                </v-expansion-panel>
+      <v-col cols="12" lg="3">
+        <v-card class="custom-border">
+          <v-expansion-panels v-model="panels" variant="accordion" multiple>
+            <v-expansion-panel title='Panel Title' static>
+              <v-expansion-panel-text>
+                <v-text-field class="mt-2" v-model=getChartTitle variant="outlined"></v-text-field>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
 
-                <v-expansion-panel title='Unit'>
-                  <v-expansion-panel-text>
-                    <v-text-field class="mt-2" v-model=getChartScale @input="" variant="outlined"></v-text-field>
-                  </v-expansion-panel-text>
-                </v-expansion-panel>
+            <v-expansion-panel title='Unit'>
+              <v-expansion-panel-text>
+                <v-text-field class="mt-2" v-model=getChartScale variant="outlined"></v-text-field>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
 
-                <v-expansion-panel title='Standard Options'>
-                  <v-expansion-panel-text>
-                    <div class="d-flex justify-center">
-                      <v-color-picker elevation="0" class="mt-4" v-model="getChartStrokeColor"></v-color-picker>
-                    </div>
-                    <v-card-text>
-                      <v-slider v-model="fillOpacity" :max="1" :min="0" :step="0.1" class="ma-4" label="Fill opacity"
-                        hide-details>
-                        <template v-slot:append>
-                          <v-text-field v-model="fillOpacity" density="compact" :max="1" :min="0" :step="0.1"
-                            style="width: 80px" type="number" variant="outlined" hide-details></v-text-field>
-                        </template>
-                      </v-slider>
-                    </v-card-text>
-                  </v-expansion-panel-text>
-                </v-expansion-panel>
-              </v-expansion-panels>
-            </template>
-          </v-virtual-scroll>
+            <v-expansion-panel title='Standard Options'>
+              <v-expansion-panel-text>
+                <div class="d-flex justify-center">
+                  <v-color-picker width="100%" elevation="0" class="mt-4" v-model="getChartStrokeColor"></v-color-picker>
+                </div>
+                <v-card-text>
+                  <v-slider v-model="fillOpacity" :max="1" :min="0" :step="0.1" class="ma-4" label="Fill opacity"
+                    hide-details>
+                    <template v-slot:append>
+                      <v-text-field v-model="fillOpacity" density="compact" :max="1" :min="0" :step="0.1"
+                        style="width: 80px" type="number" variant="outlined" hide-details></v-text-field>
+                    </template>
+                  </v-slider>
+                </v-card-text>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
         </v-card>
       </v-col>
     </v-row>
@@ -109,6 +102,7 @@
 <script setup>
 import { onMounted, ref, reactive, nextTick, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { useDisplay } from 'vuetify';
 import Chart from '@/components/dashboard/Chart.vue';
 import influxdbDataService from '@/services/influxdbDataService';
 import { useDashboardStore } from '@/store/dashboardData';
@@ -120,6 +114,7 @@ const vCardRef = ref(null);
 const chartComponentRef = ref(null);
 
 const router = useRouter();
+const { smAndDown } = useDisplay();
 const route = useRoute();
 const charts = reactive([]); // Armazena todos os gráficos obtidos
 const selectedChart = ref(null);
@@ -256,7 +251,7 @@ const getChartStrokeColor = computed({
   },
   set(newValue) {
     if (dashboardStore.currentChart) {
-      updateChartColors(newValue);      
+      updateChartColors(newValue);
     }
   }
 });
@@ -301,11 +296,11 @@ const updateChartColors = (newColor) => {
     } else {
       strokeColor = strokeColor.replace(/rgb\((\d+), (\d+), (\d+)\)/, `rgba($1, $2, $3, ${fillOpacity.value})`);
       selectedChart.value.options.series[1].fill = strokeColor;
-      
+
     }
 
     selectedChart.value.options.series[1].fill = strokeColor;
-    dashboardStore.currentChart.options.series[1].fill = strokeColor;    
+    dashboardStore.currentChart.options.series[1].fill = strokeColor;
     selectedChart.value = JSON.parse(JSON.stringify(selectedChart.value));
   }
 };
@@ -407,28 +402,9 @@ onMounted(async () => {
 });
 </script>
 
-<style scoped>
-.code-editor ::v-deep textarea {
+<style scoped lang="scss">
+.code-editor :deep(textarea) {
   font-family: 'Consolas', monospace;
   font-size: 14px;
-}
-
-.scroll-container {
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.scroll-container::-webkit-scrollbar {
-  height: 6px;
-  width: 6px;
-}
-
-.scroll-container::-webkit-scrollbar-thumb {
-  background-color: #3c3c3c;
-  border-radius: 4px;
-}
-
-.scroll-container::-webkit-scrollbar-track {
-  background: transparent;
 }
 </style>

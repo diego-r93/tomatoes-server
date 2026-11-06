@@ -1,73 +1,8 @@
-<template>
-  <v-container fluid fill-height class="pa-16 gradient-container" style="height: 100%;">
-    <v-row class="d-flex align-center justify-center" style="height: 100%;">
-      <v-col cols="12" sm="8" md="6">
-        <v-card class="mx-auto px-6 py-8 rounded-lg" max-width="400" elevation="12">
-          <v-img src="@/assets/images/hydroponic.png" class="mx-auto" :width="100" height="100" contain>
-          </v-img>
-          <v-card-title class="text-center py-12">
-            <h2 class="text-h4">Reset Password</h2>
-          </v-card-title>
-          <v-form v-model="form" @submit.prevent="onSubmit">
-            <v-text-field v-model="email" :readonly="loading" :rules="[required]" class="mb-2" clearable
-              label="Email"></v-text-field>
-            <br>
-            <v-btn :disabled="!form" :loading="loading" block color="indigo" size="large" type="submit"
-              variant="elevated">
-              Send E-mail
-            </v-btn>
-            <div class="text-center mt-2">
-              <v-btn to="/login" class="transparent-btn text-indigo" elevation="0">
-                <p class="text-capitalize">Cancel</p>
-              </v-btn>
-            </div>
-          </v-form>
-        </v-card>
-      </v-col>
-    </v-row>
-  </v-container>
-</template>
-
-<script>
-// import router from '@/router'
-// import { getAuth, sendPasswordResetEmail } from "firebase/auth"
-
-export default {
-  name: 'SignUp',
-  data() {
-    return {
-      show: false,
-      form: false,
-      email: '',
-      loading: false,
-    }
-  },
-  methods: {
-    onSubmit() {
-      if (!this.form) return
-
-      this.loading = true
-      // const auth = getAuth();
-      // sendPasswordResetEmail(auth, this.email)
-      //   .then(() => {
-      //     alert('Password reset email sent!')
-      //     router.push('/login');      
-      //   })
-      //   .catch((error) => {
-      //     console.log(error.code)
-      //     alert(error.message)
-      //     this.loading = false
-      //   })
-    },
-    required(v) {
-      return !!v || 'Field is required'
-    }
-  }
-}
+<template><v-container fluid class="auth-page d-flex align-center justify-center pa-4"><v-card class="auth-card pa-6" width="100%" max-width="440" title="Reset password"><v-card-text><p class="mb-4">Request a one-time reset link. Open it while connected to the Tomatoes network.</p><v-alert v-if="message" type="success" variant="tonal" class="mb-4">{{ message }}</v-alert><v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert><v-form @submit.prevent="submit"><v-text-field v-model="email" label="Email" autocomplete="email" :rules="[validEmail]" :disabled="loading" /><v-btn type="submit" block color="primary" :loading="loading" :disabled="loading">Send reset email</v-btn></v-form></v-card-text><v-card-actions><v-btn to="/login" variant="text">Back to login</v-btn></v-card-actions></v-card></v-container></template>
+<script setup>
+import { ref } from 'vue';
+import userService from '@/services/userService';
+import { userError, validEmail } from '@/composables/userManagementUtils';
+const email = ref(''), loading = ref(false), error = ref(''), message = ref('');
+async function submit(event) { if (!(await event).valid || loading.value) return; loading.value = true; error.value = ''; message.value = ''; try { message.value = (await userService.requestPasswordReset(email.value)).data.message; } catch (issue) { error.value = userError(issue); } finally { loading.value = false; } }
 </script>
-
-<style>
-.gradient-container {
-  background: linear-gradient(to bottom, #004d40, #002b27);
-}
-</style>

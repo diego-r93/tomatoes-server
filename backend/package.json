@@ -6,7 +6,8 @@
   "scripts": {
     "start": "nodemon",
     "build": "tsc",
-    "serve": "node dist/server.js"
+    "serve": "node dist/server.js",
+    "test": "node --test -r ts-node/register tests/user-management.test.cjs tests/alerting.test.cjs"
   },
   "keywords": [],
   "author": "",
@@ -21,7 +22,8 @@
     "mongoose": "^7.5.3",
     "mqtt": "^5.0.2",
     "multer": "^1.4.5-lts.1",
-    "sqlite3": "^5.1.6"
+    "sqlite3": "^5.1.6",
+    "nodemailer": "10.3.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.2",

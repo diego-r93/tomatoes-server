@@ -1,19 +1,21 @@
 <template>
   <div class="main">
     <div class="dropzone-container" @dragover="dragover" @dragleave="dragleave" @drop="drop">
-      <input type="file" multiple name="file" id="fileInput" class="hidden-input" @change="onChange" ref="fileInput"
-        accept=".pdf,.jpg,.jpeg,.png" />
+      <input type="file" name="file" :id="inputId" class="hidden-input" @change="onChange" ref="fileInput" :disabled="disabled"
+        accept=".bin" />
 
-      <label for="fileInput" class="file-label text-white">
+      <label :for="inputId" class="file-label">
         <div v-if="isDragging">Release to drop files here.</div>
-        <div v-else>Drop files here or <u>click here</u> to upload.</div>
+        <div v-else>Drop a .bin file here or <u>click here</u> to upload.</div>
       </label>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, defineEmits  } from 'vue';
+import { ref, useId } from 'vue';
+const props = defineProps({ disabled: Boolean });
+const inputId = useId();
 
 const isDragging = ref(false);
 const fileInput = ref(null);
@@ -21,6 +23,7 @@ const fileInput = ref(null);
 const emit = defineEmits(['file-selected']);
 
 const onChange = () => {
+  if (props.disabled) return;
   const files = fileInput.value.files;
   if (files.length > 0) {
     emit('file-selected', files[0]);
@@ -29,7 +32,7 @@ const onChange = () => {
 
 const dragover = (event) => {
   event.preventDefault();
-  isDragging.value = true;
+  if (!props.disabled) isDragging.value = true;
 };
 
 const dragleave = () => {
@@ -38,13 +41,14 @@ const dragleave = () => {
 
 const drop = (element) => {
   element.preventDefault();
+  if (props.disabled) return;
   fileInput.value.files = element.dataTransfer.files;
   onChange();
   isDragging.value = false;
 };
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .main {
   display: flex;
   flex-grow: 1;
@@ -54,9 +58,10 @@ const drop = (element) => {
 }
 
 .dropzone-container {
-  padding: 4rem;
-  background: #121212;
-  border: 1px dashed #bdbdbd;
+  padding: clamp(24px, 5vw, 64px);
+  width: 100%;
+  background: rgb(var(--v-theme-background));
+  border: 1px dashed rgb(var(--v-theme-muted));
   border-radius: 10px;
 }
 
@@ -81,7 +86,7 @@ const drop = (element) => {
 
 .preview-card {
   display: flex;
-  border: 1px solid #a2a2a2;
+  border: 1px solid rgb(var(--v-theme-border));
   padding: 5px;
   margin-left: 5px;
 }
@@ -90,7 +95,7 @@ const drop = (element) => {
   width: 50px;
   height: 50px;
   border-radius: 5px;
-  border: 1px solid #a2a2a2;
-  background-color: #a2a2a2;
+  border: 1px solid rgb(var(--v-theme-border));
+  background-color: rgb(var(--v-theme-border));
 }
 </style>

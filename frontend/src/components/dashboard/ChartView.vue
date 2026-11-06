@@ -1,24 +1,24 @@
 <template>
-  <v-container class="py-2 px-2" fill-height>
-    <v-app-bar color="#121212" flat>
+  <v-container class="py-2 px-2" fluid>
+    <v-app-bar color="background" flat>
       <template v-slot:prepend>
-        <v-btn density="compact" icon="mdi-arrow-left" size="large" color="#bdbdbd" @click="goBack"></v-btn>
+        <v-btn density="compact" icon="mdi-arrow-left" size="large" color="muted" @click="goBack"></v-btn>
       </template>
-      <v-app-bar-title class="text-h6">
-        <span style="color: #bdbdbd">
+      <v-app-bar-title class="text-title-large">
+        <span style="color: rgb(var(--v-theme-muted))">
           Dashboard / View
         </span>
       </v-app-bar-title>
       <v-btn class="me-2 text-none rounded-xs custom-border" variant="flat">
-        <v-icon color="#bdbdbd" icon="mdi-cog-outline">
+        <v-icon color="muted" icon="mdi-cog-outline">
         </v-icon>
       </v-btn>
 
       <v-menu>
         <template v-slot:activator="{ props }">
           <v-btn v-bind="props" class="me-2 text-none rounded-xs custom-border" variant="flat">
-            <v-icon class="mr-2" color="#bdbdbd" icon="mdi-clock-outline"></v-icon>
-            <span style="color: #bdbdbd">{{ state.selectedLabel }}</span>
+            <v-icon class="mr-2" color="muted" icon="mdi-clock-outline"></v-icon>
+            <span style="color: rgb(var(--v-theme-muted))">{{ state.selectedLabel }}</span>
           </v-btn>
         </template>
         <v-list>
@@ -30,15 +30,15 @@
       </v-menu>
 
       <v-btn class="text-none rounded-xs custom-border" variant="flat" @click="fetchChartData">
-        <v-icon color="#bdbdbd" icon="mdi-sync"></v-icon>
+        <v-icon color="muted" icon="mdi-sync"></v-icon>
       </v-btn>
 
       <div class="pr-3 pl-1">
         <v-menu>
           <template v-slot:activator="{ props }">
             <v-btn v-bind="props" class="me-2 text-none rounded-xs custom-border" variant="flat">
-              <v-icon class="mr-2" color="#bdbdbd" icon="mdi-timer-outline"></v-icon>
-              <span style="color: #bdbdbd">{{ state.selectedUpdateInterval }}</span>
+              <v-icon class="mr-2" color="muted" icon="mdi-timer-outline"></v-icon>
+              <span style="color: rgb(var(--v-theme-muted))">{{ state.selectedUpdateInterval }}</span>
             </v-btn>
           </template>
           <v-list>
@@ -54,9 +54,9 @@
     <v-card ref="chartCardRef" min-height="700" v-if="selectedChart" class="custom-border">
       <v-hover>
         <template v-slot:default="{ isHovering, props }">
-          <v-card :color="isHovering ? '#3c3c3c' : undefined" v-bind="props"
+          <v-card :color="isHovering ? 'hover' : undefined" v-bind="props"
             class="py-1 text-none rounded-xs text-center" variant="flat">
-            <span style="color: #bdbdbd">{{ selectedChart.options.chartTitle }}</span>
+            <span style="color: rgb(var(--v-theme-muted))">{{ selectedChart.options.chartTitle }}</span>
           </v-card>
         </template>
       </v-hover>
@@ -268,4 +268,4 @@ onMounted(async () => {
 });
 </script>
 
-<style scoped></style>
+<style scoped lang="scss"></style>

@@ -1,0 +1,50 @@
+@use 'sass:map';
+
+$family: 'Roboto', Arial, sans-serif;
+$scale: (
+  page: (size: 26px, line: 1.3, weight: 500),
+  section: (size: 18px, line: 1.4, weight: 500),
+  title: (size: 16px, line: 1.5, weight: 500),
+  body: (size: 14px, line: 1.5, weight: 400),
+  table: (size: 13px, line: 1.5, weight: 400),
+  caption: (size: 12px, line: 1.5, weight: 400),
+);
+
+@mixin text($role) {
+  $value: map.get($scale, $role);
+  font-size: map.get($value, size);
+  line-height: map.get($value, line);
+  font-weight: map.get($value, weight);
+  letter-spacing: normal;
+}
+
+@font-face {
+  font-family: 'Roboto';
+  src: url('../assets/fonts/Roboto/Roboto-Latin-Variable.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root { --v-font-body: #{$family}; --v-font-heading: #{$family}; }
+body, .v-application { font-family: $family; @include text(body); }
+.v-application, .v-overlay-container {
+  button, input, select, textarea { font-family: inherit; }
+  strong, b { font-weight: 500; }
+  .app-page-title { @include text(page); margin: 0; }
+  .app-section-title, .v-card-title { @include text(section); }
+  .v-toolbar-title { @include text(section); }
+  .v-list-item-title { @include text(body); }
+  .v-list-item-subtitle, .v-chip { @include text(caption); }
+  .v-table { @include text(table); }
+  .v-table th { @include text(caption); font-weight: 500; }
+  .v-field, .v-label { font-size: 14px; letter-spacing: normal; }
+  .v-field-label--floating { font-size: 11px; }
+  .v-btn { letter-spacing: normal; text-indent: 0; text-transform: none; }
+  .v-btn--size-default { --v-btn-size: 13px; --v-btn-height: 36px; }
+  .v-btn--size-small { --v-btn-size: 12px; --v-btn-height: 32px; }
+}
+@media (max-width: 600px) {
+  .v-application .app-page-title { font-size: 24px; }
+  .v-application .v-field__input { font-size: 16px; }
+}

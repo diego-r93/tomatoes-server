@@ -1,102 +1,22 @@
 <template>
-  <v-card class="custom-border">
-    <v-layout>
-      <v-app-bar color="#99deaa" density="compact">
-        <template v-slot:prepend>
-          <v-icon large color="#333333">mdi-chip</v-icon>
-        </template>
-
-        <v-app-bar-title>{{ cardData.host }}</v-app-bar-title>
-
-        <template v-slot:append>
-          <v-btn density="comfortable" icon="mdi-upload" color="#99deaa" variant="flat"
-            @click="navigateToOTA(cardData)"></v-btn>
-          <v-btn density="comfortable" icon="mdi-information-outline" color="#99deaa" variant="flat"
-            @click="navigateToInfo(cardData)"></v-btn>
-        </template>
-      </v-app-bar>
-
-      <v-main>
-        <v-container fluid>
-          <v-list lines="one" class="py-2">
-            <v-list-item>
-              <v-list-item-title>Hostname</v-list-item-title>
-              <v-list-item-subtitle>{{ cardData.host }}</v-list-item-subtitle>
-            </v-list-item>
-            <v-list-item>
-              <v-list-item-title>IP</v-list-item-title>
-              <v-list-item-subtitle>{{ cardData.ip }}</v-list-item-subtitle>
-            </v-list-item>
-            <v-list-item>
-              <v-list-item-title>MAC Address</v-list-item-title>
-              <v-list-item-subtitle>{{ cardData.mac }}</v-list-item-subtitle>
-            </v-list-item>
-            <v-list-item>
-              <v-list-item-title>RSSI</v-list-item-title>
-              <v-list-item-subtitle>{{ cardData.rssi }}</v-list-item-subtitle>
-            </v-list-item>            
-
-            <v-divider class="mt-4"></v-divider>
-            <v-list class="py-4 px-6">
-              <v-switch v-for="(port, code) in cardData.ports" :key="code" v-model="gpioStates[port.gpio]"
-                :label="'GPIO ' + port.gpio" color="indigo" hide-details></v-switch>
-            </v-list>
-          </v-list>
-        </v-container>
-      </v-main>
-    </v-layout>
-
+  <v-card variant="outlined" class="device-card" :class="{ 'device-card--selected': selected }">
+    <div class="device-card-top"><v-icon icon="mdi-chip" size="19" color="muted" /><span class="connection-status" :class="{ 'connection-status--online': online }">{{ online ? 'Online' : 'Not seen' }}</span></div>
+    <button class="device-name" type="button" @click="$emit('select', device.key)">{{ device.host }}</button>
+    <div class="device-card-network"><span>{{ device.ip || 'No IP reported' }}</span><span :class="{ 'text-warning': online && weakSignal(device) }"><v-icon icon="mdi-wifi" size="15" /> {{ online ? signalText(device) : '—' }}</span></div>
+    <p v-if="showMac" class="device-card-mac">{{ device.mac || 'No MAC reported' }}</p>
+    <div class="device-card-footer"><span>{{ online ? `${device.outputs.filter(output => output.state === true).length} / ${device.outputs.length} outputs ON` : `Seen ${lastSeenLabel(device.receivedAt, clock)}` }}</span><v-btn variant="text" size="small" @click="$emit('select', device.key)">View</v-btn></div>
   </v-card>
 </template>
-
 <script setup>
-import { ref, watchEffect } from 'vue'
-import router from '@/router'
-import mqttDataService from '@/services/mqttDataService'
-import { useDeviceStore } from '@/store/deviceData';
-
-const deviceStore = useDeviceStore();
-
-const props = defineProps(['cardData'])
-
-const gpioStates = ref({});
-
-function navigateToOTA(deviceData) {
-  deviceStore.setDeviceData(deviceData);
-  router.push({ path: `/device/${deviceData.host}` });
-}
-
-function navigateToInfo(deviceData) {
-  deviceStore.setDeviceData(deviceData);
-  router.push({ path: `/device/${deviceData.host}/info` });
-}
-
-watchEffect(() => {
-  if (!props.cardData || !props.cardData.ports) return;
-  const ports = props.cardData.ports;
-
-  Object.values(ports).forEach(port => {
-    if (gpioStates.value[port.gpio] === undefined) {
-      gpioStates.value[port.gpio] = port.state;
-    }
-  });
-
-  updateGpio(gpioStates.value);
-});
-
-function updateGpio(gpioData) {
-  const payload = {};
-  Object.entries(gpioData).forEach(([gpioNumber, state]) => {
-    payload[gpioNumber] = state;
-  });
-
-  mqttDataService.updateGpio(props.cardData.host, payload)
-    .then(() => {
-      // Lógica adicional após a atualização do GPIO, se necessário
-    })
-    .catch(error => {
-      console.error('Erro ao atualizar o GPIO:', error)
-    })
-}
+import { lastSeenLabel, signalText, weakSignal } from '@/composables/deviceInventoryUtils';
+defineProps({ device: { type: Object, required: true }, online: Boolean, selected: Boolean, showMac: Boolean, clock: Number });
+defineEmits(['select']);
 </script>
-
+<style scoped lang="scss">
+.device-card { padding: 16px; border-color: rgb(var(--v-theme-border)); }
+.device-card--selected { border-color: rgb(var(--v-theme-primary)); box-shadow: inset 0 0 0 1px rgb(var(--v-theme-primary)); }
+.device-card-top, .device-card-network, .device-card-footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.device-card-top { margin-bottom: 15px; }.device-name { border: 0; padding: 0; background: transparent; color: inherit; text-align: left; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }.device-name:hover { text-decoration: underline; }
+.device-card-network { font-size: 12px; padding: 16px 0; }.device-card-footer { border-top: 1px solid rgb(var(--v-theme-border)); padding-top: 8px; font-size: 12px; color: rgb(var(--v-theme-muted)); }.device-card-mac { font-size: 12px; color: rgb(var(--v-theme-muted)); margin: 0 0 10px; }
+.connection-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: rgb(var(--v-theme-muted)); }.connection-status:before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }.connection-status--online { color: rgb(var(--v-theme-success)); }
+</style>

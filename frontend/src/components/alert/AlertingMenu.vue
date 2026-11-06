@@ -1,50 +1,142 @@
 <template>
-  <v-container class="py-6 px-2" fluid>
-    <v-card class="mt-4 mx-auto" color="#121212" max-width="400" variant="flat">
-      <template v-slot:title>
-        <v-icon color="#bdbdbd" icon="mdi-bell" size="x-large"></v-icon>
-        <span class="ml-4 text-h5" style="color: #bdbdbd">
-          Alerting
-        </span>
-      </template>
-    </v-card>
-
-    <v-card class="mt-4 mx-auto" max-width="1400" flat>
-      <v-tabs v-model="tab" bg-color="#121212" slider-color="teal-lighten-3" align-tabs="start">
-        <v-tab v-for="item in items" :key="item.id" :to="item.route">
-          <span style="color: #bdbdbd">
-            {{ item.name }}
-          </span>
-        </v-tab>
-      </v-tabs>
-      <v-card class="custom-border" min-height="600">
-        <router-view></router-view>
-      </v-card>
-    </v-card>
-  </v-container>
+ <v-container fluid class="app-page alert-page">
+  <AppPageHeader :title="'Alerting / ' + sectionLabel" icon="mdi-bell-outline"><template #actions><v-btn variant="text" prepend-icon="mdi-help-circle-outline" class="help-button" @click="helpOpen=true">How alerts work</v-btn></template></AppPageHeader>
+  <header class="app-page-heading"><div><h1 class="app-page-title">Alerting</h1><p>Know when your growing system needs attention.</p></div><div class="app-action-row"><v-btn variant="outlined" prepend-icon="mdi-refresh" :loading="loading" @click="load">Refresh</v-btn><v-btn v-if="settings.canManage && section==='rules'" color="primary" prepend-icon="mdi-plus" @click="editRule(null)">New alert rule</v-btn><v-btn v-if="settings.canManage && section==='contacts'" color="primary" prepend-icon="mdi-plus" @click="editContact(null)">New contact point</v-btn></div></header>
+  <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
+  <v-alert v-if="settings.monitor?.error" type="error" variant="tonal" class="my-4">{{ settings.monitor.error }}</v-alert>
+  <v-tabs :model-value="section" color="primary" height="44" class="alert-tabs" aria-label="Alerting sections"><v-tab value="rules" to="/alerting/rules">Alert rules</v-tab><v-tab v-if="settings.canManage" value="contacts" to="/alerting/contacts">Contact points</v-tab><v-tab value="silences" to="/alerting/silences">Silences</v-tab><v-tab value="history" to="/alerting/history">History</v-tab></v-tabs>
+  <template v-if="section==='rules'">
+   <div class="rule-toolbar">
+    <div class="filter-field"><label for="alert-search">Search alert rules</label><v-text-field id="alert-search" v-model="search" aria-label="Search alert rules" placeholder="Rule name, device or group" prepend-inner-icon="mdi-magnify" variant="outlined" clearable hide-details /></div>
+    <div class="filter-field"><label for="alert-severity">Severity</label><v-select id="alert-severity" v-model="severity" aria-label="Severity" :items="['All','Critical','Warning']" variant="outlined" hide-details /></div>
+    <v-btn v-if="settings.canManage" variant="text" prepend-icon="mdi-book-open-outline" class="templates-button" @click="templatesOpen=true">Templates</v-btn>
+   </div>
+   <div class="state-filters" role="group" aria-label="Filter rule states"><button v-for="item in stateFilters" :key="item.label" type="button" :aria-pressed="state===item.label" @click="state=item.label">{{ item.label }}<span>{{ item.count }}</span></button></div>
+   <div class="summary-line"><span aria-live="polite">{{ filtered.length }} rule{{ filtered.length===1?'':'s' }} in this view</span><span>{{ settings.monitor?.running?'Live evaluation':'Monitor stopped' }} · {{ loading?'Refreshing…':'Updates every 15 sec' }}</span></div>
+   <div class="app-panel rule-panel"><v-table class="rules-table" aria-label="Alert rules"><thead><tr><th>State</th><th>Rule / target</th><th>Condition</th><th>Notifications</th><th>Details</th></tr></thead>
+    <tbody v-for="group in groups" :key="group.name"><tr class="group-row"><td colspan="5">{{ group.name }}</td></tr><tr v-for="rule in group.rules" :key="rule.id" class="rule-row">
+     <td><span class="state-badge" :class="`state-${rule.state.toLowerCase().replace(' ','-')}`">{{ rule.state }}</span></td>
+     <td><button type="button" class="rule-link" @click="detailId=rule.id">{{ rule.name }}</button><div class="meta">{{ rule.source.host }}<template v-if="rule.source.gpio!==undefined"> · GPIO {{ rule.source.gpio }}</template> · {{ rule.severity }}</div></td>
+     <td>{{ rule.operator }} {{ rule.threshold }} {{ ruleUnit(rule.source) }}<div class="meta">{{ rule.pendingSeconds?`For ${duration(rule.pendingSeconds)}`:'No extra pending period' }}</div></td>
+     <td><template v-if="isSilenced(rule.id)"><v-icon icon="mdi-bell-off-outline" size="15" class="mr-1" />Silenced<div class="meta">Until {{ silenceEnd(rule.id) }}</div></template><template v-else>{{ notificationLabel(rule) }}<div v-if="notificationIssue(rule)" class="meta">{{ notificationIssue(rule) }}</div></template></td>
+     <td><div class="row-actions"><v-btn size="small" variant="text" @click="detailId=rule.id">View</v-btn><v-menu v-if="settings.canManage"><template #activator="{props}"><v-btn v-bind="props" icon="mdi-dots-horizontal" size="small" variant="text" :aria-label="`Actions for ${rule.name}`" /></template><v-list density="compact"><v-list-item title="Edit rule" prepend-icon="mdi-pencil-outline" @click="editRule(rule)" /><v-list-item :title="rule.enabled?'Pause evaluation':'Resume evaluation'" :prepend-icon="rule.enabled?'mdi-pause':'mdi-play'" @click="mutate(()=>alertService.enabled(rule.id,!rule.enabled))" /><v-list-item title="Silence notifications" prepend-icon="mdi-bell-off-outline" @click="openSilence(rule)" /><v-list-item title="Delete rule" prepend-icon="mdi-delete-outline" @click="confirmDelete('rules',rule)" /></v-list></v-menu></div></td>
+    </tr></tbody></v-table>
+    <div v-if="!filtered.length" class="rules-empty"><h2>{{ rules.length?'No matching rules':'No alert rules yet' }}</h2><p>{{ rules.length?'Try another search or clear the filters.':'Choose a template or create your first alert rule to start monitoring.' }}</p><v-btn v-if="!rules.length&&settings.canManage" variant="text" prepend-icon="mdi-book-open-outline" @click="templatesOpen=true">Browse templates</v-btn></div>
+   </div><footer v-if="filtered.length>10" class="list-footer"><span>{{ (page-1)*10+1 }}–{{ Math.min(page*10,filtered.length) }} of {{ filtered.length }} rules</span><v-pagination v-model="page" :length="Math.ceil(filtered.length/10)" :total-visible="5" /></footer>
+  </template>
+  <template v-else-if="section==='contacts'">
+   <v-alert v-if="!settings.canManage" variant="tonal">Only administrators can manage contact points.</v-alert>
+   <section v-else aria-label="Contact points" class="contact-section">
+    <header class="section-top"><div><h2>Contact points</h2><p>Choose where a firing or recovered alert should be reported.</p></div></header>
+    <article class="channel"><div class="channel-identity"><h3><v-icon icon="mdi-bell-outline" size="18" /> In-app notifications</h3><p>Visible in Tomatoes. Rules keep evaluating when your browser is closed.</p><span class="meta">Always available · rule status and event history</span></div><div class="channel-actions"><v-btn variant="outlined" @click="openPreview('inapp')">Preview message</v-btn></div></article>
+    <article v-for="provider in providers" :key="provider.kind" class="channel" :data-channel="provider.kind">
+     <div class="channel-identity"><h3><v-icon :icon="provider.icon" size="18" /> {{ provider.name }}</h3><p v-if="!channelContacts(provider.kind).length">{{ provider.kind==='email'?'Recipient not set':'Recipient phone number not set' }}</p><span class="meta">{{ provider.ready?'Sender configured · contact must be enabled for delivery':'Setup required on the server' }}</span>
+      <div v-for="contact in channelContacts(provider.kind)" :key="contact.id" class="saved-contact"><div><strong>{{ contact.name }}</strong><p>{{ contact.recipients.join(', ') }}</p><span class="meta">{{ contact.enabled?'Enabled':'Disabled' }}<template v-if="contact.kind==='whatsapp'"> · {{ contact.template }} · {{ contact.language }}</template></span></div><div class="contact-actions"><v-btn variant="text" size="small" @click="editContact(contact)">Edit</v-btn><v-btn variant="text" size="small" @click="openPreview(contact.kind,contact)">Preview</v-btn><v-btn variant="text" size="small" @click="confirmDelete('contacts',contact)">Delete</v-btn></div></div>
+     </div><div class="channel-actions"><v-btn variant="outlined" @click="configureChannel(provider.kind)">{{ channelContacts(provider.kind).length?'Add contact':'Configure' }}</v-btn><v-btn variant="text" @click="openPreview(provider.kind)">Preview message</v-btn></div>
+    </article>
+    <div class="callout">Group related alerts, send a recovery message and repeat unresolved alerts at a controlled interval. A silence mutes notifications; pausing a rule stops its evaluation.</div>
+   </section>
+  </template>
+  <template v-else-if="section==='silences'">
+   <header class="section-top"><div><h2>Silences</h2><p>Pause notifications for maintenance while rules keep evaluating.</p></div><v-btn v-if="settings.canManage" variant="outlined" prepend-icon="mdi-bell-off-outline" :disabled="!rules.length" @click="openSilence(null)">New silence</v-btn></header>
+   <article v-for="silence in silences" :key="silence.id" class="silence-item"><div><strong>{{ silence.ruleName }}</strong><p>{{ silence.reason }}</p><span class="meta">Until {{ dateLabel(silence.ends_at) }} · {{ silence.actor }}</span></div><v-btn v-if="settings.canManage" variant="text" @click="mutate(()=>alertService.remove('silences',silence.id))">End silence</v-btn></article>
+   <div v-if="!silences.length" class="compact-empty"><h3>No active silences</h3><p>Use a silence during maintenance to keep monitoring without notifications.</p></div>
+  </template>
+  <template v-else>
+   <header class="section-top"><div><h2>History</h2><p>State changes, notification attempts and maintenance actions.</p></div><span class="meta">Event history retained for 90 days</span></header>
+   <div v-if="history.length" class="history-list"><article v-for="entry in history" :key="entry.id" class="history-event"><time :datetime="new Date(entry.created_at).toISOString()" :title="dateLabel(entry.created_at)">{{ timeLabel(entry.created_at) }}<span>{{ dayLabel(entry.created_at) }}</span></time><div><strong>{{ entry.name }}</strong><p>{{ entry.description }}</p></div><span class="history-kind">{{ entry.kind }}</span></article></div>
+   <div v-else class="compact-empty"><h3>No events yet</h3><p>Rule activity will appear here.</p></div>
+   <div v-if="historyOffset||history.length===100" class="history-pagination"><v-btn :disabled="!historyOffset" variant="text" @click="historyOffset=Math.max(0,historyOffset-100);load()">Newer events</v-btn><v-btn :disabled="history.length<100" variant="text" @click="historyOffset+=100;load()">Older events</v-btn></div>
+   <details v-if="settings.canManage" class="delivery-details"><summary>Notification attempts <span>{{ deliveries.length }} recent</span></summary><p class="footnote">Submitted means the provider accepted the request. Delivery and reading are not confirmed. Latest 100 attempts, retained for 30 days.</p><div v-if="deliveries.length" class="history-list"><article v-for="entry in deliveries" :key="entry.id" class="history-event"><time :title="dateLabel(entry.created_at)">{{ timeLabel(entry.created_at) }}<span>{{ dayLabel(entry.created_at) }}</span></time><div><strong>{{ entry.recipient }}</strong><p>{{ entry.phase }} · {{ entry.reason }}</p><span class="meta">{{ entry.attempts }} attempt(s)</span></div><span class="history-kind">{{ entry.status }}</span></article></div><div v-else class="compact-empty"><p>No external notification attempts yet.</p></div></details>
+  </template>
+  <footer class="alert-footer"><span>Tomatoes v1.0.0</span><button type="button" @click="helpOpen=true"><i :class="['health-dot',settings.monitor?.running?'healthy':'']" />{{ settings.monitor?.running?'Monitor running':'Monitor stopped' }} · {{ settings.mqtt?.mqttConnected?'MQTT connected':'MQTT not connected' }}</button></footer>
+  <v-dialog v-model="templatesOpen" max-width="680" scrollable><v-card><v-card-title>Useful rule templates</v-card-title><v-card-text><p class="mb-4 app-muted">Choose a starting point. Adjust the target, limits and data source before enabling evaluation.</p><div class="template-list"><div v-for="item in ruleTemplates" :key="item.kind"><div><strong>{{ item.title }}</strong><p>{{ item.description }}</p></div><v-btn variant="text" size="small" @click="useRuleTemplate(item.kind)">Use</v-btn></div></div></v-card-text><v-card-actions><v-spacer /><v-btn @click="templatesOpen=false">Close</v-btn></v-card-actions></v-card></v-dialog>
+  <v-dialog v-model="helpOpen" max-width="660" scrollable><v-card><v-card-title>How alerts work</v-card-title><v-card-text><ol class="help-steps"><li><strong>Read a signal.</strong> The backend checks device reports or an existing InfluxDB metric.</li><li><strong>Evaluate a rule.</strong> Choose a target, trigger limit, recovery limit and evaluation interval.</li><li><strong>Wait for persistence.</strong> A breach is Pending until it lasts for the pending period, then becomes Firing.</li><li><strong>Notify a contact point.</strong> Follow status in Tomatoes, or send email and WhatsApp after provider setup.</li><li><strong>Handle missing data.</strong> No data and Error are incidents, separate from Normal.</li></ol><v-alert variant="tonal" color="secondary" class="my-5">A silence mutes external notifications. Pause stops evaluation. Neither changes a GPIO or stops a pump.</v-alert><p>Rules run in the backend even with this page closed. Templates contain example limits; choose values for your crop and equipment.</p><dl class="detail-grid mt-5"><dt>Monitor</dt><dd>{{ settings.monitor?.running?'Running':'Stopped' }}</dd><dt>MQTT</dt><dd>{{ settings.mqtt?.mqttConnected?'Connected':'Not connected' }}</dd><dt>InfluxDB</dt><dd>{{ settings.influxConfigured?'Configured':'Not configured' }}</dd><dt>Last cycle</dt><dd>{{ dateLabel(settings.monitor?.lastTick) }}</dd></dl></v-card-text><v-card-actions><v-spacer /><v-btn @click="helpOpen=false">Close</v-btn></v-card-actions></v-card></v-dialog>
+  <RuleEditor v-if="ruleEditor" :initial="selectedRule" :initial-template="initialTemplate" :contacts="contacts" :devices="settings.devices||[]" @close="ruleEditor=false" @saved="ruleEditor=false;load()" />
+  <NotificationPreview v-if="messagePreview" :kind="messagePreview.kind" :contact="messagePreview.contact" :rules="rules" @close="messagePreview=null" />
+  <ContactEditor v-if="contactEditor" :initial="selectedContact" :initial-kind="contactKind" :settings="settings" @close="contactEditor=false" @saved="contactEditor=false;load()" />
+  <v-dialog v-model="silenceDialog" max-width="600" persistent scrollable><v-card class="alert-dialog"><v-card-title>New silence</v-card-title><v-card-text><v-alert v-if="dialogError" type="error" variant="tonal" class="mb-4">{{ dialogError }}</v-alert><v-form id="silence-form" @submit.prevent="saveSilence"><v-select v-model="silenceForm.ruleId" label="Alert rule" :items="rules" :item-title="rule=>`${rule.name} · ${rule.source.host}`" item-value="id" variant="outlined" /><v-select v-model="silenceForm.minutes" label="Duration" :items="silenceDurations" variant="outlined" /><v-text-field v-if="silenceForm.minutes==='custom'" v-model="customMinutes" label="Duration (minutes)" min="1" max="10080" type="number" variant="outlined" /><v-text-field v-model="silenceForm.reason" label="Reason" placeholder="For example: pump maintenance" maxlength="200" variant="outlined" /><div class="callout">Only external notifications are muted. The rule keeps evaluating, and Firing alerts remain visible.</div></v-form></v-card-text><v-card-actions><v-spacer /><v-btn :disabled="saving" @click="silenceDialog=false">Cancel</v-btn><v-btn color="primary" variant="flat" form="silence-form" type="submit" :loading="saving">Create silence</v-btn></v-card-actions></v-card></v-dialog>
+  <v-dialog :model-value="!!detail" max-width="680" scrollable @update:model-value="detailId=null"><v-card v-if="detail" class="alert-dialog"><v-card-title>{{ detail.name }}</v-card-title><v-card-text><div class="detail-status"><span class="state-badge" :class="`state-${detail.state.toLowerCase().replace(' ','-')}`">{{ detail.state }}</span><span>{{ detail.severity }} · {{ detail.source.host }}<template v-if="detail.source.gpio!==undefined"> · GPIO {{ detail.source.gpio }}</template></span></div><dl class="detail-facts"><div v-for="item in detailRows" :key="item[0]"><dt>{{ item[0] }}</dt><dd>{{ item[1] }}</dd></div></dl><div class="callout">{{ detail.enabled?(detail.reason||'Waiting for evaluation.'):'Evaluation paused. The latest reading is kept for reference.' }}</div><h3 class="dialog-section-title">What to check</h3><p class="app-muted">{{ guidance(detail) }}</p></v-card-text><v-card-actions class="detail-actions"><v-btn v-if="settings.canManage" @click="editRule(detail);detailId=null">Edit rule</v-btn><v-spacer /><template v-if="settings.canManage"><v-btn @click="mutate(()=>alertService.enabled(detail.id,!detail.enabled))">{{ detail.enabled?'Pause':'Resume' }}</v-btn><v-btn variant="outlined" @click="openSilence(detail);detailId=null">Silence</v-btn></template><v-btn variant="outlined" @click="detailId=null">Close</v-btn></v-card-actions></v-card></v-dialog>
+  <v-dialog :model-value="!!deletion" max-width="440" persistent><v-card><v-card-title>Delete {{ deletion?.path==='rules'?'alert rule':'contact point' }}?</v-card-title><v-card-text>{{ deletion?.item.name }} will be removed. This cannot be undone.<v-alert v-if="dialogError" type="error" variant="tonal" class="mt-3">{{ dialogError }}</v-alert></v-card-text><v-card-actions><v-spacer /><v-btn :disabled="saving" @click="deletion=null">Cancel</v-btn><v-btn color="error" :loading="saving" @click="remove">Delete</v-btn></v-card-actions></v-card></v-dialog>
+ </v-container>
 </template>
-
 <script setup>
-import { ref, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-
-const router = useRouter()
-const route = useRoute()
-
-const tab = ref(route.path)  // inicia a tab com a rota atual
-
-const items = [
-  { id: 1, name: 'Alert rules', route: '/alerting/rules' },
-  { id: 2, name: 'Contact modes', route: '/alerting/modes' },
-  { id: 3, name: 'Silences', route: '/alerting/silences' },
-  { id: 4, name: 'Configuration', route: '/alerting/config' },
-]
-
-const navigateTo = route => {
-  router.push(route)
-}
-
-watch(() => route.path, newPath => {
-  tab.value = newPath
-})
+import { formatTime, formatDate } from '@/composables/dateTime.mjs';
+import AppPageHeader from '@/components/navigation/AppPageHeader.vue';
+import { computed,onMounted,onUnmounted,ref,watch } from 'vue';
+import { useRoute } from 'vue-router';
+import { alertService,alertError,dateLabel,sourceLabel,ruleUnit } from '@/services/alertService';
+import RuleEditor from './RuleEditor.vue';
+import ContactEditor from './ContactEditor.vue';
+import NotificationPreview from './NotificationPreview.vue';
+const route=useRoute(),section=computed(()=>route.path.split('/').at(-1));
+const settings=ref({}),rules=ref([]),contacts=ref([]),silences=ref([]),history=ref([]),deliveries=ref([]),loading=ref(false),error=ref('');
+const search=ref(''),state=ref('All'),severity=ref('All'),page=ref(1),historyOffset=ref(0);
+const ruleEditor=ref(false),selectedRule=ref(null),contactEditor=ref(false),selectedContact=ref(null),detailId=ref(null);
+const silenceDialog=ref(false),silenceForm=ref({}),dialogError=ref(''),saving=ref(false),deletion=ref(null);
+let timer,disposed=false;
+const clone=value=>value?JSON.parse(JSON.stringify(value)):null;
+const detail=computed(()=>rules.value.find(rule=>rule.id===detailId.value));
+const detailRows=computed(()=>{const r=detail.value;if(!r)return [];return [['Condition',`${r.operator} ${r.threshold} ${ruleUnit(r.source)} for ${duration(r.pendingSeconds)}`],['Recovery threshold',`${r.operator==='>'?'≤':'≥'} ${r.recovery} ${ruleUnit(r.source)}`],['Evaluation interval',`Every ${duration(r.intervalSeconds)}`],['Current sample',reading(r)],['Source',sourceLabel(r.source)],['Notification',isSilenced(r.id)?'Silenced; evaluation continues':notificationLabel(r)],['Sample timestamp',dateLabel(r.sampleAt)],['Last evaluation',dateLabel(r.evaluatedAt)]];});
+const guidance=rule=>({device_age:'Check the device power supply, Wi-Fi and MQTT connection before changing schedules.',wifi:'Check antenna placement, obstructions and access-point coverage.',output_on:'Inspect the output and pump locally. A GPIO state does not prove water is flowing.',cpu_temperature:'Inspect cooling and workload. Confirm that Telegraf is collecting recent samples.',disk_usage:'Review filesystem usage, logs, backups and database retention.',metric_age:'Check the sensor topic, firmware publishing, MQTT connection and Telegraf collection. Age is based on the latest InfluxDB timestamp.',metric:'Check the sensor feed, hostname, measurement, numeric field and sample timestamps.'}[rule.source.kind]);
+const messagePreview=ref(null),contactKind=ref('email'),customMinutes=ref(60);
+const silenceDurations=[{title:'15 minutes',value:15},{title:'30 minutes',value:30},{title:'1 hour',value:60},{title:'4 hours',value:240},{title:'Custom duration',value:'custom'}];
+const timeLabel=value=>formatTime(value);
+const dayLabel=value=>formatDate(value);
+const channelContacts=kind=>contacts.value.filter(contact=>contact.kind===kind);
+function configureChannel(kind){contactKind.value=kind;selectedContact.value=null;contactEditor.value=true;}
+function openPreview(kind,contact=null){messagePreview.value={kind,contact:clone(contact||channelContacts(kind)[0]||null)};}
+const helpOpen=ref(false),templatesOpen=ref(false),initialTemplate=ref('device_age');
+const sectionLabel=computed(()=>({rules:'Alert rules',contacts:'Contact points',silences:'Silences',history:'History'}[section.value]||'Alert rules'));
+const ruleTemplates=[
+ {kind:'device_age',title:'Device not responding',description:'Track the time since an ESP32 last replied to MQTT discovery.'},
+ {kind:'wifi',title:'Weak Wi-Fi signal',description:'Watch the RSSI reported by a connected device.'},
+ {kind:'output_on',title:'Output ON longer than expected',description:'Monitor observed GPIO ON duration. Does not confirm water flow.'},
+ {kind:'cpu_temperature',title:'Raspberry Pi temperature high',description:'Use CPU temperature collected by the existing Telegraf input.'},
+ {kind:'disk_usage',title:'Storage usage high',description:'Check disk usage for a specific host and filesystem path.'},
+ {kind:'metric_age',title:'Telemetry missing',description:'Watch the age of the latest sample for an exact MQTT sensor topic.'},
+ {kind:'metric',title:'Growing environment / sensor metric',description:'Use an existing pH, EC, water temperature or level feed. Requires a matching numeric measurement.'},
+];
+const category=rule=>['device_age','wifi'].includes(rule.source.kind)?'ESP32 & network':rule.source.kind==='output_on'?'Pump outputs':['cpu_temperature','disk_usage'].includes(rule.source.kind)?'Server health':'Growing environment';
+const stateFilters=computed(()=>['All','Firing','Pending','No data','Error','Normal','Paused'].map(label=>({label,count:label==='All'?rules.value.length:rules.value.filter(rule=>rule.state===label).length})));
+const filtered=computed(()=>rules.value.filter(rule=>(state.value==='All'||rule.state===state.value)&&(severity.value==='All'||rule.severity===severity.value)&&`${rule.name} ${rule.source.host} ${sourceLabel(rule.source)} ${category(rule)}`.toLowerCase().includes((search.value||'').toLowerCase())).sort((a,b)=>['ESP32 & network','Pump outputs','Server health','Growing environment'].indexOf(category(a))-['ESP32 & network','Pump outputs','Server health','Growing environment'].indexOf(category(b))||a.id-b.id));
+const groups=computed(()=>{const result=[];for(const rule of pageRules.value){let group=result.find(item=>item.name===category(rule));if(!group){group={name:category(rule),rules:[]};result.push(group);}group.rules.push(rule);}return result;});
+const duration=seconds=>seconds>=3600?`${Number((seconds/3600).toFixed(1))} hr`:seconds>=60?`${Number((seconds/60).toFixed(1))} min`:`${seconds} sec`;
+const silenceEnd=id=>dateLabel(Math.max(...silences.value.filter(item=>item.rule_id===id).map(item=>item.ends_at)));
+const ruleContacts=rule=>contacts.value.filter(contact=>rule.contactIds.includes(contact.id));
+function notificationLabel(rule){const kinds=[...new Set(ruleContacts(rule).map(contact=>contact.kind))];return 'In-app'+(kinds.length?' + '+kinds.map(kind=>kind==='email'?'email':'WhatsApp').join(' + '):!settings.value.canManage&&rule.contactIds.length?' + external':'');}
+function notificationIssue(rule){const selected=ruleContacts(rule);if(selected.some(contact=>!contact.enabled))return 'Contact point disabled';if(selected.some(contact=>contact.kind==='email')&&!settings.value.email)return 'Email needs setup';if(selected.some(contact=>contact.kind==='whatsapp')&&!settings.value.whatsapp?.configured)return 'WhatsApp needs setup';return '';}
+function useRuleTemplate(kind){templatesOpen.value=false;initialTemplate.value=kind;selectedRule.value=null;ruleEditor.value=true;}
+const pageRules=computed(()=>filtered.value.slice((page.value-1)*10,page.value*10));
+const providers=computed(()=>[{kind:'email',name:'Email / Outlook',icon:'mdi-email-outline',ready:settings.value.email},{kind:'whatsapp',name:'WhatsApp',icon:'mdi-whatsapp',ready:settings.value.whatsapp?.configured}]);
+const reading=rule=>rule.value===null?'—':`${Number(rule.value.toFixed(2))} ${ruleUnit(rule.source)}`;
+const isSilenced=id=>silences.value.some(item=>item.rule_id===id&&item.ends_at>Date.now());
+watch([search,state,severity],()=>{page.value=1;});watch(filtered,()=>{page.value=Math.min(page.value,Math.max(1,Math.ceil(filtered.value.length/10)));});
+async function load(){if(loading.value||disposed)return;loading.value=true;try{const config=await alertService.get('settings');const result=await Promise.all([alertService.get('rules'),alertService.get('silences'),alertService.get('history',{offset:historyOffset.value}),config.canManage?alertService.get('contacts'):[],config.canManage?alertService.get('deliveries'):[]]);if(disposed)return;settings.value=config;[rules.value,silences.value,history.value,contacts.value,deliveries.value]=result;error.value='';}catch(issue){error.value=alertError(issue);}finally{loading.value=false;}}
+function editRule(rule){initialTemplate.value='device_age';selectedRule.value=clone(rule);ruleEditor.value=true;}
+function editContact(contact){contactKind.value=contact?.kind||'email';selectedContact.value=clone(contact);contactEditor.value=true;}
+function openSilence(rule){dialogError.value='';customMinutes.value=60;silenceForm.value={ruleId:rule?.id||null,minutes:60,reason:''};silenceDialog.value=true;}
+async function saveSilence(){saving.value=true;dialogError.value='';try{await alertService.save('silences',{...silenceForm.value,minutes:silenceForm.value.minutes==='custom'?customMinutes.value:silenceForm.value.minutes});silenceDialog.value=false;await load();}catch(issue){dialogError.value=alertError(issue);}finally{saving.value=false;}}
+async function mutate(action){try{await action();await load();}catch(issue){error.value=alertError(issue);}}
+function confirmDelete(path,item){dialogError.value='';deletion.value={path,item};}
+async function remove(){saving.value=true;dialogError.value='';try{await alertService.remove(deletion.value.path,deletion.value.item.id);deletion.value=null;await load();}catch(issue){dialogError.value=alertError(issue);}finally{saving.value=false;}}
+onMounted(()=>{load();timer=setInterval(load,15000);});onUnmounted(()=>{disposed=true;clearInterval(timer);});
 </script>
+<style scoped lang="scss">
+.alert-page{max-width:1280px;}
+.alert-tabs{border-bottom:1px solid rgb(var(--v-theme-border));margin:20px 0 24px;}
+.alert-tabs :deep(.v-tab){min-width:0;padding:0;margin-right:24px;font-size:13px;font-weight:400;text-transform:none;letter-spacing:normal;color:rgb(var(--v-theme-muted));}
+.alert-tabs :deep(.v-tab--selected){color:rgb(var(--v-theme-on-background));}
+.alert-tabs :deep(.v-tab__slider){background:rgb(var(--v-theme-primary));}.help-button{font-size:12px;}.health-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:rgb(var(--v-theme-warning));margin-right:7px;&.healthy{background:rgb(var(--v-theme-success));}}
+.rule-toolbar{display:grid;grid-template-columns:minmax(180px,1fr) 155px 135px;gap:12px;align-items:end;margin-bottom:16px;}.filter-field{min-width:0;label{display:block;color:rgb(var(--v-theme-muted));font-size:12px;margin-bottom:6px;}}.templates-button{align-self:end;font-size:13px;}
+.state-filters{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:16px;button{border:0;border-radius:4px;background:transparent;color:rgb(var(--v-theme-on-background));min-height:32px;font-size:12px;padding:5px 10px;cursor:pointer;span{margin-left:7px;padding:1px 4px;color:rgb(var(--v-theme-muted));background:rgba(var(--v-theme-on-background),.04);border-radius:3px;}&[aria-pressed='true']{background:rgb(var(--v-theme-selection));}}}
+.summary-line{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:rgb(var(--v-theme-muted));font-size:12px;margin:0 0 14px;}.rule-panel{overflow:hidden;background:rgb(var(--v-theme-background));}.rules-table{background:transparent;}.rules-table :deep(table){table-layout:fixed;}.rules-table :deep(th){font-weight:500;white-space:nowrap;}.rules-table :deep(th:nth-child(1)){width:14%;}.rules-table :deep(th:nth-child(2)){width:31%;}.rules-table :deep(th:nth-child(3)){width:24%;}.rules-table :deep(th:nth-child(4)){width:19%;}.rules-table :deep(th:nth-child(5)){width:12%;}.rules-table :deep(td){padding:14px 12px;overflow-wrap:anywhere;}.rules-table :deep(.group-row td){height:auto;background:rgb(var(--v-theme-table-header));padding:8px 12px;font-size:12px;color:rgb(var(--v-theme-muted));}.meta{font-size:12px;color:rgb(var(--v-theme-muted));margin-top:4px;}.rule-link{background:transparent;border:0;padding:0;cursor:pointer;color:rgb(var(--v-theme-on-surface));font-size:13px;font-weight:500;text-align:left;&:hover{text-decoration:underline;}}.row-actions{display:flex;gap:0;align-items:center;}.row-actions :deep(.v-btn){min-width:0;padding:0 6px;font-size:12px;}.state-badge{display:inline-block;border-radius:4px;padding:3px 7px;font-size:12px;white-space:nowrap;color:rgb(var(--v-theme-muted));background:rgba(var(--v-theme-muted),.1);}.state-firing,.state-error{color:rgb(var(--v-theme-error));background:rgba(var(--v-theme-error),.1);}.state-pending{color:rgb(var(--v-theme-warning));background:rgba(var(--v-theme-warning),.1);}.state-normal{color:rgb(var(--v-theme-success));background:rgba(var(--v-theme-success),.1);}.state-no-data{color:rgb(var(--v-theme-secondary));background:rgba(var(--v-theme-secondary),.1);}
+.rules-empty{padding:32px 20px;text-align:center;h2{font-size:15px;font-weight:500;}p{color:rgb(var(--v-theme-muted));margin:8px 0 12px;font-size:13px;}}.list-footer,.alert-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:rgb(var(--v-theme-muted));margin-top:22px;}.alert-footer button{background:transparent;border:0;font:inherit;color:inherit;cursor:pointer;padding:4px 0;}.footnote{font-size:12px;color:rgb(var(--v-theme-muted));margin:18px 0;}.template-list>div{display:flex;gap:20px;align-items:center;justify-content:space-between;padding:16px 0;border-top:1px solid rgb(var(--v-theme-border));p{font-size:12px;color:rgb(var(--v-theme-muted));margin-top:4px;}}.help-steps{padding-left:20px;li{margin-bottom:14px;line-height:1.6;}}
+.section-top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:16px;h2{font-size:18px;font-weight:500;margin:0;}p{margin:5px 0 0;font-size:13px;color:rgb(var(--v-theme-muted));}}
+.channel{background:rgb(var(--v-theme-surface));border:1px solid rgb(var(--v-theme-border));border-radius:4px;padding:20px;margin-bottom:16px;display:flex;justify-content:space-between;gap:20px;align-items:flex-start;}.channel-identity{flex:1;min-width:0;h3{font-size:16px;font-weight:500;margin:0;display:flex;gap:7px;align-items:center;}p{font-size:13px;color:rgb(var(--v-theme-muted));margin:7px 0 0;overflow-wrap:anywhere;}.meta{display:block;margin-top:7px;}}.channel-actions,.contact-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}.channel-actions :deep(.v-btn){font-size:12px;}.saved-contact{display:flex;gap:16px;justify-content:space-between;align-items:flex-start;margin-top:16px;padding-top:14px;border-top:1px solid rgb(var(--v-theme-border));strong{font-size:13px;font-weight:500;}p{margin-top:4px;}}.contact-actions :deep(.v-btn){padding-inline:5px;min-width:0;font-size:12px;}
+.callout{border-left:2px solid rgb(var(--v-theme-secondary));padding:10px 14px;background:rgba(var(--v-theme-secondary),.06);margin:18px 0;color:rgb(var(--v-theme-muted));font-size:12px;line-height:1.6;}.silence-item{border:1px solid rgb(var(--v-theme-border));border-radius:4px;background:rgb(var(--v-theme-surface));padding:18px;display:flex;gap:14px;justify-content:space-between;align-items:flex-start;margin-bottom:14px;strong{font-weight:500;font-size:13px;}p{color:rgb(var(--v-theme-muted));font-size:12px;margin:5px 0 0;}.meta{display:block;margin-top:6px;}}
+.history-list{border:1px solid rgb(var(--v-theme-border));border-radius:4px;}.history-event{display:grid;grid-template-columns:85px minmax(0,1fr) auto;gap:18px;padding:16px;border-top:1px solid rgb(var(--v-theme-border));&:first-child{border-top:0;}time,.history-kind{font-size:12px;color:rgb(var(--v-theme-muted));}time span{display:block;margin-top:4px;}strong{font-size:13px;font-weight:500;overflow-wrap:anywhere;}p{font-size:12px;color:rgb(var(--v-theme-muted));margin:5px 0 0;overflow-wrap:anywhere;}}.history-pagination{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}.delivery-details{margin-top:24px;summary{font-size:14px;cursor:pointer;padding:12px 0;border-top:1px solid rgb(var(--v-theme-border));span{font-size:12px;color:rgb(var(--v-theme-muted));margin-left:8px;}}}.compact-empty{padding:44px 20px;text-align:center;color:rgb(var(--v-theme-muted));h3{font-size:14px;font-weight:400;margin:0;}p{font-size:12px;margin:8px 0 0;}}
+.detail-status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;>span:last-child{font-size:12px;color:rgb(var(--v-theme-muted));}}.detail-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 24px;margin:20px 0;dt{font-size:12px;color:rgb(var(--v-theme-muted));margin-bottom:4px;}dd{margin:0;font-size:13px;overflow-wrap:anywhere;}}.dialog-section-title{font-size:15px;font-weight:500;margin:16px 0 8px;}.detail-actions{flex-wrap:wrap;}.alert-dialog{border:1px solid rgb(var(--v-theme-border));}.detail-grid{display:grid;grid-template-columns:150px 1fr;gap:14px;dt{color:rgb(var(--v-theme-muted));}dd{overflow-wrap:anywhere;}}.nowrap{white-space:nowrap;}
+@media(max-width:760px){.channel{flex-direction:column;}.channel-actions{justify-content:flex-start;}.history-event{grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;time{grid-column:1/-1;display:flex;gap:10px;align-items:center;span{margin:0;}}}.silence-item,.saved-contact{flex-direction:column;}.contact-actions{justify-content:flex-start;}.rule-toolbar{grid-template-columns:1fr 135px;.filter-field:first-child{grid-column:1/-1;}}.alert-tabs :deep(.v-tab){margin-right:20px;}.rules-table :deep(table),.rules-table :deep(tbody){display:block;}.rules-table :deep(thead){display:none;}.rules-table :deep(.rule-row){display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 14px;padding:16px;border-top:1px solid rgb(var(--v-theme-border));}.rules-table :deep(td){display:block;height:auto!important;border:0!important;padding:0!important;}.rules-table :deep(.rule-row td:nth-child(1)){grid-column:2;grid-row:1;}.rules-table :deep(.rule-row td:nth-child(2)){grid-column:1;grid-row:1;}.rules-table :deep(.rule-row td:nth-child(3)){grid-column:1/-1;}.rules-table :deep(.rule-row td:nth-child(4)){grid-column:1;grid-row:3;}.rules-table :deep(.rule-row td:nth-child(5)){grid-column:2;grid-row:3;}.rules-table :deep(.group-row){display:block;background:rgb(var(--v-theme-table-header));}.rules-table :deep(.group-row td){padding:10px 16px!important;}}
+@media(max-width:450px){.detail-grid{grid-template-columns:1fr;gap:6px;dd{margin-bottom:10px;}}.detail-facts{grid-template-columns:1fr;}.help-button{font-size:11px;}}
+</style>

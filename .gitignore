@@ -35,3 +35,7 @@ passwd
 
 # Local MongoDB database files
 /mongo/data/
+
+# SQLite journal files may contain private account data.
+*.db-wal
+*.db-shm

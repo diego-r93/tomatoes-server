@@ -8,8 +8,17 @@ const app = express();
 
 import cors from 'cors';
 import path from 'path';
+import setupAlerts from './routes/alerts-routes';
+import { startAlerts, monitor } from './alerts/engine';
+import { alertsReady } from './alerts/database';
 import setupUsersRoutes from './routes/users-routes';
+import setupGroupsRoutes from './routes/groups-routes';
+import setupInvitationsRoutes from './routes/invitations-routes';
+import { usersReady } from './users/database';
+import { validatePresentedSession, userError } from './users/http';
+import { emailSettings } from './users/mail';
 import setupBoardsRoutes from './routes/boards-routes';
+import { migrateCharts } from './database/dashboard/migrate';
 import setupDashBoardsRoutes from './routes/dashboards-routes';
 import setupMqttRoutes from './routes/mqtt-routes';
 import setupInfluxRoutes from './routes/influxdb-routes';
@@ -23,25 +32,27 @@ import db from "./database/mongodb/models";
 
 const { mongoose, url } = db;
 
-mongoose
+const mongoReady = mongoose
   .connect(url)
   .then(() => {
     console.log("Connected to the database!");
+    return migrateCharts();
   })
   .catch((err: Error) => {
     console.log("Cannot connect to the database!", err);
-    process.exit();
+    throw err;
   });
 
-const corsOptions = {
-  origin: `http://${host}`
-};
+// The backend is reached through the single Nginx hop in Compose.
+app.set('trust proxy', 1);
+const publicUrl = emailSettings().publicUrl;
+const corsOptions = { origin: publicUrl ? new URL(publicUrl).origin : `http://${host}` };
 app.use(cors(corsOptions));
 
 const route = Router();
 
 // Parse requests of content-type - application/json
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 
 // Parse requests of content-type - application/x-www-form-urlencoded
 app.use(express.urlencoded({ extended: true }));
@@ -65,6 +76,12 @@ app.use(route);
 
 // Users
 setupUsersRoutes(app);
+setupGroupsRoutes(app);
+setupInvitationsRoutes(app);
+setupAlerts(app);
+
+// Keep legacy device clients unchanged; a presented web token is always checked.
+app.use(['/boards', '/dashboards', '/mqtt', '/influx', '/network', '/ota'], validatePresentedSession);
 
 // Boards
 setupBoardsRoutes(app);
@@ -85,6 +102,18 @@ setupNetworkRoutes(app);
 OTARoutes(app);
 
 // Listen the server
-app.listen(port, host, () => {
-  console.log('Server listening on ' + host + ':' + port);
+app.use(userError);
+Promise.all([usersReady, alertsReady, mongoReady]).then(async () => {
+  try { await startAlerts(); }
+  catch (error) {
+    monitor.running=false;
+    monitor.error='The alert monitor could not start. Check the backend MQTT configuration.';
+    console.error('Alert monitor startup failed:', error instanceof Error ? error.name : 'Unknown error');
+  }
+  app.listen(port, host, () => console.log('Server listening on ' + host + ':' + port));
+}).catch((error: unknown) => {
+  console.error('Backend initialization failed:', error instanceof Error ? error.name : 'Unknown error');
+  if(error instanceof Error)console.error(error.stack?.split('\n').slice(1,5).join('\n'));
+  console.error('Check the user database and alert monitor configuration.');
+  process.exitCode = 1;
 });

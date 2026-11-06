@@ -136,3 +136,10 @@ sudo docker-compose down
   ```bash
   sudo docker-compose exec NOME_DO_SERVIÇO bash
   ```
+## User management
+
+See [Users, groups and invitations](docs/user-management.md) for account migration, sessions, email setup and the current authorization scope.
+
+### Alerting
+
+See [Alerting setup and rule behavior](docs/alerting.md) for background monitoring, sources, contact points and optional WhatsApp Cloud API configuration.

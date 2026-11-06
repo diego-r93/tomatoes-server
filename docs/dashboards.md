@@ -1,0 +1,59 @@
+# Dashboards
+
+Dashboard definitions are stored in the `dashboards` collection in the existing MongoDB database. Measurements stay in InfluxDB; Telegraf collection and retention settings are unchanged.
+
+## Saving and restoring
+
+Open **Dashboards** to create separate dashboards for the Raspberry Pi, ESP32 boards or growing areas. Changes to panels, layout and settings are drafts until **Save dashboard** succeeds. Failed saves keep the draft. MongoDB revisions reject stale writes from another browser tab; export the draft before reloading after a conflict.
+
+**Export charts** downloads a JSON array with the original chart structure: `id`, `data`, `options`, `layout`, `query`, plus any additional saved chart properties. `data` is empty because measurements belong to InfluxDB. Flux and uPlot options are preserved. Dashboard metadata (name, folder, tags, refresh defaults) is stored in MongoDB and is not part of this legacy export format.
+
+**Import charts** creates a new dashboard from that array. It never replaces an existing dashboard. Export an unsaved draft to keep panel changes during recovery. The obsolete `tomatoesDashboard` browser cache is removed automatically when the dashboard page opens. MongoDB remains the source of saved dashboards.
+
+Back up MongoDB for a complete backup of dashboards, metadata and boards. Exporting charts alone does not back up measurements or all dashboard metadata.
+
+## Initial migration
+
+The old `backend/src/database/dashboard/config/charts.json` is imported into the deterministic `existing-charts` dashboard at backend startup when the file exists. Migration validates and compares every chart after writing. Restarting does not recreate or overwrite an existing dashboard. Migration errors stop backend startup instead of discarding configuration.
+
+An explicit migration script is also available: from `backend`, run `node scripts/migrate-dashboards.cjs` with the backend environment and MongoDB connectivity. The script retains the source file. Verify the downloaded export against the original JSON, archive the source outside the repository, and only then remove it. Once removed, a fresh installation starts with an empty dashboard library.
+
+Compiled deployments should migrate before removing the source, or pass the original source file to `migrateCharts`. JSON configuration is no longer used for normal reads or writes. The legacy GET `/dashboards` reads `existing-charts` from MongoDB; the legacy POST `/dashboards/saveCharts` returns 409 rather than bypassing revision protection.
+
+## Panels and live data
+
+The renderer still uses uPlot. **View** opens a full-screen panel; **Edit** opens a local draft editor; **Remove** requires confirmation. Removing a panel never deletes measurements. Deleting an entire dashboard also requires confirmation and a matching revision.
+
+The query editor has Builder, Flux, Processing and Data preview tabs. Builder reads live schema from InfluxDB (last 30 days, up to 300 entries per request). It generates Flux only when requested; opening Builder never rewrites an existing query. Add tag filters to distinguish hosts, topics or disks. Numeric text requires an explicit float conversion before aggregation. Invalid numeric text causes a query error rather than silently becoming zero.
+
+The supported Flux macros are `v.timeRangeStart`, `v.timeRangeStop`, and `v.windowPeriod`. They are resolved on a temporary copy for each request. Queries with literal ranges keep those ranges. Processing applies multiplier, offset and optional clamps after querying; formatting and gap connection do not rewrite measurements. Separate tagged series are aligned by timestamp. Limit queries to 30 series using tag filters.
+
+Auto refresh supports Off, 2s, 5s, 10s, 30s, 1m, 5m, 15m, 30m, 1h, 2h and 6h. Dashboard settings control the defaults and available intervals. Refresh does not overlap requests, pauses during editing dialogs, optionally pauses in hidden browser tabs, and stops on navigation. Returning no samples displays an empty state; failures are shown per panel. At most three panel queries run at once.
+
+Management endpoints under `/dashboards` require a valid web session. Existing device and board endpoints are unchanged. No new permissions system is introduced in this change.
+
+## Checks
+
+- Backend: `node --test -r ts-node/register tests/dashboard.test.cjs tests/dashboard-api.test.cjs`
+- Frontend helpers: `node --test tests/dashboard.test.mjs`
+- Frontend: `yarn build` and lint the changed components.
+
+The browser integration check used a simulated API to exercise save failure/retry, reload, exact JSON export, processing, removal/discard, refresh, route guards and responsive layouts without sending device commands.
+
+## Verified migration on the Raspberry Pi
+
+On November 2, 2026, all eight original charts were migrated to `existing-charts`. The authenticated API export was compared with the complete original JSON before deleting the active file. The original is archived at `/home/diego/tomatoes-server-backups/dashboards-20261102/charts-original.json`; the source backup is `source-before.tgz` in the same directory.
+
+Live checks verified eight rendered uPlot panels, responsive layout, full-screen view, schema discovery and InfluxDB samples. A temporary dashboard verified MongoDB save/read/export, stale revision rejection and deletion, then was removed. The original eight definitions were compared again afterwards and remained identical.
+
+## Dashboard organization and inspection
+
+The dashboard library includes All dashboards and Starred tabs, matching-dashboard counts, and Dashboard, Folder, Panels and Updated columns. Panel counts come from MongoDB definitions. The list reflows on narrow screens.
+
+Panel headers highlight on hover or keyboard focus. The chart cursor opens a tooltip with timestamp, series label/tags, formatted value and unit. Missing samples display a dash; tooltips remain inside the panel.
+
+The original dashboard ID remains `existing-charts` so bookmarks keep working, but its name is now Raspberry Pi. It contains nine server panels: CPU temperature, CPU user usage, memory used, storage used, swap used, GPU temperature, CPU clock in MHz, memory percentage and one-minute system load.
+
+ESP32 Boards contains nine panels for `esp32s3-07945C`: the existing pH, conductivity and NTC panels, plus SHT35 air temperature and humidity, compensated conductivity, TDS, sensor internal temperature and sensor supply voltage. New queries were checked against finite recent samples. The CN0326 external temperature feed returned infinity and was excluded. TDS is shown without an assumed unit because its MQTT payload does not specify one.
+
+The reorganization preserved all eight original queries and current user layouts, with positions repacked for the separate dashboards. Definitions before and after the change are backed up in `/home/diego/tomatoes-server-backups/dashboard-organized-20261102/`. This is a migration of this installation, not a new automatic seeder or a source of simulated telemetry.

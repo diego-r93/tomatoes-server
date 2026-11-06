@@ -1,0 +1,2 @@
+/* Establish layer order before Vite loads component styles. */
+@layer vuetify-core, vuetify-components, vuetify-overrides, vuetify-utilities, vuetify-final;

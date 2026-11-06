@@ -1,7 +1,7 @@
 <template>
+  <navigation-drawer />
   <v-main>
-    <navigation-drawer></navigation-drawer>
-    <router-view></router-view>
+    <slot />
   </v-main>
 </template>
 

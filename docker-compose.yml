@@ -22,7 +22,7 @@ services:
     command: bash -c "cd /backend && yarn install && yarn start"
 
   frontend:
-    image: node:20.12.2
+    image: node:24.22.2
     container_name: frontend
     restart: unless-stopped
     volumes:
@@ -32,7 +32,7 @@ services:
       - nginx_network
     depends_on:
       - backend
-    command: bash -c "cd /frontend && yarn install && yarn dev"
+    command: bash -c "cd /frontend && yarn install --frozen-lockfile --non-interactive && yarn dev"
 
   nginx:
     image: nginx:1.25

@@ -1,36 +1,31 @@
-<template>
-  <div>
-    <UplotVue :options="options" :data="data" />
-  </div>
-</template>
-
+<template><div ref="container" class="dashboard-plot" role="img" :aria-label="chartOptions.chartTitle || 'Time series chart'"><div ref="plotHost" class="plot-canvas"/><div v-if="processingFor({processing}).showLegend" class="plot-legend"><span v-for="(item,index) in legend" :key="index" class="legend-series" :title="item.label"><i :style="{background:item.color}"/><span class="legend-label">{{ item.label }}</span><span v-if="hoverValues[index]!==undefined">{{ hoverValues[index] }}</span></span></div><div v-if="tooltip.visible" class="plot-tooltip" role="tooltip" :style="{left:tooltip.x+'px',top:tooltip.y+'px'}"><strong>{{ tooltip.time }}</strong><div v-for="(item,index) in tooltip.items" :key="index" class="tooltip-row"><i :style="{background:item.color}"/><span class="tooltip-label" :title="item.label">{{ item.label }}</span><span class="tooltip-value">{{ item.value }}</span></div></div></div></template>
 <script setup>
-import "uplot/dist/uPlot.min.css";
-import { ref, toRefs, watch } from 'vue';
-import UplotVue from "uplot-vue";
-
-const props = defineProps({
-  chartOptions: {
-    type: Object,
-    required: true
-  },
-  chartData: {
-    type: Array,
-    required: true
-  }
-});
-
-const { chartOptions, chartData } = toRefs(props);
-
-const options = ref({...chartOptions.value});
-const data = ref([...(chartData.value || [])]);
-
-watch(chartOptions, (newVal) => {
-  options.value = {...newVal};
-}, { deep: true });
-
-watch(chartData, (newVal) => {
-  data.value = [...newVal];
-}, { deep: true });
-
+import { chartTimeLabel } from '@/composables/dateTime.mjs';
+import 'uplot/dist/uPlot.min.css';
+import uPlot from 'uplot';
+import { ref,computed,watch,onMounted,onBeforeUnmount } from 'vue';
+import { useTheme } from 'vuetify';
+import { processingFor } from '@/composables/dashboardUtils.mjs';
+defineOptions({name:'DashboardChart'});
+const props=defineProps({chartOptions:{type:Object,required:true},chartData:{type:Array,required:true},processing:{type:Object,default:()=>({})},labels:{type:Array,default:()=>[]},timezone:{type:String,default:'Browser'}});
+const container=ref(null),plotHost=ref(null),legend=ref([]),hoverValues=ref([]),tooltip=ref({visible:false,items:[]}),theme=useTheme();let plot,observer,resizeFrame;
+const palette=computed(()=>theme.current.value.colors);
+function draw(){
+ if(!container.value||!plotHost.value)return;plot?.destroy();plot=null;hoverValues.value=[];tooltip.value={visible:false,items:[]};
+ const p=processingFor({processing:props.processing}),width=Math.floor(container.value.clientWidth),height=Math.floor(container.value.clientHeight)-(p.showLegend?26:0);if(width<100||height<80)return;
+ const data=props.chartData.length>1&&props.chartData[0]?.length?props.chartData:[[],[]],count=data.length-1;
+ const original=props.chartOptions.series||[{},{}],base=original[1]||{},scale=props.chartOptions.axes?.[1]?.scale||base.scale;
+ const colors=[base.stroke||'#80cbc4','#90caf9','#ffcc80','#ce93d8','#a5d6a7','#ef9a9a'];
+ const format=value=>{if(value==null)return '—';const divisor=scale==='mb'?1e6:scale==='gb'?1e9:1;return (value/divisor).toFixed(p.decimals)+(props.chartOptions.unit?` ${props.chartOptions.unit}`:scale==='mb'?' MB':scale==='gb'?' GB':scale==='C'?' °C':'');};
+ const series=[{label:original[0]?.label||'Date'},...Array.from({length:count},(_,i)=>({...base,label:count===1?(base.label||props.chartOptions.chartTitle||'Value'):(props.labels[i]||base.label||'Value'),scale:'y',stroke:colors[i%colors.length],fill:i===0?base.fill:undefined,width:p.lineWidth,spanGaps:p.gaps==='Connect gaps',points:{...base.points,show:p.showPoints},value:(_,v)=>format(v)}))];
+ legend.value=series.slice(1).map(s=>({label:s.label,color:s.stroke}));
+ plot=new uPlot({width,height,padding:[12,10,0,0],tzDate:ts=>uPlot.tzDate(new Date(ts*1000),props.timezone==='Browser'?Intl.DateTimeFormat().resolvedOptions().timeZone:props.timezone),legend:{show:false},series,scales:{x:{time:true},y:{auto:true}},axes:[{stroke:palette.value.muted,font:'11px Roboto',grid:{stroke:palette.value['chart-grid'],width:.6},ticks:{show:false},size:u=>u.scales.x.max-u.scales.x.min>86400?42:30,values:(u,ticks)=>ticks.map(ts=>chartTimeLabel(ts*1000,u.scales.x.max-u.scales.x.min,props.timezone,true))},{stroke:palette.value.muted,font:'11px Roboto',grid:{stroke:palette.value['chart-grid'],width:.6},ticks:{show:false},size:(_,labels)=>Math.max(44,...(labels||[]).map(value=>String(value).length*6+12)),values:(_,ticks)=>ticks.map(format)}],hooks:{setCursor:[u=>{const at=u.cursor.idx;if(at==null||u.cursor.left<0||u.cursor.top<0){hoverValues.value=[];tooltip.value.visible=false;return;}hoverValues.value=u.data.slice(1).map(values=>format(values[at]));const root=container.value.getBoundingClientRect(),over=u.over.getBoundingClientRect(),items=legend.value.map((item,i)=>({...item,label:props.labels[i]?`${item.label} {${props.labels[i]}}`:item.label,value:format(u.data[i+1][at])}));tooltip.value={visible:true,x:Math.max(8,Math.min(over.left-root.left+u.cursor.left+14,root.width-Math.min(420,root.width-16)-8)),y:Math.max(8,Math.min(over.top-root.top+u.cursor.top+16,root.height-Math.min(32+items.length*26,200)-8)),time:chartTimeLabel(u.data[0][at]*1000,u.scales.x.max-u.scales.x.min,props.timezone),items};}]}},data,plotHost.value);
+}
+onMounted(()=>{observer=new ResizeObserver(()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(draw);});observer.observe(container.value);draw();});
+watch(()=>[props.chartData,props.chartOptions,props.processing,props.labels,props.timezone,palette.value],draw,{deep:true});
+onBeforeUnmount(()=>{observer?.disconnect();cancelAnimationFrame(resizeFrame);plot?.destroy();});
 </script>
+<style scoped lang="scss">
+.dashboard-plot{width:100%;height:100%;min-width:0;min-height:0;overflow:hidden;position:relative;display:flex;flex-direction:column}.plot-canvas{flex:1;min-height:0;min-width:0}.plot-legend{height:26px;flex-shrink:0;display:flex;align-items:center;gap:14px;padding:0 12px;overflow:auto;font-size:12px;color:rgb(var(--v-theme-muted));white-space:nowrap}.legend-series{display:inline-flex;align-items:center;gap:6px;min-width:0}.legend-series i{display:inline-block;width:12px;height:4px;flex-shrink:0}.legend-label{max-width:280px;overflow:hidden;text-overflow:ellipsis}
+.plot-tooltip{position:absolute;z-index:4;pointer-events:none;background:rgb(var(--v-theme-surface));color:rgb(var(--v-theme-on-surface));border:1px solid rgb(var(--v-theme-border));border-radius:3px;box-shadow:0 4px 14px #0004;padding:9px 11px;max-width:calc(100% - 16px);width:420px;max-height:min(240px,calc(100% - 16px));overflow:hidden;font-size:12px}.plot-tooltip strong{display:block;margin-bottom:7px;font-weight:500;color:rgb(var(--v-theme-muted))}.tooltip-row{display:flex;gap:7px;align-items:center;margin-top:5px}.tooltip-row i{width:12px;height:4px;flex-shrink:0}.tooltip-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}.tooltip-value{white-space:nowrap;font-variant-numeric:tabular-nums}
+</style>

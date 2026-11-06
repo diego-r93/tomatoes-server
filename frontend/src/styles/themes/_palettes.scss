@@ -1,0 +1,39 @@
+// The single source of application colors. Compiled once, switched at runtime.
+$palettes: (
+  dark: (
+    background: #121212, surface: #212121, sidebar: #212121,
+    on-background: #eeeeee, on-surface: #eeeeee, surface-variant: #282828, on-surface-variant: #bdbdbd,
+    primary: #3f51b5, on-primary: #ffffff, secondary: #80cbc4, on-secondary: #102d2a,
+    muted: #bdbdbd, border: #424242, hover: #303030, selection: #292b34,
+    table-header: #1a1a1a, decorative: #242424, chart-grid: #424242,
+    error: #ef9a9a, on-error: #3b1010, success: #a5d6a7, on-success: #163519,
+    warning: #ffcc80, on-warning: #382500, auth-start: #1c302d, auth-end: #121212
+  ),
+  light: (
+    background: #f5f5f5, surface: #ffffff, sidebar: #eeeeee,
+    on-background: #212121, on-surface: #212121, surface-variant: #f0f0f0, on-surface-variant: #616161,
+    primary: #3f51b5, on-primary: #ffffff, secondary: #00695c, on-secondary: #ffffff,
+    muted: #616161, border: #d7d7d7, hover: #eeeeee, selection: #e8eaf6,
+    table-header: #f5f5f5, decorative: #e2e2e2, chart-grid: #dedede,
+    error: #b3261e, on-error: #ffffff, success: #2e7d32, on-success: #ffffff,
+    warning: #805600, on-warning: #ffffff, auth-start: #e4efeb, auth-end: #f5f5f5
+  ),
+  studioLight: (
+    background: #f6f7fa, surface: #ffffff, sidebar: #eef1f7,
+    on-background: #20242c, on-surface: #20242c, surface-variant: #f0f3f9, on-surface-variant: #5d6472,
+    primary: #3547aa, on-primary: #ffffff, secondary: #235f74, on-secondary: #ffffff,
+    muted: #5d6472, border: #dce1e8, hover: #edf0f7, selection: #edf0ff,
+    table-header: #f0f3f9, decorative: #e4e8f1, chart-grid: #dce1e8,
+    error: #b3261e, on-error: #ffffff, success: #2e7543, on-success: #ffffff,
+    warning: #805600, on-warning: #ffffff, auth-start: #e8edf8, auth-end: #f6f7fa
+  ),
+  midnight: (
+    background: #15202b, surface: #1d2c3b, sidebar: #182632,
+    on-background: #edf3f8, on-surface: #edf3f8, surface-variant: #243746, on-surface-variant: #afbfce,
+    primary: #7fd6ca, on-primary: #112d2b, secondary: #a8b9ff, on-secondary: #17234c,
+    muted: #afbfce, border: #3b5063, hover: #2b4052, selection: #253e49,
+    table-header: #192735, decorative: #203244, chart-grid: #3b5063,
+    error: #ffb4ab, on-error: #4d1713, success: #a3d9ae, on-success: #15341e,
+    warning: #ffcd8b, on-warning: #3f2904, auth-start: #1e3540, auth-end: #15202b
+  )
+);

@@ -1,0 +1,17 @@
+@use './palettes' as palette;
+
+// CSS Module exports let Vuetify consume the Sass palette without duplicating it.
+:export {
+  @each $name, $colors in palette.$palettes {
+    @each $token, $value in $colors {
+      #{$name}__#{$token}: #{$value};
+    }
+  }
+}
+
+// Small theme pickers display their own palette, regardless of the active theme.
+@each $name, $colors in palette.$palettes {
+  :global(.theme-swatch--#{$name}) {
+    @each $token, $value in $colors { --swatch-#{$token}: #{$value}; }
+  }
+}

@@ -1,30 +1,7 @@
-import DashBoard from "@/views/DashBoard"
-import ChartViewComponent from "@/views/dashboard/ChartViewComponent"
-import ChartEditComponent from "@/views/dashboard/ChartEditComponent"
-
+import Dashboard from '@/views/DashBoard.vue';
 export default [
-  {
-    path: "/dashboard",
-    meta: {
-      requiresAuth: true,
-      layout: "ui",
-    },
-    component: DashBoard,
-  },
-  {
-    path: "/dashboard/viewPanel/:id",
-    meta: {
-      requiresAuth: true,
-      layout: "ui",
-    },
-    component: ChartViewComponent,
-  },
-  {
-    path: "/dashboard/editPanel/:id",
-    meta: {
-      requiresAuth: true,
-      layout: "default",
-    },
-    component: ChartEditComponent,
-  },
-]
+ {path:'/dashboard',component:Dashboard,meta:{requiresAuth:true,layout:'ui'}},
+ {path:'/dashboard/viewPanel/:id',redirect:to=>({path:'/dashboard/existing-charts',query:{panel:to.params.id}})},
+ {path:'/dashboard/editPanel/:id',redirect:to=>({path:'/dashboard/existing-charts',query:{edit:to.params.id}})},
+ {path:'/dashboard/:dashboardId',component:Dashboard,meta:{requiresAuth:true,layout:'ui'}},
+];

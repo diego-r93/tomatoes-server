@@ -6,29 +6,38 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint . --fix --ignore-path .gitignore"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test:devices": "node --test tests/device-inventory.test.mjs"
   },
   "dependencies": {
-    "@mdi/font": "7.0.96",
-    "axios": "^1.6.8",
-    "core-js": "^3.29.0",
-    "grid-layout-plus": "^1.0.5",
-    "pinia": "^2.0.0",
-    "roboto-fontface": "*",
-    "uplot": "^1.6.30",
-    "uplot-vue": "^1.1.5",
-    "vee-validate": "^4.11.1",
-    "vue": "^3.2.0",
-    "vue-router": "^4.0.0",
-    "vuetify": "^3.0.0",
-    "webfontloader": "^1.0.0"
+    "@mdi/font": "7.4.47",
+    "@vue/devtools-api": "8.2.1",
+    "axios": "1.21.0",
+    "core-js": "3.51.0",
+    "grid-layout-plus": "1.1.1",
+    "pinia": "4.1.0",
+    "uplot": "1.6.32",
+    "uplot-vue": "1.2.4",
+    "vee-validate": "4.15.1",
+    "vue": "3.5.44",
+    "vue-router": "5.4.0",
+    "vuetify": "4.3.1"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^4.0.0",
-    "eslint": "^8.37.0",
-    "eslint-plugin-vue": "^9.3.0",
-    "sass": "^1.68.0",
-    "vite": "^4.2.0",
-    "vite-plugin-vuetify": "^1.0.0"
-  }
+    "@eslint/js": "10.0.1",
+    "@vitejs/plugin-vue": "6.0.10",
+    "eslint": "10.14.0",
+    "eslint-plugin-vue": "10.12.0",
+    "globals": "17.14.0",
+    "sass": "1.107.1",
+    "vite": "8.3.5",
+    "vite-plugin-vuetify": "2.1.3",
+    "vue-eslint-parser": "10.4.1"
+  },
+  "engines": {
+    "node": ">=24.22.2 <25"
+  },
+  "packageManager": "yarn@1.22.22",
+  "type": "module"
 }
