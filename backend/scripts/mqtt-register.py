@@ -71,11 +71,11 @@ def acl_for(legacy, users, prepare_explorer=False):
     return '\n\n'.join(blocks) + '\n'
 
 
-def atomic_write(path, content, mode, gid):
+def atomic_write(path, content, mode, uid=0, gid=0):
     with tempfile.NamedTemporaryFile(dir=path.parent, prefix='.' + path.name + '.', delete=False) as target:
         temporary = Path(target.name)
         try:
-            os.fchown(target.fileno(), 0, gid)
+            os.fchown(target.fileno(), uid, gid)
             os.fchmod(target.fileno(), mode)
             target.write(content.encode('utf-8'))
             target.flush()
@@ -99,7 +99,7 @@ def phase_a_credentials(master):
     else:
         passwords[TELEGRAF] = secrets.token_hex(32)
         content = f'MQTT_USER_NAME={TELEGRAF}\nMQTT_PASSWORD={passwords[TELEGRAF]}\n'
-        atomic_write(TELEGRAF_ENV, content, 0o600, 0)
+        atomic_write(TELEGRAF_ENV, content, 0o600)
     return passwords
 
 
@@ -127,6 +127,7 @@ def main():
     status = subprocess.check_output(
         compose + ['exec', '-T', 'mosquitto', 'cat', '/proc/1/status'], cwd=ROOT, text=True, stdin=subprocess.DEVNULL
     )
+    uid = int(re.search(r'^Uid:\s+\d+\s+(\d+)', status, re.M)[1])
     gid = int(re.search(r'^Gid:\s+\d+\s+(\d+)', status, re.M)[1])
     with (CONFIG / '.provision.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
@@ -141,8 +142,8 @@ def main():
                 entries[BACKEND] = password_hash(derive(master, BACKEND))
         acl = acl_for(legacy, entries, prepare_explorer=args.phase_a or EXPLORER in entries or
                       (CONFIG / 'acl').is_file() and f'user {EXPLORER}\n' in (CONFIG / 'acl').read_text())
-        atomic_write(CONFIG / 'acl', acl, 0o644, gid)
-        atomic_write(passwd, ''.join(f'{user}:{value}\n' for user, value in entries.items()), 0o640, gid)
+        atomic_write(CONFIG / 'acl', acl, 0o600, uid, gid)
+        atomic_write(passwd, ''.join(f'{user}:{value}\n' for user, value in entries.items()), 0o600, uid, gid)
         subprocess.run(compose + ['kill', '-s', 'SIGHUP', 'mosquitto'], cwd=ROOT, check=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if args.phase_a:
         for user, fingerprint in TOOL_FINGERPRINTS.items():

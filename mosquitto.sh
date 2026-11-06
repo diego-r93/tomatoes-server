@@ -8,7 +8,8 @@ PASSWD_FILE="/mosquitto/config/passwd"
 
 # Check if the file doesn't exist or is empty
 if [ ! -s "$PASSWD_FILE" ]; then
-    # Create or empty the passwd file
+    # Create the password file with private permissions.
+    umask 077
     > "$PASSWD_FILE"
 
     # Add the user and password
@@ -22,8 +23,11 @@ if [ ! -f "$ACL_FILE" ]; then
         ''|*[!a-zA-Z0-9._-]*) exit 1 ;;
     esac
     printf 'user %s\ntopic readwrite #\ntopic read $SYS/#\n' "${MQTT_USER_NAME}" > "$ACL_FILE"
-    chmod 644 "$ACL_FILE"
 fi
+
+# Mosquitto drops privileges before reading these files.
+chown mosquitto:mosquitto "$PASSWD_FILE" "$ACL_FILE"
+chmod 600 "$PASSWD_FILE" "$ACL_FILE"
 
 # Start Mosquitto
 exec /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf
