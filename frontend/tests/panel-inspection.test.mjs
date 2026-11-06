@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { TextDecoder } from 'node:util';
 import { inspectionTable, seriesStats, valueText, csvText, xlsxBytes } from '../src/composables/panelInspection.mjs';
 
 const chart = { options: { chartTitle: 'Temperature', axes: [{}, { scale: 'C' }], series: [{}, { label: 'Temperature' }] }, processing: { decimals: 2 } };

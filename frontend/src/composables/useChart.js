@@ -1,6 +1,5 @@
 // src/composables/useChart.js
 import { ref, reactive } from 'vue';
-import influxdbDataService from '@/services/influxdbDataService';
 
 export const useChart = () => {
   const timeSince = ref('-5m');

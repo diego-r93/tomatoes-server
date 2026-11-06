@@ -71,6 +71,7 @@ import { onMounted, ref, reactive, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import Chart from '@/components/dashboard/Chart.vue';
 import influxdbDataService from '@/services/influxdbDataService';
+import dashboardDataService from '@/services/dashboardDataService';
 import { useDashboardStore } from '@/store/dashboardData';
 import { useChart } from '@/composables/useChart';
 
