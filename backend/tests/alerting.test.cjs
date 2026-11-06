@@ -152,6 +152,9 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
   const simulatedOta = express.Router();
   setupOta(simulatedOta);
   app.use('/simulation', simulatedOta);
+  const modelValidationOta = express.Router();
+  setupOta(modelValidationOta);
+  app.use('/model-validation', modelValidationOta);
   app.use(require('../src/users/http').userError);
   server=await new Promise(resolve=>{const s=app.listen(0,'127.0.0.1',()=>resolve(s));});
   const origin=`http://127.0.0.1:${server.address().port}`;
@@ -219,9 +222,11 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
    const originalConnection = sourceHealth.mqttConnected;
    const host = 'esp32s3-07945C';
    const nonce = '00112233445566778899aabbccddeeff';
-   const sha256 = '8dd65144d75367decdcd12419b523ef9c35f3f03ef7fc68d51d06c2f45c4e82b';
-   const signature = '9fcb55dd3b9bcbab5fbeb75db89a1c47970144858454ce10d7be5bb95037a8ab';
-   const image = Buffer.concat([Buffer.from([0xe9]), Buffer.from('tomatoes'.repeat(4))]);
+   const { createHash, createHmac } = require('node:crypto');
+   const image = Buffer.concat([Buffer.from([0xe9]), Buffer.from('TOMATOES_FW_MODEL=N16R8V;')]);
+   const sha256 = createHash('sha256').update(image).digest('hex');
+   const key = createHmac('sha256', masterKey).update(host).digest('hex');
+   const signature = createHmac('sha256', key).update(['tomatoes-ota-v1', host, nonce, image.length, sha256].join('\n')).digest('hex');
    const inserted = [], completed = [];
    const realFetch = globalThis.fetch;
    const http = require('node:http');
@@ -264,7 +269,7 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
    try {
     process.env.OTA_MASTER_KEY = masterKey;
     sourceHealth.mqttConnected = true;
-    await ingestDevice('devices/' + host, Buffer.from(JSON.stringify({ host, ip: '192.168.0.250' })));
+    await ingestDevice('devices/' + host, Buffer.from(JSON.stringify({ host, ip: '192.168.0.250', model: 'N16R8V' })));
     for (const [scenario, status, expected] of [
      ['success', 200, { ok: true, restart_in_ms: 2000 }],
      ['wrong-host', 502, { ok: false, error: 'The board returned an invalid identity or nonce.' }],
@@ -294,7 +299,7 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
      assert.equal(headers['transfer-encoding'], undefined);
      assert.equal(headers.expect, undefined);
      assert.equal(headers['x-ota-nonce'], nonce);
-     assert.equal(headers['x-ota-size'], '33');
+     assert.equal(headers['x-ota-size'], String(image.length));
      assert.equal(headers['x-ota-sha256'], sha256);
      assert.equal(headers['x-ota-signature'], signature);
      assert.deepEqual(body, Buffer.concat([preamble, image, Buffer.from(`\r\n--${boundary}--\r\n`)]));
@@ -306,6 +311,24 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
      assert.equal(entry.size, image.length);
      assert.deepEqual(Object.keys(entry).sort(), ['date', 'host', 'result', 'sha256', 'size', 'userId', 'username']);
     }
+    for (const [marker, model, status, error] of [
+     ['', 'N16R8V', 400, 'The firmware file must contain one supported model marker.'],
+     ['TOMATOES_FW_MODEL=N16R8V;TOMATOES_FW_MODEL=N16R2;', 'N16R8V', 400, 'The firmware file must contain one supported model marker.'],
+     ['TOMATOES_FW_MODEL=N16R2;', 'N16R8V', 400, 'This firmware is for N16R2. The selected board requires N16R8V.'],
+     ['TOMATOES_FW_MODEL=N16R8V;', undefined, 409, 'The selected board did not report a supported firmware model. Refresh Devices and try again.'],
+    ]) {
+     await ingestDevice('devices/' + host, Buffer.from(JSON.stringify({ host, ip: '192.168.0.250', model })));
+     const body = new FormData();
+     body.append('file', new Blob([Buffer.from([0xe9]), marker]), 'local-test.bin');
+     const response = await fetch(origin + '/model-validation/ota/' + host + '/firmware', {
+      method: 'POST', headers: { authorization: 'Bearer ' + admin.accessToken }, body,
+     });
+     assert.equal(response.status, status);
+     assert.equal((await response.json()).error, error);
+     assert.equal(completed.at(-1).status, status);
+    }
+    assert.equal(requests, 7, 'invalid images must not request a nonce');
+    assert.equal(uploads, 4, 'invalid images must not reach the board');
    } finally {
     sourceHealth.mqttConnected = originalConnection;
     if (originalKey === undefined) delete process.env.OTA_MASTER_KEY;

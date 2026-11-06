@@ -22,6 +22,24 @@ export function deriveBoardKey(masterKey: string, host: string) {
   return createHmac('sha256', masterKey).update(host).digest('hex');
 }
 
+const supportedModels = new Set(['N16R8V', 'N16R2']);
+
+function validateFirmwareModel(image: Buffer, boardModel: unknown) {
+  if (typeof boardModel !== 'string' || !supportedModels.has(boardModel)) {
+    throw new HttpError(409, 'The selected board did not report a supported firmware model. Refresh Devices and try again.');
+  }
+
+  const marks = image.toString('latin1').matchAll(/TOMATOES_FW_MODEL=([A-Z0-9]{1,16});/g);
+  const models = new Set(Array.from(marks, match => match[1]));
+  const [imageModel] = models;
+  if (models.size !== 1 || !supportedModels.has(imageModel)) {
+    throw new HttpError(400, 'The firmware file must contain one supported model marker.');
+  }
+  if (imageModel !== boardModel) {
+    throw new HttpError(400, 'This firmware is for ' + imageModel + '. The selected board requires ' + boardModel + '.');
+  }
+}
+
 const missingBoardKey = 'Placa sem chave de OTA; grave a chave pela USB';
 
 export function signFirmware(boardKey: string, host: string, nonce: string, size: number, sha256: string) {
@@ -146,6 +164,7 @@ export async function uploadOTAFile(req: Request, res: Response) {
       const device = await recentDevice(host);
       const ip = device?.ip;
       if (!ip || !privateAddress(ip)) throw new HttpError(409, 'The board has no recent discovery response with a valid address.');
+      validateFirmwareModel(image, device.model);
       const url = `http://${ip}/update`;
       const options = { signal: AbortSignal.timeout(120000), redirect: 'error' as const };
       const nonceResponse = await fetch(url + '/nonce', options);
