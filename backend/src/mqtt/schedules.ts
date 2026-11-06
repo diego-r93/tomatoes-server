@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import mongoose from 'mongoose';
 import { connect, MqttClient } from 'mqtt';
 import Board, { IBoard } from '../database/mongodb/models/board.model';
+import { approvedDeviceHosts } from './deviceRegistry';
 import { mqttCredentials } from './config/mqtt.config';
 
 const maxBytes = 3500;
@@ -43,11 +44,11 @@ export async function scheduleVersions(hosts: string[]) {
 }
 
 async function reconcile(active: MqttClient, republish: boolean) {
-  const boards = await Board.find().sort({ _id: 1 }).lean();
+  const [boards, approved] = await Promise.all([Board.find().sort({ _id: 1 }).lean(), approvedDeviceHosts()]);
   const entries = new Map<string, NonNullable<ReturnType<typeof schedule>>>();
   for (const board of boards) {
     const entry = schedule(board);
-    if (!entry || entries.has(entry.topic)) continue;
+    if (!entry || !approved.has(entry.host) || entries.has(entry.topic)) continue;
     entries.set(entry.topic, entry);
   }
 

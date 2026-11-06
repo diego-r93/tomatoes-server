@@ -17,13 +17,13 @@ export function useDeviceInventory() {
       clock.value = timestamp; lastRefresh.value = timestamp; hasLoaded.value = true;
       for (const [key, command] of Object.entries(pending.value)) {
         const device = devices.value.find(item => item.key === command.deviceKey);
-        if (device?.responded && device.outputs.some(output => output.gpio === command.gpio && output.state === command.target)) {
+        if (device?.responded && device.receivedAt >= command.submittedAt && device.outputs.some(output => output.gpio === command.gpio && output.state === command.target)) {
           delete pending.value[key]; notice.value = `Device confirmed GPIO ${command.gpio} ${command.target ? 'ON' : 'OFF'} on ${device.host}.`;
         }
       }
       for (const [key, command] of Object.entries(pendingAll.value)) {
         const device = devices.value.find(item => item.key === key);
-        if (device?.responded && command.gpios.every(gpio => device.outputs.some(output => output.gpio === gpio && output.state === false))) {
+        if (device?.responded && device.receivedAt >= command.submittedAt && command.gpios.every(gpio => device.outputs.some(output => output.gpio === gpio && output.state === false))) {
           delete pendingAll.value[key];
           notice.value = `Device confirmed all requested outputs OFF on ${device.host}.`;
         }

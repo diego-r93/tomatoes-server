@@ -1,4 +1,5 @@
 import { setTimeout as delay } from 'node:timers/promises';
+import { installedDeviceInventory, observeDeviceDiscovery, observeDeviceStatus } from '../mqtt/deviceRegistry';
 import { mqttCredentials } from '../mqtt/config/mqtt.config';
 import * as mqtt from 'mqtt';
 import { MqttClient } from 'mqtt';
@@ -52,30 +53,33 @@ export function startDiscovery(connect=mqtt.connect) {
  if(!process.env.MQTT_HOST_NAME)return ()=>{};
  client=connect(process.env.MQTT_HOST_NAME,{...mqttCredentials(),clientId:`tomatoes-alerts-${process.pid}`,reconnectPeriod:5000,connectTimeout:10000,clean:true,resubscribe:false});
  const discover=()=>{if(client?.connected){client.publish('getdevices','get all');sourceHealth.lastDiscovery=Date.now();}};
- client.on('connect',()=>client!.subscribe('devices/+', (error, grants) => {
-  sourceHealth.mqttConnected = !error && Boolean(grants?.length === 1 && grants.every(grant => grant.qos <= 2));
+ client.on('connect',()=>client!.subscribe(['devices/+', '+/status'], (error, grants) => {
+  sourceHealth.mqttConnected = !error && Boolean(grants?.length === 2 && grants.every(grant => grant.qos <= 2));
   if (sourceHealth.mqttConnected) discover();
  }));
  client.on('close',()=>{sourceHealth.mqttConnected=false;});
  client.on('error',()=>{sourceHealth.mqttConnected=false;});
- client.on('message', (topic, payload) => { void ingestDevice(topic, payload).catch(() => {}); });
+ client.on('message', (topic, payload, packet) => {
+  const time = Date.now();
+  void (async () => {
+   if (topic.endsWith('/status')) return observeDeviceStatus(topic, payload, packet.retain, time);
+   if (packet.retain) return;
+   const data = parseDeviceReport(topic, payload);
+   if (data && await observeDeviceDiscovery(data.host, data, time)) await ingestDevice(topic, payload, time);
+  })().catch(error => console.warn('Device observation failed:', error instanceof Error ? error.name : 'Unknown error'));
+ });
  const timer=setInterval(discover,30000);timer.unref();
  return ()=>{clearInterval(timer);client?.end(true);sourceHealth.mqttConnected=false;};
 }
 let discoveryRequest: Promise<Record<string, unknown>[]> | undefined;
 export function discoverDevices() {
- if (!client?.connected || !sourceHealth.mqttConnected) return Promise.resolve([]);
+ if (!client?.connected || !sourceHealth.mqttConnected) return installedDeviceInventory(false, processStarted);
  if (!discoveryRequest) {
-  const started = Date.now();
   client.publish('getdevices', 'get all');
-  sourceHealth.lastDiscovery = started;
-  discoveryRequest = delay(1500).then(async () => {
-   const cutoff = Math.max(processStarted, Date.now() - deviceFreshnessMs + 1);
-   const rows = await access(() => all<Pick<DeviceRow, 'payload' | 'received_at'>>(
-    'SELECT payload, received_at FROM alert_devices WHERE received_at >= ? ORDER BY host', [cutoff],
-   ));
-   return rows.map(row => ({ ...JSON.parse(row.payload), receivedAt: row.received_at }));
-  }).finally(() => { discoveryRequest = undefined; });
+  sourceHealth.lastDiscovery = Date.now();
+  discoveryRequest = delay(1500)
+   .then(() => installedDeviceInventory(sourceHealth.mqttConnected, processStarted))
+   .finally(() => { discoveryRequest = undefined; });
  }
  return discoveryRequest;
 }

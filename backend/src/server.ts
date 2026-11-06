@@ -22,6 +22,7 @@ import { migrateCharts } from './database/dashboard/migrate';
 import setupDashBoardsRoutes from './routes/dashboards-routes';
 import setupMqttRoutes from './routes/mqtt-routes';
 import { startScheduleSync } from './mqtt/schedules';
+import { migrateRegisteredDevices } from './mqtt/deviceRegistry';
 import setupInfluxRoutes from './routes/influxdb-routes';
 import setupNetworkRoutes from './routes/network-routes';
 import OTARoutes from './routes/ota-routes';
@@ -37,7 +38,7 @@ const mongoReady = mongoose
   .connect(url)
   .then(() => {
     console.log("Connected to the database!");
-    return migrateCharts();
+    return Promise.all([migrateCharts(), migrateRegisteredDevices()]);
   })
   .catch((err: Error) => {
     console.log("Cannot connect to the database!", err);
