@@ -86,7 +86,7 @@ services:
     entrypoint: [ "./entrypoint.sh" ]
 
   telegraf:
-    image: telegraf:1.30
+    image: telegraf:1.40.3
     container_name: telegraf
     restart: unless-stopped
     volumes:
