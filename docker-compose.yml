@@ -1,6 +1,7 @@
 services:
   backend:
-    image: node:24.22.2
+    image: tomatoes-backend:node24
+    build: ./backend
     container_name: backend
     restart: unless-stopped
     volumes:
@@ -24,7 +25,6 @@ services:
       - mongo
     env_file:
       - .env
-    command: bash -c "cd /backend && yarn install && yarn start"
 
   nginx:
     image: tomatoes-frontend:local
