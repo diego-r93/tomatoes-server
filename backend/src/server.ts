@@ -21,6 +21,7 @@ import setupBoardsRoutes from './routes/boards-routes';
 import { migrateCharts } from './database/dashboard/migrate';
 import setupDashBoardsRoutes from './routes/dashboards-routes';
 import setupMqttRoutes from './routes/mqtt-routes';
+import { startScheduleSync } from './mqtt/schedules';
 import setupInfluxRoutes from './routes/influxdb-routes';
 import setupNetworkRoutes from './routes/network-routes';
 import OTARoutes from './routes/ota-routes';
@@ -110,6 +111,7 @@ Promise.all([usersReady, alertsReady, mongoReady]).then(async () => {
     monitor.error='The alert monitor could not start. Check the backend MQTT configuration.';
     console.error('Alert monitor startup failed:', error instanceof Error ? error.name : 'Unknown error');
   }
+  startScheduleSync();
   app.listen(port, host, () => console.log('Server listening on ' + host + ':' + port));
 }).catch((error: unknown) => {
   console.error('Backend initialization failed:', error instanceof Error ? error.name : 'Unknown error');

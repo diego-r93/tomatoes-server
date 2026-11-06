@@ -1,3 +1,4 @@
+import { scheduleVersions } from '../schedules';
 import { discoverDevices, observedOutputs, recentDevice } from '../../alerts/sources';
 import MQTTService from '../service/mqttService';
 import { Request, Response } from 'express';
@@ -85,7 +86,14 @@ export const turnOffAllOutputs = async (req: Request, res: Response): Promise<vo
 export const getDevices = async (_req: Request, res: Response): Promise<void> => {
     try {
         const devices = await discoverDevices();
-        res.json({ devicesNumber: devices.length, devicesInformation: devices });
+        const versions = devices.length ? await scheduleVersions(devices.map(device => String(device.host))) : {};
+        res.json({
+            devicesNumber: devices.length,
+            devicesInformation: devices.map(device => ({
+                ...device,
+                scheduleVersions: Object.fromEntries(Object.entries(versions).filter(([code]) => code.startsWith(String(device.host) + '#'))),
+            })),
+        });
     } catch {
         res.status(503).json({ message: 'Device discovery is unavailable.' });
     }

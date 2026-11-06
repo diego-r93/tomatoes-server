@@ -1,9 +1,18 @@
+import { queueScheduleSync } from '../mqtt/schedules';
 import { authenticate, requireAdmin } from '../users/http';
 import { Express, Router } from 'express';
 import * as board from '../database/mongodb/controllers/board.controller';
 
 const boardRoutes = (app: Express) => {
     const router = Router();
+    router.use((req, res, next) => {
+        if (req.path !== '/find' && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+            res.once('finish', () => {
+                if (res.statusCode >= 200 && res.statusCode < 300) queueScheduleSync();
+            });
+        }
+        next();
+    });
 
     // Create a new Board
     router.post("/", authenticate, requireAdmin, board.create);
@@ -39,7 +48,10 @@ const boardRoutes = (app: Express) => {
     router.delete("/", authenticate, requireAdmin, board.deleteAll);
 
     // Find boards on local MongoDB
-    router.post("/find", board.findBoards);
+    router.post("/find", (req, res, next) => {
+        if (process.env.MQTT_SCHEDULE_REQUIRE_LOGIN === 'true') return authenticate(req, res, next);
+        next();
+    }, board.findBoards);
 
 
     app.use("/boards", router);
