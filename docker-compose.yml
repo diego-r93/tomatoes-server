@@ -110,6 +110,8 @@ services:
       - influxdb_network
     env_file:
       - .env
+      - path: ./telegraf/.mqtt.env
+        required: false
     environment:
       OTA_MASTER_KEY: ""
     depends_on:

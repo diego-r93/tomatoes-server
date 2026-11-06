@@ -48,3 +48,7 @@ passwd
 /mosquitto/config/.provision.lock
 /mosquitto/config/.passwd.*
 /mosquitto/config/.acl.*
+
+# Generated Telegraf-only MQTT credentials
+/telegraf/.mqtt.env
+/telegraf/..mqtt.env.*
