@@ -145,7 +145,7 @@ async function waitForRestart(url: string, host: string, ip: string, beforeUptim
 
 export async function uploadOTAFile(req: Request, res: Response) {
   const masterKey = firmwareMasterKey();
-  const host = req.params.host;
+  const host = req.params.host as string;
   const image = req.file?.buffer;
   if (!/^[a-zA-Z0-9._-]{1,128}$/.test(host) || !image?.length || image.length > MAX_FIRMWARE_BYTES || image[0] !== 0xe9) {
     throw new HttpError(400, 'Select a valid ESP32 firmware image.');

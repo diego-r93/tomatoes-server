@@ -4,7 +4,7 @@ import { CONFIG_PATHS } from '../config/networkConfig';
 import { exec } from 'child_process';
 
 export const getConfig = async (req: Request, res: Response) => {
-  const type = req.params.type;
+  const type = req.params.type as string;
 
   if (type in CONFIG_PATHS) {
     const network = new Network(type as keyof typeof CONFIG_PATHS);
@@ -22,7 +22,7 @@ export const getConfig = async (req: Request, res: Response) => {
 };
 
 export const updateConfig = async (req: Request, res: Response) => {
-  const type = req.params.type;
+  const type = req.params.type as string;
   const data = req.body.data;
 
   if (type in CONFIG_PATHS) {

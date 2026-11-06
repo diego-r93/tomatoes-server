@@ -70,7 +70,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
   try {
     const data = await Board.findOneAndUpdate({
       _id: id,
-    }, req.body, { useFindAndModify: false, new: true });
+    }, req.body, { new: true });
     if (!data) {
       res.status(404).send({
         message: `Cannot update Board with id=${id}. Maybe Board was not found!`
@@ -86,7 +86,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
 // Edit the state of an element in the driveTimes array
 export const editDriveTimeState = async (req: Request, res: Response): Promise<void> => {
   const id = req.params.id;
-  const index = parseInt(req.params.index, 10); // Convertendo o index para um número
+  const index = parseInt(req.params.index as string, 10); // Convertendo o index para um número
   const { state } = req.body;
 
   try {
@@ -106,7 +106,7 @@ export const editDriveTimeState = async (req: Request, res: Response): Promise<v
 // Edit a time in the driveTimes array
 export const editDriveTime = async (req: Request, res: Response): Promise<void> => {
   const id = req.params.id;
-  const index = parseInt(req.params.index, 10); // Convertendo o index para um número
+  const index = parseInt(req.params.index as string, 10); // Convertendo o index para um número
   const { time } = req.body;
 
   try {
@@ -146,7 +146,7 @@ export const replaceDriveTimes = async (req: Request, res: Response): Promise<vo
 // Delete an element at a specific index in the driveTimes array
 export const deleteDriveTimeAtIndex = async (req: Request, res: Response): Promise<void> => {
   const id = req.params.id;
-  const index = parseInt(req.params.index, 10);
+  const index = parseInt(req.params.index as string, 10);
 
   try {
     const board = await Board.findById(id);
@@ -185,9 +185,9 @@ export const deleteOne = async (req: Request, res: Response): Promise<void> => {
   const id = req.params.id;
 
   try {
-    const data = await Board.findOneAndRemove({
+    const data = await Board.findOneAndDelete({
       _id: id,
-    }, { useFindAndModify: false });
+    });
 
     if (!data) {
       res.status(404).send({

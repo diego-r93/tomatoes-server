@@ -25,7 +25,7 @@ export async function updatePassword(req: Request, res: Response) {
 export async function sessions(req: Request, res: Response) { const id = numericId(req.params.id); requireSelfOrAdmin(res, id); res.json(await userStore.sessions(id, context(res).session.id)); }
 export async function revokeSessions(req: Request, res: Response) {
   const id = numericId(req.params.id); requireSelfOrAdmin(res, id);
-  const auth = context(res); res.json(await userStore.revokeSessions(id, req.params.sessionId || null, auth.user, auth.session.id, clientInfo(req)));
+  const auth = context(res); res.json(await userStore.revokeSessions(id, (req.params.sessionId as string | undefined) || null, auth.user, auth.session.id, clientInfo(req)));
 }
 export async function recentActivity(req: Request, res: Response) { const id = numericId(req.params.id); requireSelfOrAdmin(res, id); res.json(await (Object.keys(req.query).length ? activityPage(id, req.query) : userStore.activity(id))); }
 export async function membership(req: Request, res: Response) { await userStore.membership(numericId(req.params.id), req.body?.groupIds, context(res).user, clientInfo(req)); res.status(204).end(); }
@@ -49,8 +49,8 @@ export async function sendInvite(req: Request, res: Response) {
   res.status(req.params.id ? 200 : 201).json(await userStore.invitationDelivery(prepared.invitation.id, prepared.hash, true, auth.user, client));
 }
 export async function revokeInvite(req: Request, res: Response) { await userStore.revokeInvitation(numericId(req.params.id), context(res).user, clientInfo(req)); res.status(204).end(); }
-export async function invitationInfo(req: Request, res: Response) { res.json(await userStore.invitationInfo(req.params.token)); }
-export async function acceptInvitation(req: Request, res: Response) { res.status(201).json(await userStore.acceptInvitation(req.params.token, req.body || {}, clientInfo(req))); }
+export async function invitationInfo(req: Request, res: Response) { res.json(await userStore.invitationInfo(req.params.token as string)); }
+export async function acceptInvitation(req: Request, res: Response) { res.status(201).json(await userStore.acceptInvitation(req.params.token as string, req.body || {}, clientInfo(req))); }
 export async function requestPasswordReset(req: Request, res: Response) {
   requireEmail();
   const email = emailAddress(req.body?.email), prepared = await userStore.createPasswordReset(email, undefined, clientInfo(req));
@@ -68,4 +68,4 @@ export async function adminPasswordReset(req: Request, res: Response) {
   catch { throw new HttpError(502, 'The reset email could not be sent. Please check email settings.'); }
   res.status(202).json({ message: 'The reset email was submitted to the email provider.' });
 }
-export async function resetPassword(req: Request, res: Response) { await userStore.resetPassword(req.params.token, req.body?.password, clientInfo(req)); res.status(204).end(); }
+export async function resetPassword(req: Request, res: Response) { await userStore.resetPassword(req.params.token as string, req.body?.password, clientInfo(req)); res.status(204).end(); }

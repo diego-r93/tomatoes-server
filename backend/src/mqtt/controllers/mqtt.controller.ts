@@ -41,7 +41,7 @@ export const subscribeMQTTMessage = async (req: Request, res: Response): Promise
 
 export const updateGPIO = async (req: Request, res: Response): Promise<void> => {
     try {
-        const host = req.params.id;
+        const host = req.params.id as string;
         const values = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? Object.entries(req.body) : [];
         if (!/^[a-zA-Z0-9._-]{1,128}$/.test(host) || values.length !== 1 || !/^\d{1,3}$/.test(values[0][0]) || Number(values[0][0]) > 255 || typeof values[0][1] !== 'boolean') {
             res.status(400).json({ message: 'Select one device output and a boolean state.' });
@@ -63,7 +63,7 @@ export const updateGPIO = async (req: Request, res: Response): Promise<void> => 
 }
 
 export const turnOffAllOutputs = async (req: Request, res: Response): Promise<void> => {
-    const host = req.params.id;
+    const host = req.params.id as string;
     if (!/^[a-zA-Z0-9._-]{1,128}$/.test(host)) {
         res.status(400).json({ message: 'Select a valid device.' });
         return;

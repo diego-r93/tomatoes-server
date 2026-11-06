@@ -15,7 +15,7 @@ const mqttRoutes = (app: Express) => {
 
     router.get("/registry", authenticate, requireAdmin, endpoint(async (_req, res) => { res.json(await listRegisteredDevices()); }));
     router.patch("/registry/:host", authenticate, requireAdmin, endpoint(async (req, res) => {
-        await changeRegistration(req.params.host, req.body?.action, context(res).user.username);
+        await changeRegistration(req.params.host as string, req.body?.action, context(res).user.username);
         queueScheduleSync();
         res.status(204).end();
     }));

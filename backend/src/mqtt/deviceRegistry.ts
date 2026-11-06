@@ -146,7 +146,7 @@ export async function observeDeviceDiscovery(host: string, data: Record<string, 
     online: true, firstSeen: { $ifNull: ['$firstSeen', at] }, lastSeen: at,
     report: { $literal: data }, reportAt: at,
   } }], { returnDocument: 'after' });
-  return row.value?.status === 'approved';
+  return row?.status === 'approved';
 }
 
 export async function approvedDeviceHosts() {
