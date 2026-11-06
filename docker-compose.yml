@@ -21,21 +21,9 @@ services:
       - .env
     command: bash -c "cd /backend && yarn install && yarn start"
 
-  frontend:
-    image: node:24.22.2
-    container_name: frontend
-    restart: unless-stopped
-    volumes:
-      - ./frontend:/frontend
-    networks:
-      - frontend_network
-      - nginx_network
-    depends_on:
-      - backend
-    command: bash -c "cd /frontend && yarn install --frozen-lockfile --non-interactive && yarn dev"
-
   nginx:
-    image: nginx:1.25
+    image: tomatoes-frontend:local
+    build: ./frontend
     container_name: nginx_proxy
     restart: unless-stopped
     volumes:
@@ -44,7 +32,6 @@ services:
       - 80:80
     networks:
       - nginx_network
-      - frontend_network
       - backend_network
       - influxdb_network
     env_file:
@@ -52,7 +39,6 @@ services:
     environment:
       OTA_MASTER_KEY: ""
     depends_on:
-      - frontend
       - backend
       - grafana
       - influxdb
@@ -69,7 +55,6 @@ services:
       - ./mosquitto.sh:/mosquitto.sh
     ports:
       - 8883:8883
-      - 9001:9001
     networks:
       - mosquitto_network
     environment:
@@ -87,8 +72,6 @@ services:
       - ./influxdb/data:/var/lib/influxdb2:rw
     networks:
       - influxdb_network
-    ports:
-      - ${DOCKER_INFLUXDB_INIT_PORT}:${DOCKER_INFLUXDB_INIT_PORT}
     env_file:
       - .env
     environment:
@@ -150,8 +133,6 @@ services:
     volumes:
       - ./mongo/data:/data/db
       - ./mongo/init:/docker-entrypoint-initdb.d:ro
-    ports:
-      - "27017:27017"
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
@@ -170,8 +151,6 @@ services:
     restart: unless-stopped
     depends_on:
       - mongo
-    ports:
-      - "8081:8081"
     environment:
       - ME_CONFIG_MONGODB_SERVER=mongo
       - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_ROOT_USERNAME}
@@ -186,7 +165,6 @@ volumes:
   grafana_data:
 
 networks:
-  frontend_network:
   backend_network:
   nginx_network:
   influxdb_network:
