@@ -1,3 +1,5 @@
+import { setTimeout as delay } from 'node:timers/promises';
+import { mqttCredentials } from '../mqtt/config/mqtt.config';
 import * as mqtt from 'mqtt';
 import { MqttClient } from 'mqtt';
 import { InfluxDB } from '@influxdata/influxdb-client';
@@ -21,11 +23,21 @@ export function observedOutputs(ports:unknown, previous:Record<string,Output>, c
  }
  return result;
 }
-export async function ingestDevice(payload:Buffer,time=Date.now()) {
- if(payload.length>65536)return;
- let data:Record<string,unknown>;try{data=JSON.parse(payload.toString());}catch{return;}
- if(!data||typeof data!=='object'||Array.isArray(data)||!Object.prototype.hasOwnProperty.call(data,'host'))return;
- const host=String(data.host);if(!/^[a-zA-Z0-9._-]{1,128}$/.test(host))return;
+export function parseDeviceReport(topic: string, payload: Buffer): (Record<string, unknown> & { host: string }) | null {
+ if (payload.length > 65536) return null;
+ let data: Record<string, unknown>;
+ try { data = JSON.parse(payload.toString()); } catch { return null; }
+ if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+ const host = data.host;
+ if (typeof host !== 'string' || !/^[a-zA-Z0-9._-]{1,128}$/.test(host)) return null;
+ if (topic !== 'devices' && topic !== `devices/${host}`) return null;
+ return { ...data, host };
+}
+
+export async function ingestDevice(payload: Buffer, time = Date.now(), topic = 'devices') {
+ const data = parseDeviceReport(topic, payload);
+ if (!data) return;
+ const { host } = data;
  await alertsReady;
  await access(async()=>{
   const old=await get<DeviceRow>('SELECT * FROM alert_devices WHERE host=?',[host]);
@@ -37,15 +49,33 @@ export async function ingestDevice(payload:Buffer,time=Date.now()) {
 }
 export function startDiscovery(connect=mqtt.connect) {
  if(!process.env.MQTT_HOST_NAME)return ()=>{};
- client=connect(process.env.MQTT_HOST_NAME,{username:process.env.MQTT_USER_NAME,password:process.env.MQTT_PASSWORD,clientId:`tomatoes-alerts-${process.pid}`,reconnectPeriod:5000,connectTimeout:10000,clean:true});
+ client=connect(process.env.MQTT_HOST_NAME,{...mqttCredentials(),clientId:`tomatoes-alerts-${process.pid}`,reconnectPeriod:5000,connectTimeout:10000,clean:true});
  const discover=()=>{if(client?.connected){client.publish('getdevices','get all');sourceHealth.lastDiscovery=Date.now();}};
- client.on('connect',()=>client!.subscribe('devices',error=>{sourceHealth.mqttConnected=!error;if(!error)discover();}));
+ client.on('connect',()=>client!.subscribe(['devices', 'devices/+'], (error, grants) => {
+  sourceHealth.mqttConnected = !error && Boolean(grants?.length === 2 && grants.every(grant => grant.qos <= 2));
+  if (sourceHealth.mqttConnected) discover();
+ }));
  client.on('close',()=>{sourceHealth.mqttConnected=false;});
  client.on('error',()=>{sourceHealth.mqttConnected=false;});
- client.on('message',(topic,payload)=>{if(topic==='devices')void ingestDevice(payload).catch(()=>{});});
+ client.on('message', (topic, payload) => { void ingestDevice(payload, Date.now(), topic).catch(() => {}); });
  const timer=setInterval(discover,30000);timer.unref();
  return ()=>{clearInterval(timer);client?.end(true);sourceHealth.mqttConnected=false;};
 }
+let discoveryRequest: Promise<Record<string, unknown>[]> | undefined;
+export function discoverDevices() {
+ if (!client?.connected || !sourceHealth.mqttConnected) return Promise.resolve([]);
+ if (!discoveryRequest) {
+  const started = Date.now();
+  client.publish('getdevices', 'get all');
+  sourceHealth.lastDiscovery = started;
+  discoveryRequest = delay(1500).then(async () => {
+   const rows = await access(() => all<DeviceRow>('SELECT payload FROM alert_devices WHERE received_at >= ? ORDER BY host', [started]));
+   return rows.map(row => JSON.parse(row.payload));
+  }).finally(() => { discoveryRequest = undefined; });
+ }
+ return discoveryRequest;
+}
+
 export function influxConfigured() {return Boolean(process.env.DOCKER_INFLUXDB_INIT_HOST&&process.env.DOCKER_INFLUXDB_INIT_PORT&&process.env.DOCKER_INFLUXDB_INIT_ADMIN_TOKEN&&process.env.DOCKER_INFLUXDB_INIT_ORG&&process.env.DOCKER_INFLUXDB_INIT_BUCKET);}
 export function metricQuery(source:Source) {
  const measurement=source.kind==='cpu_temperature'?'cpu_temperature':source.kind==='disk_usage'?'disk':source.measurement!;

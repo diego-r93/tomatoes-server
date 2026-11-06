@@ -1,4 +1,4 @@
-import { recentDevice } from '../../alerts/sources';
+import { discoverDevices, recentDevice } from '../../alerts/sources';
 import MQTTService from '../service/mqttService';
 import { Request, Response } from 'express';
 import { MQTT_HOST_NAME, MQTT_USER_NAME, MQTT_PASSWORD } from '../config/mqtt.config';
@@ -61,42 +61,11 @@ export const updateGPIO = async (req: Request, res: Response): Promise<void> => 
     }
 }
 
-export const getDevices = async (req: Request, res: Response): Promise<void> => {
+export const getDevices = async (_req: Request, res: Response): Promise<void> => {
     try {
-        const devices: any[] = [];
-        const topic: string = 'getdevices';
-        const message: string = 'get all';
-
-        const timeout = 1000; // Tempo em milissegundos para aguardar respostas
-
-        const devicesPromise: Promise<void> = new Promise((resolve, reject) => {
-            mqttClient.setMessageCallback((topic: string, message: Buffer) => {
-                console.log(`Successfully subscribe on MQTT topic ${topic}`);
-                console.log(`Received Message :: ${message.toString()}`);
-
-                const device = JSON.parse(message.toString());
-                devices.push(device);
-
-                setTimeout(resolve, timeout);
-            });
-
-            mqttClient.subscribe('devices');
-            mqttClient.publish(topic, message);
-        });
-
-        await devicesPromise;
-
-        mqttClient.unsubscribe('devices');
-
-        const result = {
-            devicesNumber: devices.length,
-            devicesInformation: devices,
-        };
-
-        console.log(JSON.stringify(result, null, 2));
-
-        res.status(200).json(result);
-    } catch (error: any) {
-        res.status(400).json({ status: 400, message: error.message });
+        const devices = await discoverDevices();
+        res.json({ devicesNumber: devices.length, devicesInformation: devices });
+    } catch {
+        res.status(503).json({ message: 'Device discovery is unavailable.' });
     }
 };

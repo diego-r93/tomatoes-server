@@ -14,7 +14,7 @@ const {alertsReady}=require('../src/alerts/database');
 const {access,run,get,all}=require('../src/users/database');
 const store=require('../src/alerts/store');
 const {evaluate,dispatchOne}=require('../src/alerts/engine');
-const {observedOutputs,ingestDevice,readSource,sourceHealth,metricQuery,metricSample,startDiscovery}=require('../src/alerts/sources');
+const {observedOutputs,ingestDevice,readSource,sourceHealth,metricQuery,metricSample,startDiscovery,parseDeviceReport}=require('../src/alerts/sources');
 const {templateBody,whatsappSettings}=require('../src/alerts/providers');
 const input={name:'Device not responding',source:{kind:'device_age',host:'esp32-test',freshnessSeconds:180},operator:'>',threshold:120,recovery:60,pendingSeconds:60,intervalSeconds:30,repeatSeconds:900,severity:'Critical',contactIds:[],enabled:true};
 test('alert state machine, persistence, outbox and authenticated API',async t=>{
@@ -79,8 +79,16 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
   assert.equal(step(rule,sample,now).state,'Firing');assert.equal(step({...rule,latched:true,state:'Firing'},metricSample(source,[{...rows[0],_time:new Date(now-10000).toISOString()}],now),now).state,'Normal');
   assert.equal(metricSample(source,[],now).health,'missing');assert.equal(metricSample(source,[...rows,...rows],now).health,'error');assert.equal(metricSample(source,[{...rows[0],_time:new Date(now+120000).toISOString()}],now).health,'missing');
  });
+ await t.test('discovery binds scoped MQTT topics to the report hostname while accepting legacy reports', () => {
+  const payload = Buffer.from(JSON.stringify({host:'esp32s3-07945C',ip:'192.168.0.250'}));
+  assert.equal(parseDeviceReport('devices/esp32s3-07945C', payload).host, 'esp32s3-07945C');
+  assert.equal(parseDeviceReport('devices', payload).host, 'esp32s3-07945C');
+  assert.equal(parseDeviceReport('devices/another-board', payload), null);
+  assert.equal(parseDeviceReport('devices/esp32s3-07945C/extra', payload), null);
+  assert.equal(parseDeviceReport('sensors/esp32s3-07945C', payload), null);
+ });
  await t.test('MQTT startup uses the installed named API and only publishes discovery',()=>{
-  const {EventEmitter}=require('node:events');const fake=new EventEmitter(),published=[];fake.connected=true;fake.subscribe=(topic,callback)=>{assert.equal(topic,'devices');callback(null);};fake.publish=(...args)=>published.push(args);fake.end=()=>{};
+  const {EventEmitter}=require('node:events');const fake=new EventEmitter(),published=[];fake.connected=true;fake.subscribe=(topics,callback)=>{assert.deepEqual(topics,['devices','devices/+']);callback(null,topics.map(topic=>({topic,qos:0})));};fake.publish=(...args)=>published.push(args);fake.end=()=>{};
   process.env.MQTT_HOST_NAME='mqtt://test.invalid';let connected=false;
   const stop=startDiscovery((host)=>{connected=true;assert.equal(host,'mqtt://test.invalid');return fake;});fake.emit('connect');assert(connected);assert.equal(sourceHealth.mqttConnected,true);assert.deepEqual(published,[['getdevices','get all']]);stop();delete process.env.MQTT_HOST_NAME;
  });
