@@ -58,7 +58,8 @@ services:
       - influxdb
 
   mosquitto:
-    image: eclipse-mosquitto:2.0.18
+    image: tomatoes-mosquitto:2.0.18
+    build: ./mosquitto
     container_name: mosquitto
     restart: unless-stopped
     volumes:
@@ -75,6 +76,7 @@ services:
     environment:
       - MQTT_USER_NAME=${MQTT_USER_NAME}
       - MQTT_PASSWORD=${MQTT_PASSWORD}
+      - MQTT_TLS_HOST=${MQTT_TLS_HOST:-}
     entrypoint: [ "./mosquitto.sh" ]
 
   influxdb:
