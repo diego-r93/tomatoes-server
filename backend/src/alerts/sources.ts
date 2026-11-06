@@ -50,7 +50,7 @@ export async function ingestDevice(topic: string, payload: Buffer, time = Date.n
 }
 export function startDiscovery(connect=mqtt.connect) {
  if(!process.env.MQTT_HOST_NAME)return ()=>{};
- client=connect(process.env.MQTT_HOST_NAME,{...mqttCredentials(),clientId:`tomatoes-alerts-${process.pid}`,reconnectPeriod:5000,connectTimeout:10000,clean:true});
+ client=connect(process.env.MQTT_HOST_NAME,{...mqttCredentials(),clientId:`tomatoes-alerts-${process.pid}`,reconnectPeriod:5000,connectTimeout:10000,clean:true,resubscribe:false});
  const discover=()=>{if(client?.connected){client.publish('getdevices','get all');sourceHealth.lastDiscovery=Date.now();}};
  client.on('connect',()=>client!.subscribe('devices/+', (error, grants) => {
   sourceHealth.mqttConnected = !error && Boolean(grants?.length === 1 && grants.every(grant => grant.qos <= 2));
