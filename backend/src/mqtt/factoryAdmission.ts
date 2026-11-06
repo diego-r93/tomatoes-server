@@ -66,7 +66,11 @@ function acceptDevice(socket: TLSSocket) {
     const packet = rewriteConnect(connect, host as string);
     const initial = await deviceAdmission(host as string);
     if (socket.destroyed) return;
-    if (initial === 'removed') { socket.end(Buffer.from([0x20, 2, 0, 5])); return; }
+    if (initial === 'removed') {
+      console.info('Factory MQTT CONNECT refused:', host, 'removed');
+      socket.end(Buffer.from([0x20, 2, 0, 5]));
+      return;
+    }
     await recordFactoryConnection(host as string);
     if (socket.destroyed) return;
     const upstream = createConnection(socketDir + initial + '.sock');
@@ -75,7 +79,11 @@ function acceptDevice(socket: TLSSocket) {
       if (checking) return;
       checking = true;
       try {
-        if (await deviceAdmission(host as string) !== initial) socket.destroy();
+        const current = await deviceAdmission(host as string);
+        if (current !== initial) {
+          console.info('Factory MQTT reconnect required:', host, initial, '->', current);
+          socket.destroy();
+        }
       } catch {
         socket.destroy();
       } finally { checking = false; }
