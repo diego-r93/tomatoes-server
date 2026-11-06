@@ -33,9 +33,10 @@
               <td>{{ board.fw || '—' }}</td>
               <td>{{ board.psramMB == null ? '—' : board.psramMB + ' MB' }}</td>
               <td>{{ formatDateTime(board.firstSeen, 'Browser', 'Not observed') }}</td>
-              <td>{{ board.online ? 'Online' : 'Not seen' }}</td>
+              <td>{{ board.status === 'removed' ? 'Blocked' : board.online ? 'Online' : 'Not seen' }}</td>
               <td>
-                <template v-if="board.factoryAuthenticated">
+                <v-btn v-if="board.status === 'removed'" size="small" variant="text" color="primary" @click="confirm = { board, action: 'restore' }">Restore to pending</v-btn>
+                <template v-else-if="board.factoryAuthenticated">
                   <v-btn v-if="board.status === 'pending'" size="small" variant="text" color="primary" @click="confirm = { board, action: 'approve' }">Approve</v-btn>
                   <v-btn v-if="board.status === 'pending'" size="small" variant="text" color="error" @click="confirm = { board, action: 'reject' }">Reject</v-btn>
                   <v-btn v-else size="small" variant="text" color="error" @click="confirm = { board, action: 'remove' }">Remove</v-btn>
@@ -55,13 +56,14 @@
         <v-card-text>
           <strong>{{ confirm.board.host }}</strong>
           <p v-if="confirm.action === 'approve'">This grants operational access and creates any missing outputs with empty schedules.</p>
+          <p v-else-if="confirm.action === 'restore'">The board can connect with its factory certificate and will need approval again. Existing pump records are kept.</p>
           <p v-else>This blocks the board at the next MQTT connection. Existing pump records are kept.</p>
           <v-alert v-if="actionError" type="error" variant="tonal" class="mt-3">{{ actionError }}</v-alert>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn :disabled="saving" @click="confirm = null">Cancel</v-btn>
-          <v-btn :loading="saving" :color="confirm.action === 'approve' ? 'primary' : 'error'" @click="applyAction">{{ actionLabels[confirm.action] }}</v-btn>
+          <v-btn :loading="saving" :color="['approve', 'restore'].includes(confirm.action) ? 'primary' : 'error'" @click="applyAction">{{ actionLabels[confirm.action] }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -80,7 +82,7 @@ const error = ref('');
 const confirm = ref(null);
 const saving = ref(false);
 const actionError = ref('');
-const actionLabels = { approve: 'Approve', reject: 'Reject', remove: 'Remove' };
+const actionLabels = { approve: 'Approve', reject: 'Reject', remove: 'Remove', restore: 'Restore' };
 let controller;
 watch(confirm, () => { actionError.value = ''; });
 
@@ -103,6 +105,7 @@ async function applyAction() {
 const sections = computed(() => [
   { status: 'pending', title: 'New boards', empty: 'No boards awaiting approval.' },
   { status: 'approved', title: 'Installed boards', empty: 'No installed boards.' },
+  { status: 'removed', title: 'Removed boards', empty: 'No removed boards.' },
 ].map(section => ({ ...section, boards: boards.value.filter(board => board.status === section.status) })));
 
 async function refresh() {

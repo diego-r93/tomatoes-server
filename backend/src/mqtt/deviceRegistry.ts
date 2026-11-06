@@ -10,7 +10,8 @@ type Registration = Metadata & {
   _id: string; host: string; status: RegistrationStatus; online: boolean;
   firstSeen: Date | null; lastSeen: Date | null;
   approvedAt?: Date; approvedBy?: string;
-  removedAt?: Date; removedBy?: string; factoryAuthenticated?: boolean;
+  removedAt?: Date; removedBy?: string; restoredAt?: Date; restoredBy?: string;
+  factoryAuthenticated?: boolean;
   report?: Record<string, unknown>; reportAt?: Date;
 };
 const registry = () => mongoose.connection.collection<Registration>('device_registry');
@@ -60,7 +61,7 @@ export async function recordFactoryConnection(host: string) {
 
 const changing = new Set<string>();
 export async function changeRegistration(host: string, action: unknown, operator: string) {
-  if (!isFactoryHostname(host) || !['approve', 'reject', 'remove'].includes(String(action))) {
+  if (!isFactoryHostname(host) || !['approve', 'reject', 'remove', 'restore'].includes(String(action))) {
     throw new HttpError(400, 'Invalid device registration action.');
   }
   if (changing.has(host)) throw new HttpError(409, 'A registration change is already in progress.');
@@ -68,6 +69,15 @@ export async function changeRegistration(host: string, action: unknown, operator
   try {
     const row = await registry().findOne({ _id: host });
     if (!row) throw new HttpError(404, 'Board registration was not found.');
+    if (action === 'restore') {
+      if (row.status !== 'removed') throw new HttpError(409, 'Only removed boards can be restored.');
+      const restored = await registry().updateOne({ _id: host, status: 'removed' }, {
+        $set: { status: 'pending', online: false, lastSeen: null, factoryAuthenticated: false, restoredAt: new Date(), restoredBy: operator },
+        $unset: { report: '', reportAt: '' },
+      });
+      if (!restored.matchedCount) throw new HttpError(409, 'The board registration has changed. Refresh and try again.');
+      return;
+    }
     if (!row.factoryAuthenticated) throw new HttpError(409, 'This board has not authenticated with a factory certificate.');
     const target = action === 'approve' ? 'approved' : 'removed';
     if (row.status !== target) {
@@ -156,6 +166,6 @@ export async function installedDeviceInventory(connected: boolean, processStarte
 }
 
 export async function listRegisteredDevices() {
-  const rows = await registry().find({ status: { $ne: 'removed' } }).sort({ host: 1 }).toArray();
+  const rows = await registry().find().sort({ host: 1 }).toArray();
   return rows.map(({ _id, report, reportAt, ...entry }) => entry);
 }
