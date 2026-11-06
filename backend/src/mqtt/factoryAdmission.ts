@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import { createServer, TLSSocket } from 'node:tls';
-import { deviceAdmission, isFactoryHostname } from './deviceRegistry';
+import { deviceAdmission, isFactoryHostname, recordFactoryConnection } from './deviceRegistry';
 
 const socketDir = '/run/tomatoes-mqtt/';
 const maxConnectBytes = 8192;
@@ -67,6 +67,8 @@ function acceptDevice(socket: TLSSocket) {
     const initial = await deviceAdmission(host as string);
     if (socket.destroyed) return;
     if (initial === 'removed') { socket.end(Buffer.from([0x20, 2, 0, 5])); return; }
+    await recordFactoryConnection(host as string);
+    if (socket.destroyed) return;
     const upstream = createConnection(socketDir + initial + '.sock');
     let checking = false;
     const timer = setInterval(async () => {

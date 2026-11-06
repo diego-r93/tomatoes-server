@@ -1,4 +1,7 @@
 import mongoose from 'mongoose';
+import { createHash } from 'node:crypto';
+import { HttpError } from '../users/types';
+import { access, run } from '../users/database';
 import Board from '../database/mongodb/models/board.model';
 
 type RegistrationStatus = 'pending' | 'approved' | 'removed';
@@ -7,6 +10,7 @@ type Registration = Metadata & {
   _id: string; host: string; status: RegistrationStatus; online: boolean;
   firstSeen: Date | null; lastSeen: Date | null;
   approvedAt?: Date; approvedBy?: string;
+  removedAt?: Date; removedBy?: string; factoryAuthenticated?: boolean;
   report?: Record<string, unknown>; reportAt?: Date;
 };
 const registry = () => mongoose.connection.collection<Registration>('device_registry');
@@ -47,6 +51,49 @@ export async function migrateRegisteredDevices() {
   await migration.updateOne({ _id: 'installed-boards-v1' }, { $setOnInsert: { _id: 'installed-boards-v1' } }, { upsert: true });
 }
 
+export async function recordFactoryConnection(host: string) {
+  await ensureRegistered(host, new Date());
+  await registry().updateOne({ _id: host, status: { $ne: 'removed' } }, {
+    $set: { factoryAuthenticated: true, auth: 'certificate' },
+  });
+}
+
+const changing = new Set<string>();
+export async function changeRegistration(host: string, action: unknown, operator: string) {
+  if (!isFactoryHostname(host) || !['approve', 'reject', 'remove'].includes(String(action))) {
+    throw new HttpError(400, 'Invalid device registration action.');
+  }
+  if (changing.has(host)) throw new HttpError(409, 'A registration change is already in progress.');
+  changing.add(host);
+  try {
+    const row = await registry().findOne({ _id: host });
+    if (!row) throw new HttpError(404, 'Board registration was not found.');
+    if (!row.factoryAuthenticated) throw new HttpError(409, 'This board has not authenticated with a factory certificate.');
+    const target = action === 'approve' ? 'approved' : 'removed';
+    if (row.status !== target) {
+      const expected = action === 'remove' ? 'approved' : 'pending';
+      if (row.status !== expected) throw new HttpError(409, 'The board registration has changed. Refresh and try again.');
+      if (target === 'approved') {
+        for (const output of ['01', '02', '03', '04']) {
+          const pumperCode = host + '#' + output;
+          const id = new mongoose.Types.ObjectId(createHash('sha256').update('tomatoes-pump:' + pumperCode).digest('hex').slice(0, 24));
+          await Board.updateOne({ pumperCode }, { $setOnInsert: {
+            _id: id, pumperCode, pumperName: 'Output ' + Number(output), pulseDuration: 60000, driveTimes: [],
+          } }, { upsert: true, timestamps: false });
+        }
+      }
+      const result = await registry().updateOne({ _id: host, status: expected }, { $set: target === 'approved'
+        ? { status: target, approvedAt: new Date(), approvedBy: operator }
+        : { status: target, online: false, removedAt: new Date(), removedBy: operator },
+      });
+      if (!result.matchedCount) throw new HttpError(409, 'The board registration has changed. Refresh and try again.');
+    }
+    if (target === 'removed') await access(() => run('DELETE FROM alert_devices WHERE host=?', [host]));
+  } finally {
+    changing.delete(host);
+  }
+}
+
 async function ensureRegistered(host: string, at: Date) {
   try {
     await registry().updateOne({ _id: host }, { $setOnInsert: {
@@ -64,7 +111,7 @@ export async function observeDeviceStatus(topic: string, payload: Buffer, retain
   try { data = JSON.parse(payload.toString()); } catch { return; }
   if (typeof data?.online !== 'boolean') return;
   const at = new Date(time);
-  await ensureRegistered(host, at);
+  if (data.online) await ensureRegistered(host, at);
   if (retained) {
     // A replay can identify a new board, but does not refresh an old observation.
     await registry().updateOne({ _id: host, status: { $ne: 'removed' }, lastSeen: null }, {

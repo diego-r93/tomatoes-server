@@ -53,7 +53,7 @@ def acl_for(legacy, users, prepare_explorer=False):
         )
     readers = 'topic read sensors/#\ntopic read devices/+'
     services = {
-        'tomatoes-monitor': readers,
+        'tomatoes-monitor': readers + '\ntopic read +/status',
         'tomatoes-bench': readers + '\ntopic write esp32s3-07945C/output\ntopic write esp32s3-07945C/config/#',
         TELEGRAF: 'topic read sensors/#',
         EXPLORER: 'topic read #\ntopic read $SYS/#',
