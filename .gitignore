@@ -42,3 +42,9 @@ passwd
 
 # Backend-only credentials
 /backend/.env
+
+# Mosquitto provisioning state
+/mosquitto/config/acl
+/mosquitto/config/.provision.lock
+/mosquitto/config/.passwd.*
+/mosquitto/config/.acl.*
