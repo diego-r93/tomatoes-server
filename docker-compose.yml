@@ -55,6 +55,7 @@ services:
       - ./mosquitto.sh:/mosquitto.sh
     ports:
       - 8883:8883
+      - "${MQTT_DEVICE_BIND_IP:-127.0.0.1}:8884:8884"
     networks:
       - mosquitto_network
     environment:
@@ -62,6 +63,7 @@ services:
       - MQTT_PASSWORD=${MQTT_PASSWORD}
       - MQTT_TLS_HOST=${MQTT_TLS_HOST:-}
       - MQTT_TLS_ALT_IP=${MQTT_TLS_ALT_IP:-}
+      - MQTT_DEVICE_BIND_IP=${MQTT_DEVICE_BIND_IP:-}
     entrypoint: [ "./mosquitto.sh" ]
 
   influxdb:

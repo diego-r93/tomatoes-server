@@ -89,15 +89,32 @@ if [ -n "$TLS_HOST" ]; then
     fi
 
     mkdir -p "$LISTENER_DIR"
-    if [ ! -f "$LISTENER_DIR/tls.conf" ]; then
-        cat > "$LISTENER_DIR/tls.conf" <<'EOF'
+    cat > "$LISTENER_DIR/tls.conf" <<'EOF'
 listener 8883
 cafile /mosquitto/config/tls/ca.pem
 certfile /mosquitto/config/tls/broker.pem
 keyfile /mosquitto/config/tls/broker.key
 require_certificate false
 tls_version tlsv1.2
+allow_anonymous false
+password_file /mosquitto/config/passwd
+acl_file /mosquitto/config/acl
 EOF
+    if [ -n "${MQTT_DEVICE_BIND_IP:-}" ]; then
+        cat > "$LISTENER_DIR/factory.conf" <<'EOF'
+listener 8884
+cafile /mosquitto/config/device-ca.pem
+certfile /mosquitto/config/tls/broker.pem
+keyfile /mosquitto/config/tls/broker.key
+require_certificate true
+use_identity_as_username true
+use_username_as_clientid true
+tls_version tlsv1.2
+allow_anonymous false
+acl_file /mosquitto/config/device.acl
+EOF
+    else
+        rm -f "$LISTENER_DIR/factory.conf"
     fi
 fi
 

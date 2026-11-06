@@ -48,7 +48,7 @@ def acl_for(legacy, users, prepare_explorer=False):
         blocks.append(f'user {legacy}\ntopic readwrite #\ntopic read $SYS/#')
     if BACKEND in users:
         blocks.append(
-            'user tomatoes-backend\ntopic read sensors/#\ntopic read devices/+\n'
+            'user tomatoes-backend\ntopic read sensors/#\ntopic read devices/+\ntopic read +/status\n'
             'topic write getdevices\ntopic write +/output\ntopic write +/config/#'
         )
     readers = 'topic read sensors/#\ntopic read devices/+'
@@ -66,7 +66,7 @@ def acl_for(legacy, users, prepare_explorer=False):
             raise ValueError('An existing broker user requires an explicit migration rule.')
         blocks.append(
             f'user {host}\ntopic write sensors/{host}/#\ntopic write devices/{host}\n'
-            f'topic read {host}/output\ntopic read getdevices\ntopic read {host}/config/#'
+            f'topic read {host}/output\ntopic read getdevices\ntopic read {host}/config/#\ntopic write {host}/status'
         )
     return '\n\n'.join(blocks) + '\n'
 
