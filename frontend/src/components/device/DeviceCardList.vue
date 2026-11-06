@@ -50,7 +50,7 @@
 
     <v-dialog :model-value="overlayKind === 'information'" max-width="680" aria-label="Device information" @update:model-value="!$event && closeOverlay()"><v-card title="Device information"><v-card-text><DeviceInformation v-if="overlayDevice" :device="overlayDevice" :online="responding(overlayDevice)" :clock="clock" /><div v-else class="overlay-unavailable"><v-progress-circular v-if="loading" indeterminate color="secondary" /><p>{{ loading ? 'Waiting for the device to respond…' : 'This device is not available in the current discovery results.' }}</p><v-btn v-if="!loading" variant="text" @click="refresh">Refresh devices</v-btn></div></v-card-text><v-card-actions><v-spacer /><v-btn color="primary" @click="closeOverlay">Close</v-btn></v-card-actions></v-card></v-dialog>
 
-    <v-dialog :model-value="overlayKind === 'firmware'" :persistent="firmwareBusy" max-width="760" aria-label="Firmware update" @update:model-value="!$event && closeOverlay()"><v-card><v-card-title class="firmware-dialog-title"><span>Firmware update</span><v-btn icon="mdi-close" size="small" variant="text" :disabled="firmwareBusy" aria-label="Close firmware update" @click="closeOverlay" /></v-card-title><v-card-text><FirmwareUpload v-if="firmwareTarget && overlayKind === 'firmware'" :key="firmwareTarget.host" :device="firmwareTarget" :online="Boolean(overlayDevice && responding(overlayDevice) && overlayDevice.ip === firmwareTarget.ip)" @busy="firmwareBusy = $event" @completed="firmwareCompleted" /><div v-else class="overlay-unavailable"><v-progress-circular v-if="loading" indeterminate color="secondary" /><p>{{ loading ? 'Waiting for the device to respond…' : 'Select a responding device to upload an image.' }}</p><v-btn v-if="!loading" variant="text" @click="refresh">Refresh devices</v-btn></div></v-card-text><v-card-actions><v-spacer /><v-btn :disabled="firmwareBusy" @click="closeOverlay">Close</v-btn></v-card-actions></v-card></v-dialog>
+    <v-dialog :model-value="overlayKind === 'firmware'" :persistent="firmwareBusy" max-width="760" aria-label="Firmware update" @update:model-value="!$event && closeOverlay()"><v-card><v-card-title class="firmware-dialog-title"><span>Firmware update</span><v-btn icon="mdi-close" size="small" variant="text" :disabled="firmwareBusy" aria-label="Close firmware update" @click="closeOverlay" /></v-card-title><v-card-text><FirmwareUpload v-if="firmwareTarget && overlayKind === 'firmware'" :key="firmwareTarget.host" :device="firmwareDevice" :online="Boolean(liveOverlayDevice?.ip && responding(liveOverlayDevice))" :refreshing="loading" :clock="clock" @busy="firmwareBusy = $event" @refresh="refresh" /><div v-else class="overlay-unavailable"><v-progress-circular v-if="loading" indeterminate color="secondary" /><p>{{ loading ? 'Waiting for the device to respond…' : 'Select a responding device to upload an image.' }}</p><v-btn v-if="!loading" variant="text" @click="refresh">Refresh devices</v-btn></div></v-card-text><v-card-actions><v-spacer /><v-btn :disabled="firmwareBusy" @click="closeOverlay">Close</v-btn></v-card-actions></v-card></v-dialog>
 
     <v-dialog v-model="settingsOpen" max-width="480"><v-card title="Device display settings"><v-card-text><v-select v-model="settings.layout" label="Layout" :items="layoutOptions" /><v-select v-model="settings.refreshSeconds" label="Auto-refresh" :items="refreshOptions" /><v-switch v-model="settings.showMac" label="Show MAC addresses" color="primary" hide-details /><p class="settings-note">Preferences are saved in this browser. Connection status is based on discovery responses, not a continuous heartbeat. A refresh failure keeps the last known data.</p></v-card-text><v-card-actions><v-spacer /><v-btn color="primary" @click="settingsOpen = false">Done</v-btn></v-card-actions></v-card></v-dialog>
 
@@ -97,7 +97,7 @@ try { const stored = JSON.parse(localStorage.getItem(preferenceKey) || '{}'); fo
 
 watch(settings, value => { try { localStorage.setItem(preferenceKey, JSON.stringify(value)); } catch { /* Display preferences still work in memory. */ } }, { deep: true });
 
-watch(() => settings.refreshSeconds, setRefreshInterval, { immediate: true });
+
 
 const responding = device => isResponding(device, clock.value);
 
@@ -143,7 +143,12 @@ const overlayKind = ref(''), overlayHost = ref(''), firmwareTarget = ref(null), 
 
 onBeforeRouteLeave(() => !firmwareBusy.value);
 
-const overlayDevice = computed(() => devices.value.find(device => device.host === overlayHost.value) || (deviceStore.deviceData?.host === overlayHost.value && deviceStore.deviceData.outputs ? deviceStore.deviceData : null));
+const liveOverlayDevice = computed(() => devices.value.find(device => device.host === overlayHost.value));
+const firmwareDevice = computed(() => liveOverlayDevice.value || firmwareTarget.value);
+watch(() => overlayKind.value === 'firmware' ? 15 : settings.refreshSeconds, setRefreshInterval, { immediate: true });
+watch(overlayKind, kind => { if (kind === 'firmware') refresh(); });
+
+const overlayDevice = computed(() => liveOverlayDevice.value || (deviceStore.deviceData?.host === overlayHost.value && deviceStore.deviceData.outputs ? deviceStore.deviceData : null));
 
 function openInformation(device) { if (firmwareBusy.value) return; deviceStore.setDeviceData(device); overlayHost.value = device.host; overlayKind.value = 'information'; }
 
@@ -159,7 +164,7 @@ function closeOverlay() {
 
 }
 
-function firmwareCompleted() { notice.value = `The upload to ${firmwareTarget.value?.host} completed. The device may restart; refresh discovery to check its connection.`; }
+
 
 watch([() => route.query.panel, () => route.query.device, devices], ([panel, host]) => {
 

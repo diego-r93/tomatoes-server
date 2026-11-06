@@ -27,7 +27,8 @@
             ? 'The board came back online after the transfer. The update was confirmed by its restart.'
             : 'The board confirmed the firmware was installed and verified. It will restart shortly.' }}
         </v-alert>
-        <div class="upload-action"><v-btn variant="outlined" @click="reset">Choose another file</v-btn></div>
+        <p class="firmware-note" role="status">{{ restartMessage }}</p>
+        <div class="upload-action"><v-btn variant="outlined" :disabled="waitingForRestart" @click="reset">Choose another file</v-btn></div>
       </v-col>
       <v-col v-else-if="phase === 'error' || phase === 'unconfirmed'" cols="12" class="result-state">
         <v-alert
@@ -45,8 +46,11 @@
         <DropFile :key="fileKey" @file-selected="selectFile" />
         <p v-if="selectedFile" class="selected-file">{{ selectedFile.name }} · {{ formatSize(selectedFile.size) }}</p>
         <v-alert v-if="validationError" type="error" variant="tonal" class="mt-4" role="alert">{{ validationError }}</v-alert>
-        <p v-if="!online" class="firmware-note">The device has not replied recently. Refresh its connection before uploading.</p>
         <div class="upload-action"><v-btn color="primary" :disabled="!selectedFile || !online || !device.ip" @click="submit">Upload</v-btn></div>
+      </v-col>
+      <v-col v-if="!busy && !online" cols="12" class="firmware-note">
+        <p v-if="!waitingForRestart">The device has not replied recently.</p>
+        <v-btn variant="text" :loading="refreshing" @click="emit('refresh')">Refresh connection</v-btn>
       </v-col>
       <v-col v-if="sha256" cols="12" class="text-center selected-file">SHA-256 {{ sha256 }}</v-col>
       <v-col cols="12" class="text-center target-device"><v-chip variant="outlined">{{ device.host }}</v-chip><v-chip class="ml-2" color="success" variant="tonal">{{ device.ip }}</v-chip></v-col>
@@ -54,13 +58,26 @@
   </div>
 </template>
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import DropFile from './DropZone.vue';
 import OTAService from '@/services/OTAService';
-const props = defineProps({ device: { type: Object, required: true }, online: Boolean });
-const emit = defineEmits(['busy', 'completed']);
+const props = defineProps({ device: { type: Object, required: true }, online: Boolean, refreshing: Boolean, clock: { type: Number, required: true } });
+const emit = defineEmits(['busy', 'refresh']);
 const sha256 = ref('');
 const confirmedByRestart = ref(false);
+const restart = ref(null);
+const onlineFirmware = ref('');
+const waitingForRestart = computed(() => restart.value && !onlineFirmware.value && props.clock < restart.value.deadline);
+const restartMessage = computed(() => {
+  if (onlineFirmware.value) return `Back online, firmware ${onlineFirmware.value}`;
+  return waitingForRestart.value ? 'Waiting for the board to restart' : 'The board has not reported its firmware after the restart yet.';
+});
+watch([() => props.device, () => props.online, restart], ([device, online, update]) => {
+  if (!update || !online || !device.fw || !(device.receivedAt > update.receivedAt && device.receivedAt >= update.startedAt)) return;
+  const uptimeReset = typeof device.uptime === 'number' && typeof update.uptime === 'number' && device.uptime >= 0 && device.uptime < update.uptime;
+  const reportedAfterConfirmation = confirmedByRestart.value && device.receivedAt >= update.confirmedAt;
+  if (reportedAfterConfirmation || (update.fw && device.fw !== update.fw) || uptimeReset) onlineFirmware.value = device.fw;
+});
 const selectedFile = ref(null), fileKey = ref(0), validationError = ref(''), error = ref(''), progress = ref(null), phase = ref('ready');
 const busy = computed(() => phase.value === 'uploading' || phase.value === 'verifying');
 const formatSize = bytes => bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(2)} MB`;
@@ -72,6 +89,8 @@ function selectFile(file) {
 function reset() {
   if (busy.value) return;
   phase.value = 'ready';
+  restart.value = null;
+  onlineFirmware.value = '';
   sha256.value = '';
   error.value = '';
   selectedFile.value = null;
@@ -88,6 +107,8 @@ function updateUploadProgress({ loaded, total }) {
 async function submit() {
   if (busy.value || !selectedFile.value || !props.online || !props.device.ip) return;
 
+  const { fw, uptime, receivedAt } = props.device;
+  const beforeUpload = { fw, uptime, receivedAt: receivedAt ?? 0, startedAt: Date.now() };
   const formData = new FormData();
   formData.append('file', selectedFile.value);
   phase.value = 'uploading';
@@ -106,7 +127,9 @@ async function submit() {
     }
     confirmedByRestart.value = data.confirmation === 'restart';
     phase.value = 'success';
-    emit('completed');
+    const confirmedAt = Date.now();
+    restart.value = { ...beforeUpload, confirmedAt, deadline: confirmedAt + 120_000 };
+    emit('refresh');
   } catch (issue) {
     const status = issue.response?.status;
     const data = issue.response?.data;
