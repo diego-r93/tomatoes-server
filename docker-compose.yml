@@ -68,7 +68,6 @@ services:
       - ./mosquitto/log:/mosquitto/log
       - ./mosquitto.sh:/mosquitto.sh
     ports:
-      - 1883:1883
       - 8883:8883
       - 9001:9001
     networks:
@@ -77,6 +76,7 @@ services:
       - MQTT_USER_NAME=${MQTT_USER_NAME}
       - MQTT_PASSWORD=${MQTT_PASSWORD}
       - MQTT_TLS_HOST=${MQTT_TLS_HOST:-}
+      - MQTT_TLS_ALT_IP=${MQTT_TLS_ALT_IP:-}
     entrypoint: [ "./mosquitto.sh" ]
 
   influxdb:
@@ -111,6 +111,7 @@ services:
       - "44"
     networks:
       - influxdb_network
+      - mosquitto_network
     env_file:
       - .env
       - path: ./telegraf/.mqtt.env

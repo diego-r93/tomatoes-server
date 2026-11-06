@@ -46,6 +46,15 @@ if [ -n "$TLS_HOST" ]; then
         VERIFY_NAME=-verify_ip
     fi
 
+    ALT_IP=${MQTT_TLS_ALT_IP:-}
+    if [ -n "$ALT_IP" ]; then
+        if ! printf '%s\n' "$ALT_IP" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$'; then
+            echo "Invalid MQTT_TLS_ALT_IP." >&2
+            exit 1
+        fi
+        SAN="$SAN,DNS:$ALT_IP,IP:$ALT_IP"
+    fi
+
     if [ ! -e "$TLS_DIR" ]; then
         STAGE=$(mktemp -d /mosquitto/config/.tls-stage.XXXXXX)
         trap 'rm -f "$STAGE"/ca.key "$STAGE"/ca.pem "$STAGE"/broker.key "$STAGE"/broker.csr "$STAGE"/broker.ext "$STAGE"/broker.pem; rmdir "$STAGE"' EXIT
@@ -73,6 +82,11 @@ if [ -n "$TLS_HOST" ]; then
     fi
     openssl verify -purpose sslserver "$VERIFY_NAME" "$TLS_HOST" \
         -CAfile "$TLS_DIR/ca.pem" "$TLS_DIR/broker.pem" >/dev/null
+
+    if [ -n "$ALT_IP" ]; then
+        openssl verify -purpose sslserver -verify_ip "$ALT_IP" \
+            -CAfile "$TLS_DIR/ca.pem" "$TLS_DIR/broker.pem" >/dev/null
+    fi
 
     mkdir -p "$LISTENER_DIR"
     if [ ! -f "$LISTENER_DIR/tls.conf" ]; then
