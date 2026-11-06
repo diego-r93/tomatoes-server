@@ -21,7 +21,7 @@ export function mergeDeviceDiscovery(information, previous = [], timestamp = Dat
     const mac = String(reply.mac || '').trim();
     const key = mac ? mac.toUpperCase() : host;
     const rssi = reply.rssi === null || reply.rssi === '' || reply.rssi === undefined ? null : Number(reply.rssi);
-    known.set(key, { ...reply, key, host, mac, ip: String(reply.ip || ''), rssi: Number.isFinite(rssi) && rssi <= 0 && rssi >= -150 ? rssi : null, ports: reply.ports || {}, outputs: devicePorts(reply.ports), responded: true, receivedAt: timestamp });
+    known.set(key, { ...reply, key, host, mac, ip: String(reply.ip || ''), rssi: Number.isFinite(rssi) && rssi <= 0 && rssi >= -150 ? rssi : null, ports: reply.ports || {}, outputs: devicePorts(reply.ports), responded: true, receivedAt: Number.isFinite(reply.receivedAt) ? Math.min(reply.receivedAt, timestamp) : timestamp });
   }
   return [...known.values()];
 }

@@ -11,6 +11,7 @@ interface Output { state:boolean|null; since:number|null; }
 export const sourceHealth = { mqttConnected:false, lastDiscovery:null as number|null, lastSample:null as number|null };
 let client:MqttClient|undefined;
 const processStarted=Date.now();
+const deviceFreshnessMs = 90000;
 export function observedOutputs(ports:unknown, previous:Record<string,Output>, continuous:boolean, time:number) {
  const result:Record<string,Output>={};
  if(!ports||typeof ports!=='object')return result;
@@ -69,8 +70,11 @@ export function discoverDevices() {
   client.publish('getdevices', 'get all');
   sourceHealth.lastDiscovery = started;
   discoveryRequest = delay(1500).then(async () => {
-   const rows = await access(() => all<DeviceRow>('SELECT payload FROM alert_devices WHERE received_at >= ? ORDER BY host', [started]));
-   return rows.map(row => JSON.parse(row.payload));
+   const cutoff = Math.max(processStarted, Date.now() - deviceFreshnessMs + 1);
+   const rows = await access(() => all<Pick<DeviceRow, 'payload' | 'received_at'>>(
+    'SELECT payload, received_at FROM alert_devices WHERE received_at >= ? ORDER BY host', [cutoff],
+   ));
+   return rows.map(row => ({ ...JSON.parse(row.payload), receivedAt: row.received_at }));
   }).finally(() => { discoveryRequest = undefined; });
  }
  return discoveryRequest;
@@ -124,7 +128,7 @@ export const knownDevices=()=>access(()=>all<{host:string;received_at:number}>('
 
 export async function recentDevice(host: string) {
   const row = await access(() => get<DeviceRow>('SELECT * FROM alert_devices WHERE host=?', [host]));
-  if (!sourceHealth.mqttConnected || !row || row.received_at < processStarted || Date.now() - row.received_at >= 90000) return null;
+  if (!sourceHealth.mqttConnected || !row || row.received_at < processStarted || Date.now() - row.received_at >= deviceFreshnessMs) return null;
   const payload = JSON.parse(row.payload) as { ip?: string; uptime?: unknown; ports?: Record<string, { gpio?: unknown; state?: unknown }> };
   return { ...payload, receivedAt: row.received_at };
 }
