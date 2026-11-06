@@ -145,31 +145,35 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
   assert.equal((await req('POST','/api/alerts/rules',input,member.accessToken)).status,403);
    await apiTest.test('OTA signing vector and route permissions without contacting a board', async () => {
    const { createHash } = require('node:crypto');
-   const { signFirmware } = require('../src/ota/controllers/otaControllers');
-   const key = '0123456789abcdef0123456789abcdef';
+   const { deriveBoardKey, signFirmware } = require('../src/ota/controllers/otaControllers');
+   const masterKey = '0123456789abcdef'.repeat(4);
    const host = 'esp32s3-07945C';
    const nonce = '00112233445566778899aabbccddeeff';
    const image = Buffer.concat([Buffer.from([0xe9]), Buffer.from('tomatoes'.repeat(4))]);
    const sha256 = createHash('sha256').update(image).digest('hex');
    assert.equal(sha256, '8dd65144d75367decdcd12419b523ef9c35f3f03ef7fc68d51d06c2f45c4e82b');
-   assert.equal(signFirmware(key, host, nonce, image.length, sha256), '188219b83d2a4007838ab16c521c27cc28cac647fb171b04d1216c9269a03c9f');
+   const boardKey = deriveBoardKey(masterKey, host);
+   assert.equal(boardKey, 'cf96f173783861c02782d29b77f5e503ca5532d0a7b048bf6568cf0907e486ab');
+   assert.equal(signFirmware(boardKey, host, nonce, image.length, sha256), '9fcb55dd3b9bcbab5fbeb75db89a1c47970144858454ce10d7be5bb95037a8ab');
    const url = origin + '/ota/' + host + '/firmware';
    const send = async token => {
     const body = new FormData();
     body.append('file', new Blob([Buffer.from([0])]), 'firmware.bin');
     return (await fetch(url, { method: 'POST', headers: token ? { authorization: 'Bearer ' + token } : {}, body })).status;
    };
-   const originalKey = process.env.OTA_HMAC_KEY;
+   const originalKey = process.env.OTA_MASTER_KEY;
    try {
-    delete process.env.OTA_HMAC_KEY;
+    delete process.env.OTA_MASTER_KEY;
     assert.equal(await send(), 401);
     assert.equal(await send(member.accessToken), 403);
     assert.equal(await send(admin.accessToken), 503);
-    process.env.OTA_HMAC_KEY = key;
+    process.env.OTA_MASTER_KEY = masterKey.toUpperCase();
+    assert.equal(await send(admin.accessToken), 503);
+    process.env.OTA_MASTER_KEY = masterKey;
     assert.equal(await send(admin.accessToken), 400);
    } finally {
-    if (originalKey === undefined) delete process.env.OTA_HMAC_KEY;
-    else process.env.OTA_HMAC_KEY = originalKey;
+    if (originalKey === undefined) delete process.env.OTA_MASTER_KEY;
+    else process.env.OTA_MASTER_KEY = originalKey;
    }
   });
  const settings=(await req('GET','/api/alerts/settings',undefined,admin.accessToken)).body;assert(settings.canManage);assert(!JSON.stringify(settings).includes(process.env.JWT_SECRET));

@@ -10,14 +10,20 @@ export const MAX_FIRMWARE_BYTES = 6553600;
 const activeHosts = new Set<string>();
 const logs = () => mongoose.connection.collection('ota_logs');
 
-export function firmwareKey() {
-  const key = process.env.OTA_HMAC_KEY;
-  if (!key || !/^[\x20-\x7e]{32,}$/.test(key)) throw new HttpError(503, 'Firmware signing is unavailable.');
+export function firmwareMasterKey() {
+  const key = process.env.OTA_MASTER_KEY;
+  if (!key || !/^[0-9a-f]{64}$/.test(key)) throw new HttpError(503, 'Firmware signing is unavailable.');
   return key;
 }
 
-export function signFirmware(key: string, host: string, nonce: string, size: number, sha256: string) {
-  return createHmac('sha256', key).update(['tomatoes-ota-v1', host, nonce, String(size), sha256].join('\n')).digest('hex');
+export function deriveBoardKey(masterKey: string, host: string) {
+  return createHmac('sha256', masterKey).update(host).digest('hex');
+}
+
+const missingBoardKey = 'Placa sem chave de OTA; grave a chave pela USB';
+
+export function signFirmware(boardKey: string, host: string, nonce: string, size: number, sha256: string) {
+  return createHmac('sha256', boardKey).update(['tomatoes-ota-v1', host, nonce, String(size), sha256].join('\n')).digest('hex');
 }
 
 function privateAddress(ip: string) {
@@ -27,7 +33,7 @@ function privateAddress(ip: string) {
 }
 
 export async function uploadOTAFile(req: Request, res: Response) {
-  const key = firmwareKey();
+  const masterKey = firmwareMasterKey();
   const host = req.params.host;
   const image = req.file?.buffer;
   if (!/^[a-zA-Z0-9._-]{1,128}$/.test(host) || !image?.length || image.length > MAX_FIRMWARE_BYTES || image[0] !== 0xe9) {
@@ -49,25 +55,27 @@ export async function uploadOTAFile(req: Request, res: Response) {
       const url = `http://${ip}/update`;
       const options = { signal: AbortSignal.timeout(120000), redirect: 'error' as const };
       const nonceResponse = await fetch(url + '/nonce', options);
+      if (nonceResponse.status === 503) throw new HttpError(503, missingBoardKey);
       if (!nonceResponse.ok) throw new HttpError(nonceResponse.status === 409 ? 409 : 502, 'The board refused the update nonce.');
       const challenge = await nonceResponse.json();
       if (challenge?.host !== host || typeof challenge.nonce !== 'string' || !/^[a-f0-9]{32}$/i.test(challenge.nonce)) {
         throw new HttpError(502, 'The board returned an invalid identity or nonce.');
       }
-      const signature = signFirmware(key, host, challenge.nonce, image.length, sha256);
+      const boardKey = deriveBoardKey(masterKey, host);
+      const signature = signFirmware(boardKey, host, challenge.nonce, image.length, sha256);
       const body = new FormData();
       body.append('file', new Blob([Uint8Array.from(image)]), 'firmware.bin');
       const reply = await fetch(url, {
         ...options, method: 'POST', body,
         headers: { 'X-OTA-Nonce': challenge.nonce, 'X-OTA-Size': String(image.length), 'X-OTA-SHA256': sha256, 'X-OTA-Signature': signature },
       });
-      const data = await reply.json();
+      const data = reply.status === 503 ? { ok: false, error: missingBoardKey } : await reply.json();
       if (!data || typeof data.ok !== 'boolean' || reply.ok !== data.ok || ![200, 400, 401, 409, 500, 503].includes(reply.status)) {
         throw new HttpError(502, 'The board returned an invalid firmware result.');
       }
       status = reply.status;
       result = { ok: data.ok };
-      if (typeof data.error === 'string') result.error = data.error.replaceAll(key, '[redacted]').replaceAll(signature, '[redacted]').slice(0, 500);
+      if (typeof data.error === 'string') result.error = data.error.replace(new RegExp([masterKey, boardKey, signature].join('|'), 'gi'), '[redacted]').slice(0, 500);
       if (Number.isSafeInteger(data.restart_in_ms) && data.restart_in_ms >= 0) result.restart_in_ms = data.restart_in_ms;
     } catch (error) {
       if (error instanceof HttpError) { status = error.status; result = { ok: false, error: error.message }; }

@@ -1,6 +1,6 @@
 import { Express, Router } from 'express';
 import multer from 'multer';
-import { firmwareKey, MAX_FIRMWARE_BYTES, uploadOTAFile } from '../ota/controllers/otaControllers';
+import { firmwareMasterKey, MAX_FIRMWARE_BYTES, uploadOTAFile } from '../ota/controllers/otaControllers';
 import { authenticate, context, endpoint, rateLimit, requireAdmin } from '../users/http';
 
 export default function setupOta(app: Express) {
@@ -9,7 +9,7 @@ export default function setupOta(app: Express) {
   router.post('/:host/firmware', authenticate, requireAdmin,
     rateLimit(5, 10 * 60000, (_req, res) => String(context(res).user.id)),
     (_req, _res, next) => {
-      try { firmwareKey(); next(); } catch (error) { next(error); }
+      try { firmwareMasterKey(); next(); } catch (error) { next(error); }
     },
     (req, res, next) => upload.single('file')(req, res, error => {
       if (error) {
