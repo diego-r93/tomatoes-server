@@ -39,3 +39,6 @@ passwd
 # SQLite journal files may contain private account data.
 *.db-wal
 *.db-shm
+
+# Backend-only credentials
+/backend/.env

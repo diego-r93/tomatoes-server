@@ -1,3 +1,4 @@
+import { recentDevice } from '../../alerts/sources';
 import MQTTService from '../service/mqttService';
 import { Request, Response } from 'express';
 import { MQTT_HOST_NAME, MQTT_USER_NAME, MQTT_PASSWORD } from '../config/mqtt.config';
@@ -39,13 +40,20 @@ export const subscribeMQTTMessage = async (req: Request, res: Response): Promise
 
 export const updateGPIO = async (req: Request, res: Response): Promise<void> => {
     try {
-        const id: string = req.params.id;
-        const topic: string = `${id}/output`;
-        const message: object = req.body;
-
-        console.log(`Request Topic :: ${topic}`);
-        console.log(`Request Message :: ${message}`);
-
+        const host = req.params.id;
+        const values = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? Object.entries(req.body) : [];
+        if (!/^[a-zA-Z0-9._-]{1,128}$/.test(host) || values.length !== 1 || !/^\d{1,3}$/.test(values[0][0]) || Number(values[0][0]) > 255 || typeof values[0][1] !== 'boolean') {
+            res.status(400).json({ message: 'Select one device output and a boolean state.' });
+            return;
+        }
+        const [gpio, state] = values[0];
+        const device = await recentDevice(host);
+        if (!device || !Object.values(device.ports || {}).some(port => port?.gpio != null && port.gpio !== '' && Number(port.gpio) === Number(gpio))) {
+            res.status(409).json({ message: 'The device or output has not been confirmed by discovery.' });
+            return;
+        }
+        const topic = `${host}/output`;
+        const message = { [Number(gpio)]: state };
         mqttClient.publish(topic, JSON.stringify(message));
         res.status(200).json({ status: "200", message: "Successfully published MQTT Message" });
     } catch (error: any) {

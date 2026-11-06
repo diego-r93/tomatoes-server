@@ -91,3 +91,9 @@ export async function readSource(source:Source,time=Date.now()):Promise<Sample> 
  } catch {return {health:'error',reason:'The InfluxDB query failed. Check connectivity and backend credentials.'};}
 }
 export const knownDevices=()=>access(()=>all<{host:string;received_at:number}>('SELECT host,received_at FROM alert_devices ORDER BY host'));
+
+export async function recentDevice(host: string) {
+  const row = await access(() => get<DeviceRow>('SELECT * FROM alert_devices WHERE host=?', [host]));
+  if (!sourceHealth.mqttConnected || !row || row.received_at < processStarted || Date.now() - row.received_at >= 90000) return null;
+  return JSON.parse(row.payload) as { ip?: string; ports?: Record<string, { gpio?: unknown; state?: unknown }> };
+}

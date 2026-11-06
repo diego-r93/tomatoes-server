@@ -1,12 +1,11 @@
 import { Express, Router } from 'express';
-import * as sensorDataController from '../database/influxdb/controllers/sensorDataController';
+import { fetchData, fetchSavedPanel } from '../database/influxdb/controllers/sensorDataController';
+import { authenticate, endpoint, requireAdmin } from '../users/http';
 
-const influxRoutes = (app: Express) => {
-    const router = Router();
-
-    router.post("/", sensorDataController.fetchData);    
-
-    app.use("/influx", router);
-};
-
-export default influxRoutes;
+export default function influxRoutes(app: Express) {
+  const router = Router();
+  router.use(authenticate);
+  router.post('/panel', endpoint(fetchSavedPanel));
+  router.post('/', requireAdmin, fetchData);
+  app.use('/influx', router);
+}

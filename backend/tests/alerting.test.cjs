@@ -130,8 +130,8 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
   const body=templateBody({template:'tomatoes_alert_status',language:'en_US'},'+5511999999999',{name:'Rule',phase:'Firing',severity:'Critical',target:'esp32',reading:'130 sec',condition:'> 120 sec'});
   assert.equal(body.to,'5511999999999');assert.equal(body.type,'template');assert.equal(body.template.components[0].parameters.length,6);assert(!JSON.stringify(body).includes('ACCESS_TOKEN'));
  });
- await t.test('API rejects anonymous writes and member management; administrators can CRUD',async()=>{
-  const app=express();app.use(express.json());require('../src/routes/users-routes').default(app);require('../src/routes/alerts-routes').default(app);
+ await t.test('API rejects anonymous writes and member management; administrators can CRUD',async apiTest=>{
+  const app=express();app.use(express.json());require('../src/routes/users-routes').default(app);require('../src/routes/alerts-routes').default(app);require('../src/routes/ota-routes').default(app);app.use(require('../src/users/http').userError);
   server=await new Promise(resolve=>{const s=app.listen(0,'127.0.0.1',()=>resolve(s));});
   const origin=`http://127.0.0.1:${server.address().port}`;
   async function req(method,url,body,token){const r=await fetch(origin+url,{method,headers:{'content-type':'application/json',...(token?{authorization:`Bearer ${token}`}:{})},body:body===undefined?undefined:JSON.stringify(body)});return {status:r.status,body:r.status===204?null:await r.json()};}
@@ -143,7 +143,36 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
   assert.equal((await req('GET','/api/alerts/rules',undefined,member.accessToken)).status,200);
   assert.equal((await req('GET','/api/alerts/contacts',undefined,member.accessToken)).status,403);
   assert.equal((await req('POST','/api/alerts/rules',input,member.accessToken)).status,403);
-  const settings=(await req('GET','/api/alerts/settings',undefined,admin.accessToken)).body;assert(settings.canManage);assert(!JSON.stringify(settings).includes(process.env.JWT_SECRET));
+   await apiTest.test('OTA signing vector and route permissions without contacting a board', async () => {
+   const { createHash } = require('node:crypto');
+   const { signFirmware } = require('../src/ota/controllers/otaControllers');
+   const key = '0123456789abcdef0123456789abcdef';
+   const host = 'esp32s3-07945C';
+   const nonce = '00112233445566778899aabbccddeeff';
+   const image = Buffer.concat([Buffer.from([0xe9]), Buffer.from('tomatoes'.repeat(4))]);
+   const sha256 = createHash('sha256').update(image).digest('hex');
+   assert.equal(sha256, '8dd65144d75367decdcd12419b523ef9c35f3f03ef7fc68d51d06c2f45c4e82b');
+   assert.equal(signFirmware(key, host, nonce, image.length, sha256), '188219b83d2a4007838ab16c521c27cc28cac647fb171b04d1216c9269a03c9f');
+   const url = origin + '/ota/' + host + '/firmware';
+   const send = async token => {
+    const body = new FormData();
+    body.append('file', new Blob([Buffer.from([0])]), 'firmware.bin');
+    return (await fetch(url, { method: 'POST', headers: token ? { authorization: 'Bearer ' + token } : {}, body })).status;
+   };
+   const originalKey = process.env.OTA_HMAC_KEY;
+   try {
+    delete process.env.OTA_HMAC_KEY;
+    assert.equal(await send(), 401);
+    assert.equal(await send(member.accessToken), 403);
+    assert.equal(await send(admin.accessToken), 503);
+    process.env.OTA_HMAC_KEY = key;
+    assert.equal(await send(admin.accessToken), 400);
+   } finally {
+    if (originalKey === undefined) delete process.env.OTA_HMAC_KEY;
+    else process.env.OTA_HMAC_KEY = originalKey;
+   }
+  });
+ const settings=(await req('GET','/api/alerts/settings',undefined,admin.accessToken)).body;assert(settings.canManage);assert(!JSON.stringify(settings).includes(process.env.JWT_SECRET));
   const created=await req('POST','/api/alerts/rules',{...input,enabled:false},admin.accessToken);assert.equal(created.status,201);
   assert.equal((await req('DELETE',`/api/alerts/rules/${created.body.id}`,undefined,admin.accessToken)).status,204);
   await assert.rejects(store.removeContact(contact.id,'admin'),{status:409});

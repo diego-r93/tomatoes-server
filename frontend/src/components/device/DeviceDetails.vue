@@ -8,14 +8,14 @@
       <p v-if="!device.outputs.length" class="details-note">No outputs were reported by this device.</p>
       <p v-else class="details-note">{{ readonly ? 'Last reported output states. Open Devices to send a manual command.' : online ? 'Every manual change requires confirmation. States update only after a device response.' : 'This device did not respond recently. Last reported states are shown; manual control is unavailable.' }}</p>
     </section>
-    <div class="details-actions"><v-btn variant="outlined" size="small" prepend-icon="mdi-information-outline" @click="$emit('information', device)">Information</v-btn><v-btn variant="outlined" size="small" prepend-icon="mdi-upload" :disabled="!online || !device.ip || sending" @click="$emit('firmware', device)">Firmware</v-btn></div>
+    <div class="details-actions"><v-btn variant="outlined" size="small" prepend-icon="mdi-information-outline" @click="$emit('information', device)">Information</v-btn><v-btn v-if="canUpdateFirmware" variant="outlined" size="small" prepend-icon="mdi-upload" :disabled="!online || !device.ip || sending" @click="$emit('firmware', device)">Firmware</v-btn></div>
   </v-card>
 </template>
 <script setup>
 import { formatDeviceTime } from '@/composables/dateTime.mjs';
 import { ref } from 'vue';
 import { lastSeenLabel, signalText, weakSignal } from '@/composables/deviceInventoryUtils';
-const props = defineProps({ device: { type: Object, required: true }, online: Boolean, clock: Number, pending: { type: Object, default: () => ({}) }, sending: Boolean, readonly: Boolean, standalone: Boolean });
+const props = defineProps({ device: { type: Object, required: true }, online: Boolean, clock: Number, pending: { type: Object, default: () => ({}) }, sending: Boolean, canUpdateFirmware: Boolean, readonly: Boolean, standalone: Boolean });
 const controlRevision = ref(0);
 const emit = defineEmits(['close', 'change', 'information', 'firmware']);
 function requestChange(output, value) { if (value !== output.state && !props.readonly) { controlRevision.value++; emit('change', { deviceKey: props.device.key, host: props.device.host, gpio: output.gpio, target: value, originalState: output.state }); } }

@@ -80,8 +80,8 @@ setupGroupsRoutes(app);
 setupInvitationsRoutes(app);
 setupAlerts(app);
 
-// Keep legacy device clients unchanged; a presented web token is always checked.
-app.use(['/boards', '/dashboards', '/mqtt', '/influx', '/network', '/ota'], validatePresentedSession);
+// The legacy firmware lookup accepts requests without a web session.
+app.use('/boards', validatePresentedSession);
 
 // Boards
 setupBoardsRoutes(app);

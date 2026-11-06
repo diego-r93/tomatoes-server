@@ -40,7 +40,7 @@
 
         </div>
 
-        <DeviceDetails v-if="selectedDevice" :device="selectedDevice" :online="responding(selectedDevice)" :clock="clock" :pending="pending" :sending="sending" @close="selectedKey = ''" @change="openCommand" @information="openInformation" @firmware="openFirmware" />
+        <DeviceDetails v-if="selectedDevice" :device="selectedDevice" :online="responding(selectedDevice)" :clock="clock" :pending="pending" :sending="sending" :can-update-firmware="canManage" @close="selectedKey = ''" @change="openCommand" @information="openInformation" @firmware="openFirmware" />
 
       </div>
 
@@ -61,6 +61,8 @@
 </template>
 
 <script setup>
+import Authentication from '@/services/auth';
+const canManage = Boolean(Authentication.currentUser?.isAdmin);
 import AppPageHeader from '@/components/navigation/AppPageHeader.vue';
 
 import { computed, reactive, ref, watch } from 'vue';
@@ -145,7 +147,7 @@ const overlayDevice = computed(() => devices.value.find(device => device.host ==
 
 function openInformation(device) { if (firmwareBusy.value) return; deviceStore.setDeviceData(device); overlayHost.value = device.host; overlayKind.value = 'information'; }
 
-function openFirmware(device) { if (firmwareBusy.value || !responding(device) || !device.ip) return; deviceStore.setDeviceData(device); overlayHost.value = device.host; firmwareTarget.value = { ...device }; overlayKind.value = 'firmware'; }
+function openFirmware(device) { if (!canManage || firmwareBusy.value || !responding(device) || !device.ip) return; deviceStore.setDeviceData(device); overlayHost.value = device.host; firmwareTarget.value = { ...device }; overlayKind.value = 'firmware'; }
 
 function closeOverlay() {
 
@@ -159,10 +161,15 @@ function closeOverlay() {
 
 function firmwareCompleted() { notice.value = `The upload to ${firmwareTarget.value?.host} completed. The device may restart; refresh discovery to check its connection.`; }
 
-watch([() => route.query.panel, () => route.query.device], ([panel, host]) => {
+watch([() => route.query.panel, () => route.query.device, devices], ([panel, host]) => {
 
   if (!['information', 'firmware'].includes(panel) || typeof host !== 'string' || firmwareBusy.value) return;
 
+  if (panel === 'firmware') {
+    const device = devices.value.find(item => item.host === host);
+    if (device) openFirmware(device);
+    return;
+  }
   overlayHost.value = host; overlayKind.value = panel;
 
 }, { immediate: true });

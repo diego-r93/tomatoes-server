@@ -27,10 +27,10 @@ export function validatePresentedSession(req: Request, res: Response, next: Next
   if (!req.headers.authorization) return next();
   authenticate(req, res, next);
 }
-export function rateLimit(limit: number, windowMs = 15 * 60000) {
+export function rateLimit(limit: number, windowMs = 15 * 60000, keyFor = (req: Request, _res: Response) => clientInfo(req).ip) {
   const attempts = new Map<string, { count: number; until: number }>();
   return (req: Request, res: Response, next: NextFunction) => {
-    const key = clientInfo(req).ip, time = Date.now();
+    const key = keyFor(req, res), time = Date.now();
     if (attempts.size > 5000) for (const [ip, entry] of attempts) if (entry.until < time) attempts.delete(ip);
     if (attempts.size > 10000) attempts.clear();
     let entry = attempts.get(key);

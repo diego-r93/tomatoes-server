@@ -1,13 +1,11 @@
-import axios from 'axios';
+import { http } from './http-common';
 
-// Device uploads must not inherit the portal's bearer-token interceptor.
-const deviceHttp = axios.create({ withCredentials: false, timeout: 120000 });
 class OTAService {
-  uploadFile(ip, formData, onUploadProgress) {
-    const host = String(ip || '').trim();
-    const parts = host.split('.');
-    if (parts.length !== 4 || parts.some(part => !/^\d{1,3}$/.test(part) || Number(part) > 255)) return Promise.reject(new Error('The device did not report a valid IPv4 address.'));
-    return deviceHttp.post(`http://${host}/update`, formData, { onUploadProgress });
+  uploadFile(host, formData, onUploadProgress) {
+    return http.post(`/ota/${encodeURIComponent(host)}/firmware`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress, timeout: 135000, skipUnauthorized: true,
+    });
   }
 }
 export default new OTAService();
