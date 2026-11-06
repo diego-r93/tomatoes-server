@@ -43,7 +43,9 @@ def password_hash(password):
 
 
 def acl_for(legacy, users, prepare_explorer=False):
-    blocks = [f'user {legacy}\ntopic readwrite #\ntopic read $SYS/#']
+    blocks = []
+    if legacy in users:
+        blocks.append(f'user {legacy}\ntopic readwrite #\ntopic read $SYS/#')
     if BACKEND in users:
         blocks.append(
             'user tomatoes-backend\ntopic read sensors/#\ntopic read devices/#\n'
@@ -130,8 +132,6 @@ def main():
         fcntl.flock(lock, fcntl.LOCK_EX)
         passwd = CONFIG / 'passwd'
         entries = dict(line.split(':', 1) for line in passwd.read_text().splitlines() if line and not line.startswith('#'))
-        if legacy not in entries:
-            raise ValueError('The existing shared MQTT user was not found.')
         if args.phase_a:
             credentials = phase_a_credentials(master)
             entries.update({user: password_hash(value) for user, value in credentials.items()})
