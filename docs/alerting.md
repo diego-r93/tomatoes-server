@@ -21,7 +21,7 @@ A silence stops external notifications only. State transitions and history conti
 
 ## Sources
 
-- **Device last seen:** seconds since the last reply received by this monitor. The collector subscribes to the existing `devices` MQTT topic and publishes the existing read-only `getdevices` / `get all` discovery request every 30 seconds. It does not publish to output topics. Last observations persist across restarts. If the broker is disconnected, the rule reports Error instead of declaring every device offline.
+- **Device last seen:** seconds since the last reply received by this monitor. The collector subscribes to `devices/+` and accepts reports only when the payload hostname matches the topic and publishes the existing read-only `getdevices` / `get all` discovery request every 30 seconds. It does not publish to output topics. Last observations persist across restarts. If the broker is disconnected, the rule reports Error instead of declaring every device offline.
 - **Wi-Fi signal:** the device's reported RSSI in dBm.
 - **GPIO ON duration:** a lower bound based on continuously observed ON reports. Observation resets after a backend restart or a gap of 90 seconds. An OFF report resets it. This does not prove actual water flow or that a short OFF/ON event did not occur between reports.
 - **CPU temperature:** Telegraf `cpu_temperature`, field `value`, host tag; milli-degrees from the existing thermal-file input are converted to degrees Celsius.

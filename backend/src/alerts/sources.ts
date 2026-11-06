@@ -30,11 +30,11 @@ export function parseDeviceReport(topic: string, payload: Buffer): (Record<strin
  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
  const host = data.host;
  if (typeof host !== 'string' || !/^[a-zA-Z0-9._-]{1,128}$/.test(host)) return null;
- if (topic !== 'devices' && topic !== `devices/${host}`) return null;
+ if (topic !== `devices/${host}`) return null;
  return { ...data, host };
 }
 
-export async function ingestDevice(payload: Buffer, time = Date.now(), topic = 'devices') {
+export async function ingestDevice(topic: string, payload: Buffer, time = Date.now()) {
  const data = parseDeviceReport(topic, payload);
  if (!data) return;
  const { host } = data;
@@ -51,13 +51,13 @@ export function startDiscovery(connect=mqtt.connect) {
  if(!process.env.MQTT_HOST_NAME)return ()=>{};
  client=connect(process.env.MQTT_HOST_NAME,{...mqttCredentials(),clientId:`tomatoes-alerts-${process.pid}`,reconnectPeriod:5000,connectTimeout:10000,clean:true});
  const discover=()=>{if(client?.connected){client.publish('getdevices','get all');sourceHealth.lastDiscovery=Date.now();}};
- client.on('connect',()=>client!.subscribe(['devices', 'devices/+'], (error, grants) => {
-  sourceHealth.mqttConnected = !error && Boolean(grants?.length === 2 && grants.every(grant => grant.qos <= 2));
+ client.on('connect',()=>client!.subscribe('devices/+', (error, grants) => {
+  sourceHealth.mqttConnected = !error && Boolean(grants?.length === 1 && grants.every(grant => grant.qos <= 2));
   if (sourceHealth.mqttConnected) discover();
  }));
  client.on('close',()=>{sourceHealth.mqttConnected=false;});
  client.on('error',()=>{sourceHealth.mqttConnected=false;});
- client.on('message', (topic, payload) => { void ingestDevice(payload, Date.now(), topic).catch(() => {}); });
+ client.on('message', (topic, payload) => { void ingestDevice(topic, payload).catch(() => {}); });
  const timer=setInterval(discover,30000);timer.unref();
  return ()=>{clearInterval(timer);client?.end(true);sourceHealth.mqttConnected=false;};
 }

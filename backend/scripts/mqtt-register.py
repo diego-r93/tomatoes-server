@@ -48,10 +48,10 @@ def acl_for(legacy, users, prepare_explorer=False):
         blocks.append(f'user {legacy}\ntopic readwrite #\ntopic read $SYS/#')
     if BACKEND in users:
         blocks.append(
-            'user tomatoes-backend\ntopic read sensors/#\ntopic read devices/#\n'
-            'topic read devices\ntopic write getdevices\ntopic write +/output'
+            'user tomatoes-backend\ntopic read sensors/#\ntopic read devices/+\n'
+            'topic write getdevices\ntopic write +/output'
         )
-    readers = 'topic read sensors/#\ntopic read devices/#\ntopic read devices'
+    readers = 'topic read sensors/#\ntopic read devices/+'
     services = {
         'tomatoes-monitor': readers,
         'tomatoes-bench': readers + '\ntopic write esp32s3-07945C/output',

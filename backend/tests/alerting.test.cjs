@@ -55,7 +55,7 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
  await t.test('source health distinguishes broker failure, absent devices and stale samples',async()=>{
   sourceHealth.mqttConnected=false;assert.equal((await readSource(input.source)).health,'error');
   sourceHealth.mqttConnected=true;assert.equal((await readSource(input.source)).health,'missing');
-  const time=Date.now();await ingestDevice(Buffer.from(JSON.stringify({host:'esp32-test',rssi:-60,ports:{p:{gpio:4,state:1}}})),time);
+  const time=Date.now();await ingestDevice('devices/esp32-test', Buffer.from(JSON.stringify({host:'esp32-test',rssi:-60,ports:{p:{gpio:4,state:1}}})),time);
   assert.equal((await readSource(input.source,time+130000)).value,130);
   assert.equal((await readSource({...input.source,kind:'wifi'},time+181000)).health,'missing');
   assert.equal((await readSource({...input.source,kind:'wifi'},time)).value,-60);
@@ -79,16 +79,16 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
   assert.equal(step(rule,sample,now).state,'Firing');assert.equal(step({...rule,latched:true,state:'Firing'},metricSample(source,[{...rows[0],_time:new Date(now-10000).toISOString()}],now),now).state,'Normal');
   assert.equal(metricSample(source,[],now).health,'missing');assert.equal(metricSample(source,[...rows,...rows],now).health,'error');assert.equal(metricSample(source,[{...rows[0],_time:new Date(now+120000).toISOString()}],now).health,'missing');
  });
- await t.test('discovery binds scoped MQTT topics to the report hostname while accepting legacy reports', () => {
+ await t.test('discovery binds scoped MQTT topics to the report hostname and rejects the legacy topic', () => {
   const payload = Buffer.from(JSON.stringify({host:'esp32s3-07945C',ip:'192.168.0.250'}));
   assert.equal(parseDeviceReport('devices/esp32s3-07945C', payload).host, 'esp32s3-07945C');
-  assert.equal(parseDeviceReport('devices', payload).host, 'esp32s3-07945C');
+  assert.equal(parseDeviceReport('devices', payload), null);
   assert.equal(parseDeviceReport('devices/another-board', payload), null);
   assert.equal(parseDeviceReport('devices/esp32s3-07945C/extra', payload), null);
   assert.equal(parseDeviceReport('sensors/esp32s3-07945C', payload), null);
  });
  await t.test('MQTT startup uses the installed named API and only publishes discovery',()=>{
-  const {EventEmitter}=require('node:events');const fake=new EventEmitter(),published=[];fake.connected=true;fake.subscribe=(topics,callback)=>{assert.deepEqual(topics,['devices','devices/+']);callback(null,topics.map(topic=>({topic,qos:0})));};fake.publish=(...args)=>published.push(args);fake.end=()=>{};
+  const {EventEmitter}=require('node:events');const fake=new EventEmitter(),published=[];fake.connected=true;fake.subscribe=(topic,callback)=>{assert.equal(topic,'devices/+');callback(null,[{topic,qos:0}]);};fake.publish=(...args)=>published.push(args);fake.end=()=>{};
   process.env.MQTT_HOST_NAME='mqtt://test.invalid';let connected=false;
   const stop=startDiscovery((host)=>{connected=true;assert.equal(host,'mqtt://test.invalid');return fake;});fake.emit('connect');assert(connected);assert.equal(sourceHealth.mqttConnected,true);assert.deepEqual(published,[['getdevices','get all']]);stop();delete process.env.MQTT_HOST_NAME;
  });
@@ -171,7 +171,7 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
     sourceHealth.mqttConnected = true;
     assert.equal((await req('PATCH', path)).status, 401);
     assert.equal((await req('PATCH', path, {}, member.accessToken)).status, 409);
-    await ingestDevice(Buffer.from(JSON.stringify({
+    await ingestDevice('devices/esp32-test-bulk', Buffer.from(JSON.stringify({
      host: 'esp32-test-bulk', ports: { a: { gpio: 0, state: true }, b: { gpio: 3, state: false } },
     })));
     const reply = await req('PATCH', path, { 0: true, 99: true }, member.accessToken);
@@ -264,7 +264,7 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
    try {
     process.env.OTA_MASTER_KEY = masterKey;
     sourceHealth.mqttConnected = true;
-    await ingestDevice(Buffer.from(JSON.stringify({ host, ip: '192.168.0.250' })));
+    await ingestDevice('devices/' + host, Buffer.from(JSON.stringify({ host, ip: '192.168.0.250' })));
     for (const [scenario, status, expected] of [
      ['success', 200, { ok: true, restart_in_ms: 2000 }],
      ['wrong-host', 502, { ok: false, error: 'The board returned an invalid identity or nonce.' }],
