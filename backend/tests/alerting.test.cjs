@@ -131,7 +131,12 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
   assert.equal(body.to,'5511999999999');assert.equal(body.type,'template');assert.equal(body.template.components[0].parameters.length,6);assert(!JSON.stringify(body).includes('ACCESS_TOKEN'));
  });
  await t.test('API rejects anonymous writes and member management; administrators can CRUD',async apiTest=>{
-  const app=express();app.use(express.json());require('../src/routes/users-routes').default(app);require('../src/routes/alerts-routes').default(app);require('../src/routes/ota-routes').default(app);app.use(require('../src/users/http').userError);
+  const app=express();app.use(express.json());require('../src/routes/users-routes').default(app);require('../src/routes/alerts-routes').default(app);const setupOta = require('../src/routes/ota-routes').default;
+  setupOta(app);
+  const simulatedOta = express.Router();
+  setupOta(simulatedOta);
+  app.use('/simulation', simulatedOta);
+  app.use(require('../src/users/http').userError);
   server=await new Promise(resolve=>{const s=app.listen(0,'127.0.0.1',()=>resolve(s));});
   const origin=`http://127.0.0.1:${server.address().port}`;
   async function req(method,url,body,token){const r=await fetch(origin+url,{method,headers:{'content-type':'application/json',...(token?{authorization:`Bearer ${token}`}:{})},body:body===undefined?undefined:JSON.stringify(body)});return {status:r.status,body:r.status===204?null:await r.json()};}
@@ -172,6 +177,83 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
     process.env.OTA_MASTER_KEY = masterKey;
     assert.equal(await send(admin.accessToken), 400);
    } finally {
+    if (originalKey === undefined) delete process.env.OTA_MASTER_KEY;
+    else process.env.OTA_MASTER_KEY = originalKey;
+   }
+  });
+  await apiTest.test('OTA forwards a signed upload only to the verified board and audits the result', async test => {
+   const mongoose = require('mongoose');
+   const masterKey = '0123456789abcdef'.repeat(4);
+   const originalKey = process.env.OTA_MASTER_KEY;
+   const originalConnection = sourceHealth.mqttConnected;
+   const host = 'esp32s3-07945C';
+   const nonce = '00112233445566778899aabbccddeeff';
+   const sha256 = '8dd65144d75367decdcd12419b523ef9c35f3f03ef7fc68d51d06c2f45c4e82b';
+   const signature = '9fcb55dd3b9bcbab5fbeb75db89a1c47970144858454ce10d7be5bb95037a8ab';
+   const image = Buffer.concat([Buffer.from([0xe9]), Buffer.from('tomatoes'.repeat(4))]);
+   const inserted = [], completed = [];
+   const realFetch = globalThis.fetch;
+   let mode = 'success', uploads = 0, requests = 0;
+   test.mock.method(mongoose.connection, 'collection', name => {
+    assert.equal(name, 'ota_logs');
+    return {
+     async insertOne(entry) { inserted.push(entry); return { insertedId: inserted.length }; },
+     async updateOne(filter, update) { completed.push({ id: filter._id, ...update.$set }); },
+    };
+   });
+   test.mock.method(globalThis, 'fetch', async (url, options) => {
+    if (url.startsWith(origin + '/')) return realFetch(url, options);
+    requests++;
+    if (url === 'http://192.168.0.250/update/nonce') {
+     if (mode === 'nonce-503') return new Response(null, { status: 503 });
+     return Response.json({ host: mode === 'wrong-host' ? 'unexpected-board' : host, nonce });
+    }
+    assert.equal(url, 'http://192.168.0.250/update');
+    assert.equal(options.method, 'POST');
+    assert.equal(options.redirect, 'error');
+    assert.deepEqual(options.headers, {
+     'X-OTA-Nonce': nonce, 'X-OTA-Size': '33', 'X-OTA-SHA256': sha256, 'X-OTA-Signature': signature,
+    });
+    const file = options.body.get('file');
+    assert.equal(file.name, 'firmware.bin');
+    assert.deepEqual(Buffer.from(await file.arrayBuffer()), image);
+    uploads++;
+    if (mode === 'upload-503') return new Response(null, { status: 503 });
+    if (mode === 'busy') return Response.json({ ok: false, error: 'Pump is running' }, { status: 409 });
+    return Response.json({ ok: true, restart_in_ms: 2000 });
+   });
+   try {
+    process.env.OTA_MASTER_KEY = masterKey;
+    sourceHealth.mqttConnected = true;
+    await ingestDevice(Buffer.from(JSON.stringify({ host, ip: '192.168.0.250' })));
+    for (const [scenario, status, expected] of [
+     ['success', 200, { ok: true, restart_in_ms: 2000 }],
+     ['wrong-host', 502, { ok: false, error: 'The board returned an invalid identity or nonce.' }],
+     ['nonce-503', 503, { ok: false, error: 'Placa sem chave de OTA; grave a chave pela USB' }],
+     ['upload-503', 503, { ok: false, error: 'Placa sem chave de OTA; grave a chave pela USB' }],
+     ['busy', 409, { ok: false, error: 'Pump is running' }],
+    ]) {
+     mode = scenario;
+     const body = new FormData();
+     body.append('file', new Blob([image]), 'local-test.bin');
+     const response = await fetch(origin + '/simulation/ota/' + host + '/firmware', {
+      method: 'POST', headers: { authorization: 'Bearer ' + admin.accessToken }, body,
+     });
+     assert.equal(response.status, status, scenario);
+     assert.deepEqual(await response.json(), { ...expected, sha256 });
+    }
+    assert.equal(requests, 8);
+    assert.equal(uploads, 3);
+    assert.deepEqual(completed.map(entry => entry.status), [200, 502, 503, 503, 409]);
+    for (const entry of inserted) {
+     assert.equal(entry.host, host);
+     assert.equal(entry.username, 'admin');
+     assert.equal(entry.sha256, sha256);
+     assert.equal(entry.size, image.length);
+     assert.deepEqual(Object.keys(entry).sort(), ['date', 'host', 'result', 'sha256', 'size', 'userId', 'username']);
+    }
+   } finally {
+    sourceHealth.mqttConnected = originalConnection;
     if (originalKey === undefined) delete process.env.OTA_MASTER_KEY;
     else process.env.OTA_MASTER_KEY = originalKey;
    }
