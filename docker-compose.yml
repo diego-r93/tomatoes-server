@@ -49,6 +49,8 @@ services:
       - influxdb_network
     env_file:
       - .env
+    environment:
+      OTA_MASTER_KEY: ""
     depends_on:
       - frontend
       - backend
@@ -86,6 +88,8 @@ services:
       - ${DOCKER_INFLUXDB_INIT_PORT}:${DOCKER_INFLUXDB_INIT_PORT}
     env_file:
       - .env
+    environment:
+      OTA_MASTER_KEY: ""
     entrypoint: [ "./entrypoint.sh" ]
 
   telegraf:
@@ -106,6 +110,8 @@ services:
       - influxdb_network
     env_file:
       - .env
+    environment:
+      OTA_MASTER_KEY: ""
     depends_on:
       - influxdb
 
@@ -124,6 +130,8 @@ services:
       - influxdb_network   
     env_file:
       - .env
+    environment:
+      OTA_MASTER_KEY: ""
     depends_on:
       - influxdb
   
