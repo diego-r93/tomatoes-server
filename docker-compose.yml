@@ -72,7 +72,7 @@ services:
     entrypoint: [ "./mosquitto.sh" ]
 
   influxdb:
-    image: influxdb:2.7
+    image: influxdb:2.9.1
     container_name: influxdb
     restart: unless-stopped
     volumes:
