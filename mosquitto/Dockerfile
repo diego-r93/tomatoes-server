@@ -1,2 +1,2 @@
-FROM eclipse-mosquitto:2.0.18
+FROM eclipse-mosquitto:2.1.2-alpine
 RUN apk add --no-cache openssl

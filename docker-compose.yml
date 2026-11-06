@@ -49,7 +49,7 @@ services:
       - influxdb
 
   mosquitto:
-    image: tomatoes-mosquitto:2.0.18
+    image: tomatoes-mosquitto:2.1.2
     build: ./mosquitto
     container_name: mosquitto
     restart: unless-stopped
