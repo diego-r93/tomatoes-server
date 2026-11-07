@@ -57,3 +57,7 @@ passwd
 /mosquitto/config/.tls-stage.*/
 /mosquitto/config/tls/
 /mosquitto/config/listeners/*.conf
+
+# Local web CA and HTTPS certificate material
+/nginx/web-ca/
+/nginx/tls/
