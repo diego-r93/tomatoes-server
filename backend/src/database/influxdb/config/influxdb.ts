@@ -1,7 +1,7 @@
 import { InfluxDB } from '@influxdata/influxdb-client';
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const token = process.env.DOCKER_INFLUXDB_INIT_ADMIN_TOKEN || '';
 const org = process.env.DOCKER_INFLUXDB_INIT_ORG || '';

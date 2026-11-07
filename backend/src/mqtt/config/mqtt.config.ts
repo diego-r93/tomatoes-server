@@ -1,7 +1,7 @@
 import { createHmac } from 'node:crypto';
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const MQTT_HOST_NAME: string | undefined = process.env.MQTT_HOST_NAME;
 export function mqttCredentials() {
