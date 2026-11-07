@@ -1,7 +1,7 @@
 // Run from backend after loading the same environment as the backend service.
 const path = require('node:path');
 require('dotenv').config({path: path.resolve(__dirname, '../../.env')});
-require('ts-node').register({project:path.resolve(__dirname,'../tsconfig.json')});
+require('tsx/cjs/api').register({tsconfig: path.resolve(__dirname, '../tsconfig.json')});
 const mongoose = require('mongoose');
 const {migrateCharts} = require('../src/database/dashboard/migrate');
 (async()=>{

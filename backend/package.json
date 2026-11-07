@@ -7,7 +7,7 @@
     "start": "nodemon",
     "build": "tsc",
     "serve": "node dist/server.js",
-    "test": "node --test -r ts-node/register tests/user-management.test.cjs tests/alerting.test.cjs"
+    "test": "node --import tsx --test tests/*.test.cjs"
   },
   "keywords": [],
   "author": "",
@@ -35,8 +35,7 @@
     "@types/node": "24.19.2",
     "@types/sqlite3": "^3.1.8",
     "nodemon": "3.1.14",
-    "ts-node": "10.9.2",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.1.6"
+    "typescript": "7.0.2",
+    "tsx": "4.23.15"
   }
 }

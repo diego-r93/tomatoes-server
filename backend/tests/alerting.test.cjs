@@ -155,6 +155,9 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
   const modelValidationOta = express.Router();
   setupOta(modelValidationOta);
   app.use('/model-validation', modelValidationOta);
+  const nonceValidationOta = express.Router();
+  setupOta(nonceValidationOta);
+  app.use('/nonce-validation', nonceValidationOta);
   app.use(require('../src/users/http').userError);
   server=await new Promise(resolve=>{const s=app.listen(0,'127.0.0.1',()=>resolve(s));});
   const origin=`http://127.0.0.1:${server.address().port}`;
@@ -232,6 +235,7 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
    const http = require('node:http');
    const realRequest = http.request;
    let mode = 'success', uploads = 0, requests = 0, probes = 0;
+   let invalidNonce;
    const wire = [];
    const fakeBoard = http.createServer((request, response) => {
     const chunks = [];
@@ -263,6 +267,7 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
     assert.equal(url, 'http://192.168.0.250/update/nonce');
     requests++;
     if (mode === 'nonce-503') return new Response(null, { status: 503 });
+    if (mode === 'invalid-nonce') return Response.json(invalidNonce);
     if (mode === 'disconnect' && ++probes === 2) throw new Error('Simulated offline board');
     return Response.json({ host: mode === 'wrong-host' ? 'unexpected-board' : host, nonce });
    });
@@ -311,6 +316,18 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
      assert.equal(entry.size, image.length);
      assert.deepEqual(Object.keys(entry).sort(), ['date', 'host', 'result', 'sha256', 'size', 'userId', 'username']);
     }
+    mode = 'invalid-nonce';
+    for (const challenge of [null, [], true, { host }, { host, nonce: 123 }]) {
+     invalidNonce = challenge;
+     const body = new FormData();
+     body.append('file', new Blob([image]), 'local-test.bin');
+     const response = await fetch(origin + '/nonce-validation/ota/' + host + '/firmware', {
+      method: 'POST', headers: { authorization: 'Bearer ' + admin.accessToken }, body,
+     });
+     assert.equal(response.status, 502);
+     assert.equal((await response.json()).error, 'The board returned an invalid identity or nonce.');
+     assert.equal(uploads, 4, 'invalid nonces must not send firmware');
+    }
     for (const [marker, model, status, error] of [
      ['', 'N16R8V', 400, 'The firmware file must contain one supported model marker.'],
      ['TOMATOES_FW_MODEL=N16R8V;TOMATOES_FW_MODEL=N16R2;', 'N16R8V', 400, 'The firmware file must contain one supported model marker.'],
@@ -327,7 +344,7 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
      assert.equal((await response.json()).error, error);
      assert.equal(completed.at(-1).status, status);
     }
-    assert.equal(requests, 7, 'invalid images must not request a nonce');
+    assert.equal(requests, 12, 'invalid images must not request a nonce');
     assert.equal(uploads, 4, 'invalid images must not reach the board');
    } finally {
     sourceHealth.mqttConnected = originalConnection;

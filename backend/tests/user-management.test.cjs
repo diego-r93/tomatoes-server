@@ -213,7 +213,7 @@ test('empty installations create one fixed admin and restarts do not duplicate i
   `;
   try {
     for (let boot = 0; boot < 2; boot++) {
-      const result = spawnSync(process.execPath, ['-r', 'ts-node/register', '-e', script], { cwd: path.resolve(__dirname, '..'), env: { ...process.env, USERS_DB_PATH: path.join(directory, 'users.db'), JWT_SECRET: crypto.randomBytes(32).toString('hex') }, encoding: 'utf8', timeout: 30000 });
+      const result = spawnSync(process.execPath, ['--import', 'tsx', '-e', script], { cwd: path.resolve(__dirname, '..'), env: { ...process.env, USERS_DB_PATH: path.join(directory, 'users.db'), JWT_SECRET: crypto.randomBytes(32).toString('hex') }, encoding: 'utf8', timeout: 30000 });
       assert.equal(result.status, 0, result.stderr || result.error?.message);
     }
   } finally {

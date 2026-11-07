@@ -131,9 +131,11 @@ async function waitForRestart(url: string, host: string, ip: string, beforeUptim
       return null;
     });
     if (response?.ok) {
-      const challenge = await response.json().catch(() => null);
-      if (challenge?.host && challenge.host !== host) return false;
-      if (challenge?.host === host && unreachable) return true;
+      const challenge: unknown = await response.json().catch(() => null);
+      if (challenge && typeof challenge === 'object' && 'host' in challenge) {
+        if (challenge.host !== host) return false;
+        if (unreachable) return true;
+      }
     } else {
       await response?.body?.cancel().catch(() => {});
     }
@@ -170,8 +172,9 @@ export async function uploadOTAFile(req: Request, res: Response) {
       const nonceResponse = await fetch(url + '/nonce', options);
       if (nonceResponse.status === 503) throw new HttpError(503, missingBoardKey);
       if (!nonceResponse.ok) throw new HttpError(nonceResponse.status === 409 ? 409 : 502, 'The board refused the update nonce.');
-      const challenge = await nonceResponse.json();
-      if (challenge?.host !== host || typeof challenge.nonce !== 'string' || !/^[a-f0-9]{32}$/i.test(challenge.nonce)) {
+      const challenge: unknown = await nonceResponse.json();
+      if (!challenge || typeof challenge !== 'object' || !('host' in challenge) || challenge.host !== host ||
+          !('nonce' in challenge) || typeof challenge.nonce !== 'string' || !/^[a-f0-9]{32}$/i.test(challenge.nonce)) {
         throw new HttpError(502, 'The board returned an invalid identity or nonce.');
       }
       const boardKey = deriveBoardKey(masterKey, host);
