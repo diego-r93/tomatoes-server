@@ -10,5 +10,5 @@ export const alertService={
 export const alertError=error=>error.response?.data?.message||'The alert service is unavailable. Please try again.';
 export const stateColor=state=>({'Normal':'success','Pending':'warning','Firing':'error','No data':'warning','Error':'error','Paused':'muted'}[state]||'muted');
 export const dateLabel=value=>formatDateTime(value, 'Browser', 'Never');
-export const sourceLabel=source=>({'device_age':'Device last seen','wifi':'Wi-Fi signal','output_on':'GPIO ON duration','cpu_temperature':'CPU temperature','disk_usage':'Disk usage','metric_age':'Telemetry age','metric':source.measurement||'Sensor metric'}[source.kind]);
-export const ruleUnit=source=>({'device_age':'sec','wifi':'dBm','output_on':'sec','cpu_temperature':'°C','disk_usage':'%','metric_age':'sec','metric':source.unit||''}[source.kind]);
+export const sourceLabel=source=>({'pump_driver':`Pump ${String(source.pump).padStart(2,'0')} driver / ${source.condition}`,'device_age':'Device last seen','wifi':'Wi-Fi signal','output_on':'GPIO ON duration','cpu_temperature':'CPU temperature','disk_usage':'Disk usage','metric_age':'Telemetry age','metric':source.measurement||'Sensor metric'}[source.kind]);
+export const ruleUnit=source=>({'pump_driver':'','device_age':'sec','wifi':'dBm','output_on':'sec','cpu_temperature':'°C','disk_usage':'%','metric_age':'sec','metric':source.unit||''}[source.kind]);

@@ -1,12 +1,14 @@
+import { validateLiveSource } from './liveSource';
 import { HttpError } from '../../users/types';
 
 // Optional for existing uPlot panels. New settings travel with the chart JSON.
 function validateVisualization(value: any) {
   if (value === undefined) return;
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new HttpError(400, 'Panel visualization must be an object.');
-  const v = { sparkline: true, staleAfterSeconds: 120, type: 'time-series', reducer: 'last', series: null, min: 0, max: 100, color: '#73bf69', showThresholds: true, thresholds: [{ value: 80, color: '#f2cc0c' }, { value: 90, color: '#f2495c' }], ...value };
+  const v = { mappings: [], sparkline: true, staleAfterSeconds: 120, type: 'time-series', reducer: 'last', series: null, min: 0, max: 100, color: '#73bf69', showThresholds: true, thresholds: [{ value: 80, color: '#f2cc0c' }, { value: 90, color: '#f2495c' }], ...value };
   if (!['time-series', 'gauge', 'stat'].includes(v.type)) throw new HttpError(400, 'Unsupported panel visualization.');
   if (!['gauge','stat'].includes(v.type)) return;
+  if (v.type === 'stat' && (!Array.isArray(v.mappings) || v.mappings.length > 20 || v.mappings.some((m:any,i:number) => !m || !Number.isFinite(m.value) || typeof m.text !== 'string' || !m.text.trim() || m.text.length > 80 || v.mappings.slice(0,i).some((old:any)=>old.value===m.value)))) throw new HttpError(400,'Use up to 20 unique numeric value mappings with nonempty labels.');
   if (v.type === 'stat' && (typeof v.sparkline !== 'boolean' || !Number.isInteger(v.staleAfterSeconds) || v.staleAfterSeconds < 1 || v.staleAfterSeconds > 604800)) throw new HttpError(400, 'Stat requires a sparkline option and a sample age limit from 1 to 604800 seconds.');
   if (!['last', 'mean', 'min', 'max'].includes(v.reducer)) throw new HttpError(400, 'Invalid gauge calculation.');
   if (v.series !== null && (typeof v.series !== 'string' || !v.series || v.series.length > 4096)) throw new HttpError(400, 'Invalid gauge series.');
@@ -31,6 +33,7 @@ export function validateCharts(value: unknown): any[] {
     for (const key of ['x', 'y', 'w', 'h']) if (!Number.isInteger(chart.layout[key]) || chart.layout[key] < (['w', 'h'].includes(key) ? 1 : 0) || chart.layout[key] > (key === 'w' || key === 'x' ? 12 : 10000)) throw new HttpError(400, 'Panel layout is invalid.');
     if (!Array.isArray(chart.data) || chart.data.length) throw new HttpError(400, 'Save chart definitions with an empty data array. Samples stay in InfluxDB.');
     validateVisualization(chart.visualization);
+    if(chart.liveSource) { validateLiveSource(chart.liveSource); if(chart.visualization?.type !== 'stat') throw new HttpError(400,'Live status panels require Stat.'); }
     if (chart.processing) {
       const p = chart.processing;
       for (const key of ['multiplier', 'offset']) if (typeof p[key] !== 'number' || !Number.isFinite(p[key])) throw new HttpError(400, 'Panel processing requires finite numbers.');

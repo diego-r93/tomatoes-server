@@ -6,12 +6,13 @@ export const visualizationTypes = [
 ];
 export const reducers = [{ value: 'last', title: 'Last non-null' }, { value: 'mean', title: 'Mean' }, { value: 'min', title: 'Minimum' }, { value: 'max', title: 'Maximum' }];
 export function visualizationFor(chart) {
-  return { sparkline: true, staleAfterSeconds: 120, type: 'time-series', reducer: 'last', series: null, min: 0, max: 100, color: '#73bf69', showThresholds: true, thresholds: [{ value: 80, color: '#f2cc0c' }, { value: 90, color: '#f2495c' }], ...chart?.visualization };
+  return { mappings: [], sparkline: true, staleAfterSeconds: 120, type: 'time-series', reducer: 'last', series: null, min: 0, max: 100, color: '#73bf69', showThresholds: true, thresholds: [{ value: 80, color: '#f2cc0c' }, { value: 90, color: '#f2495c' }], ...chart?.visualization };
 }
 export function visualizationError(chart) {
   const p = visualizationFor(chart);
   if (!visualizationTypes.some(item => item.value === p.type)) return 'Select a supported visualization.';
   if (!['gauge','stat'].includes(p.type)) return '';
+  if (p.type === 'stat' && (!Array.isArray(p.mappings) || p.mappings.length > 20 || p.mappings.some((m,i) => !m || !Number.isFinite(m.value) || typeof m.text !== 'string' || !m.text.trim() || m.text.length > 80 || p.mappings.slice(0,i).some(old=>old.value===m.value)))) return 'Use up to 20 unique numeric value mappings with nonempty labels.';
   if (p.type === 'stat' && (typeof p.sparkline !== 'boolean' || !Number.isInteger(p.staleAfterSeconds) || p.staleAfterSeconds < 1 || p.staleAfterSeconds > 604800)) return 'Stat requires a sparkline option and a sample age limit from 1 to 604800 seconds.';
   if (!reducers.some(item => item.value === p.reducer)) return 'Select a valid gauge calculation.';
   if (p.series !== null && (typeof p.series !== 'string' || !p.series || p.series.length > 4096)) return 'Select a valid gauge series.';

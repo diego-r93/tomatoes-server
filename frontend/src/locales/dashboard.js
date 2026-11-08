@@ -304,7 +304,13 @@ export const dashboardMessages = {
     "{rows} response rows · {series} series": "{rows} filas de respuesta · {series} series",
     "{ms} ms request time": "{ms} ms de consulta",
     "Inspect: {name}": "Inspeccionar: {name}",
-    "Time ({timezone})": "Hora ({timezone})"
+    "Time ({timezone})": "Hora ({timezone})",
+    "Value mappings": "Mapeos de valores",
+    "Add mapping": "Añadir mapeo",
+    "Text": "Texto",
+    "Remove mapping": "Quitar mapeo",
+    "Use up to 20 unique numeric value mappings with nonempty labels.": "Usa hasta 20 valores numéricos únicos con etiquetas no vacías.",
+    "Live status · ignores dashboard time range": "Estado actual · ignora el intervalo del dashboard"
   },
   "pt-BR": {
     "(not in current result)": "(fora do resultado atual)",
@@ -611,6 +617,12 @@ export const dashboardMessages = {
     "{rows} response rows · {series} series": "{rows} linhas na resposta · {series} séries",
     "{ms} ms request time": "{ms} ms de consulta",
     "Inspect: {name}": "Inspecionar: {name}",
-    "Time ({timezone})": "Horário ({timezone})"
+    "Time ({timezone})": "Horário ({timezone})",
+    "Value mappings": "Mapeamentos de valores",
+    "Add mapping": "Adicionar mapeamento",
+    "Text": "Texto",
+    "Remove mapping": "Remover mapeamento",
+    "Use up to 20 unique numeric value mappings with nonempty labels.": "Use até 20 valores numéricos únicos com rótulos preenchidos.",
+    "Live status · ignores dashboard time range": "Estado atual · independe do intervalo do dashboard"
   }
 };

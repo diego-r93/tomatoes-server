@@ -1,4 +1,5 @@
-import { observePumpDriver, observePumpOutputs } from '../mqtt/pumpDrivers';
+import { driverSample } from './driverSource';
+import { observePumpDriver, observePumpOutputs, pumpDriverSnapshots } from '../mqtt/pumpDrivers';
 import { setTimeout as delay } from 'node:timers/promises';
 import { installedDeviceInventory, observeDeviceDiscovery, observeDeviceStatus } from '../mqtt/deviceRegistry';
 import { mqttCredentials } from '../mqtt/config/mqtt.config';
@@ -94,7 +95,7 @@ export function metricQuery(source:Source) {
  const measurement=source.kind==='cpu_temperature'?'cpu_temperature':source.kind==='disk_usage'?'disk':source.measurement!;
  const field=source.kind==='disk_usage'?'used_percent':source.kind==='cpu_temperature'?'value':source.field!;
  const quote=JSON.stringify;
- return `from(bucket: ${quote(process.env.DOCKER_INFLUXDB_INIT_BUCKET||'')}) |> range(start: -24h) |> filter(fn: (r) => r._measurement == ${quote(measurement)} and r._field == ${quote(field)} and r.host == ${quote(source.host)}${source.kind==='disk_usage'?` and r.path == ${quote(source.path)}`:''}${source.topic?` and r.topic == ${quote(source.topic)}`:''}) |> last()`;
+ return `from(bucket: ${quote(process.env.DOCKER_INFLUXDB_INIT_BUCKET||'')}) |> range(start: -24h) |> filter(fn: (r) => r._measurement == ${quote(measurement)} and r._field == ${quote(field)} and r.host == ${quote(source.host)}${source.kind==='disk_usage'?` and r.path == ${quote(source.path)}`:''}${source.device?` and r.device == ${quote(source.device)}`:''}${source.topic?` and r.topic == ${quote(source.topic)}`:''}) |> last()`;
 }
 export function metricSample(source:Source,rows:{_time:string;_value:unknown}[],time=Date.now()):Sample {
  if(!rows.length)return {health:'missing',reason:'No matching metric was found in the last 24 hours.'};
@@ -110,6 +111,11 @@ export function metricSample(source:Source,rows:{_time:string;_value:unknown}[],
  return {health:'ok',value,at};
 }
 export async function readSource(source:Source,time=Date.now()):Promise<Sample> {
+ if(source.kind === 'pump_driver') {
+  if(!sourceHealth.mqttConnected) return {health:'error',reason:'The alert monitor is not connected to MQTT.'};
+  const boards=await pumpDriverSnapshots([source.host]);
+  return driverSample(source,boards[0]?.pumps.find(p=>p.pump===String(source.pump).padStart(2,'0')),time);
+ }
  if(['device_age','wifi','output_on'].includes(source.kind)) {
   if(!sourceHealth.mqttConnected)return {health:'error',reason:'The alert monitor is not connected to MQTT.'};
   const device=await access(()=>get<DeviceRow>('SELECT * FROM alert_devices WHERE host=?',[source.host]));
