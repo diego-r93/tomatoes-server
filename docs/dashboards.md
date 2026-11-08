@@ -81,3 +81,11 @@ Overview sensor queries use `last()` to retain the actual latest sample timestam
 `POST /dashboards/live` requires the existing web session. Members can read sources from saved dashboard/panel IDs; only administrators can preview a draft source. Sources are validated connection/driver observations for approved boards. No caller chooses a database or collection. The route returns numeric rows for the existing renderer; no telemetry, schedules or outputs are written. Live panels explicitly ignore the dashboard time range. Driver state is the **last pulse result**, not the present output state and not proof of water flow.
 
 Definitions before this installation change are backed up in `/home/diego/tomatoes-server-backups/dashboard-overviews-20261108/`. Sensor samples remain in InfluxDB.
+
+### Sensor-free pump controller
+
+The explicit script backend/scripts/create-pump-controller-dashboard.cjs creates Pump controller — esp32s3-1C1250 in ESP32 boards. Run inside the backend container without arguments for a validated dry run, then with --apply. It inserts only a missing stable dashboard ID and never replaces user edits or other dashboards. No restart is needed.
+
+Its 16 panels show connection, uptime, free heap/PSRAM, MQTT disconnects, driver SPI errors, all four latest driver outcomes, both CPU gauges and CPU/memory/MQTT/driver history. Queries use existing mqtt_consumer diagnostics converted to float. Diagnostics can be absent in non-debug firmware; counters reset at boot. Live driver cards show the most recent pulse with its timestamp, independent of the chart time range; they do not indicate that an output is ON now or prove water flow. The pump supply was connected temporarily for testing and will stay disconnected until greenhouse installation. New board alerts remain paused.
+
+Validated on 2026-11-08: all 11 Influx panel queries returned finite samples, five live Stats loaded in the browser, 30-second refresh selected, second script run preserved the dashboard. No MQTT output command, OTA, alert change or container restart was performed.
