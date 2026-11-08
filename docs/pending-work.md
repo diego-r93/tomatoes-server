@@ -4,7 +4,9 @@ Updated 2026-11-08. Completed features are documented in the commit report and t
 
 | Status | Item | Next step |
 | --- | --- | --- |
-| To confirm | Next scheduled pulse on the second board | Implementation is deployed. The bench start at 17:00 on 2026-11-08 produced six numeric InfluxDB values with correct tags and updated MongoDB. Historical start/end records from both boards and the missing-supply warning were verified. Observe the next fresh start/end of esp32s3-1C1250 without manual output commands. Missing/partial feedback and fault priorities have automated tests. |
+| To confirm | Devices long-open validation | Resume correction is deployed: visibility, focus, pageshow and online events refresh discovery with request coalescing. New preferences default to 30 seconds; saved Off is preserved and displayed. All 39 frontend tests, lint and builds passed; both boards were Online in the browser. A prolonged real background-tab / computer-suspension test remains to be repeated because computer use was interrupted. |
+| Pending | Greenhouse battery validation | esp32s3-1C1250 is intentionally without pump supply; active=0/fault=104 is expected. After installation with battery power, check remote access, schedules, physical pump operation, driver start/end and recovery. Bench start/end was confirmed in the portal by Claude from 17:00 to 17:15 on 2026-11-08. |
+| Pending | Firmware commits publication | Claude reports firmware main 9dca092 and VMUV retry / pulse telemetry changes are local, not pushed. Coordinate publication in the firmware repository with Claude. |
 | Pending | Battery Bluetooth stability | Repeat a prolonged read-only test with better signal. The collector and Energy dashboard work, but timeouts occurred near -83 dBm. |
 | In progress | Interface languages | Continue translating remaining pages into Portuguese and Spanish; keep English as the default. Devices and Configuration language controls are implemented. |
 | Pending | Email invitations and notifications | Configure the sender and verify real delivery, invitation and password-reset links. Outlook/Hotmail OAuth preparation exists. |
@@ -19,6 +21,11 @@ Updated 2026-11-08. Completed features are documented in the commit report and t
 | Planned | MQTT hostname | Plan mqtt.ceresgrow.com.br, broker certificate SAN and factory endpoint configuration. Do not expose MQTT externally as part of the local portal setup. |
 | Planned | Pull-based OTA | Store signed firmware by model, notify boards through MQTT and let boards download through HTTPS for cloud deployment. Requires coordinated firmware work. |
 | Planned | Printed activation code | Bind factory boards to the intended installation/account during browser approval before cloud rollout. |
+| Planned | Next PCB driver feedback | Evaluate ADC sampling of IPROPI and ESP32 connections for nFAULT/DRVOFF. Current TCC v2.0 does not measure pump current; a driver ON result does not confirm water flow. Coordinate with Claude. |
 | Planned | Cloud migration | Preserve factory-certificate admission and registration while planning tenant isolation, backups and deployment. |
 
 The local portal domain and public certificate are complete: https://app.ceresgrow.com.br. The portal remains LAN-only. MQTT migration, factory registration, removal enforcement, legacy HTTP schedule-route removal, production builds, SSH key authentication and network exposure checks are completed; they are not open tasks here.
+
+Firmware note: TCC v2.0 has no ADC measurement of pump current. For the next PCB revision, evaluate routing IPROPI to an ADC and nFAULT/DRVOFF to the ESP32; short-circuit protection alone does not confirm normal load or water flow.
+
+Coordination: a local Windows MCP bridge now holds shared tasks for both agents. The bridge is a development tool separate from this repository and the Raspberry. Review the inbox at the beginning and end of work; messages provide context, not new authorization for output commands or OTA.

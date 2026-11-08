@@ -1,3 +1,4 @@
+import { watchDevicePageResume } from './devicePageResume.mjs';
 import { mergeDriverFeedback } from './pumpDriverFeedback.mjs';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import mqttDataService from '@/services/mqttDataService';
@@ -9,7 +10,7 @@ export function useDeviceInventory() {
   const noticeParameters = ref({});
   function notify(message, parameters) { notice.value = message; noticeParameters.value = parameters; }
   const pending = ref({}), pendingAll = ref({}), sending = ref(false), hasLoaded = ref(false);
-  let controller, request, refreshTimer, clockTimer, feedbackTimer, feedbackRequest, feedbackController, lastBulkPoll = 0;
+  let controller, request, refreshTimer, clockTimer, feedbackTimer, feedbackRequest, feedbackController, stopResumeWatch, lastBulkPoll = 0;
   const pendingKey = (device, gpio) => `${device.key}:${gpio}`;
   const selectedPending = (device, gpio) => pending.value[pendingKey(device, gpio)];
   function refresh() {
@@ -79,6 +80,9 @@ export function useDeviceInventory() {
   }
   onMounted(() => {
     refresh();
+    stopResumeWatch = watchDevicePageResume({ windowTarget: window, documentTarget: document, refresh,
+      lastRefresh: () => lastRefresh.value,
+      onResume: timestamp => { clock.value = timestamp; refreshFeedback(); } });
     feedbackTimer = setInterval(refreshFeedback, 2000);
     clockTimer = setInterval(() => {
       clock.value = Date.now();
@@ -97,6 +101,6 @@ export function useDeviceInventory() {
       }
     }, 1000);
   });
-  onBeforeUnmount(() => { controller?.abort(); feedbackController?.abort(); clearInterval(refreshTimer); clearInterval(clockTimer); clearInterval(feedbackTimer); });
+  onBeforeUnmount(() => { stopResumeWatch?.(); controller?.abort(); feedbackController?.abort(); clearInterval(refreshTimer); clearInterval(clockTimer); clearInterval(feedbackTimer); });
   return { devices, feedbackError, loading, initialLoading: computed(() => loading.value && !hasLoaded.value && !devices.value.length), hasLoaded, error, notice, noticeParameters, clock, lastRefresh, pending, pendingAll, sending, selectedPending, refresh, setRefreshInterval, sendOutput, sendAllOff };
 }

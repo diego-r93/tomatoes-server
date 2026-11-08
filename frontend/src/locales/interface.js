@@ -1,5 +1,6 @@
 export const interfaceMessages = {
   "pt-BR": {
+    "Auto-refresh off": "Atualização automática desativada",
     "Last pump pulses": "Últimos pulsos das bombas",
     "Driver feedback confirms the electrical output, not water flow. Each driver is shared by two pumps.": "O retorno do driver confirma a saída elétrica, não a vazão. Cada driver é compartilhado por duas bombas.",
     "Actuated": "Acionada",
@@ -227,6 +228,7 @@ export const interfaceMessages = {
     "{host}: all outputs OFF could not be confirmed within 30 seconds.": "{host}: não foi possível confirmar todas as saídas em OFF em 30 segundos."
   },
   "es": {
+    "Auto-refresh off": "Actualización automática desactivada",
     "Last pump pulses": "Últimos pulsos de las bombas",
     "Driver feedback confirms the electrical output, not water flow. Each driver is shared by two pumps.": "El retorno del driver confirma la salida eléctrica, no el caudal. Cada driver es compartido por dos bombas.",
     "Actuated": "Accionada",

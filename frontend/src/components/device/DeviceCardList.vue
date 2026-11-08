@@ -23,7 +23,7 @@
 
       <div class="connection-filters" role="group" :aria-label="t('Filter devices')"><v-btn v-for="option in filters" :key="option.value" size="small" :variant="filter === option.value ? 'tonal' : 'text'" :color="filter === option.value ? 'primary' : undefined" :aria-pressed="filter === option.value" @click="filter = option.value">{{ option.title }}<span class="filter-count">{{ counts[option.value] }}</span></v-btn></div>
 
-      <div class="inventory-meta"><span aria-live="polite">{{ t(filtered.length === 1 ? '{count} device in this view' : '{count} devices in this view', { count: filtered.length }) }}</span><span>{{ lastRefresh ? t('Last refreshed {time}', { time: lastSeenLabel(lastRefresh, clock, t) }) : t('Not refreshed yet') }}{{ settings.refreshSeconds ? ' · ' + t('Auto-refresh {seconds}s', { seconds: settings.refreshSeconds }) : '' }}</span></div>
+      <div class="inventory-meta"><span aria-live="polite">{{ t(filtered.length === 1 ? '{count} device in this view' : '{count} devices in this view', { count: filtered.length }) }}</span><span>{{ lastRefresh ? t('Last refreshed {time}', { time: lastSeenLabel(lastRefresh, clock, t) }) : t('Not refreshed yet') }}{{ settings.refreshSeconds ? ' · ' + t('Auto-refresh {seconds}s', { seconds: settings.refreshSeconds }) : ' · ' + t('Auto-refresh off') }}</span></div>
 
       <v-progress-linear v-if="loading" indeterminate color="secondary" class="mb-3" :aria-label="t('Refreshing devices')" />
 
@@ -100,7 +100,7 @@ const pumpIssues = computed(() => driverIssues(devices.value));
 
 const query = ref(''), filter = ref('all'), page = ref(1), selectedKey = ref(''), settingsOpen = ref(false), commandOpen = ref(false), command = ref(null), commandError = ref('');
 
-const settings = reactive({ layout: 'details', sort: 'host', pageSize: 8, showMac: false, refreshSeconds: 0 });
+const settings = reactive({ layout: 'details', sort: 'host', pageSize: 8, showMac: false, refreshSeconds: 30 });
 
 const preferenceKey = 'tomatoes.devices.preferences.v1';
 
