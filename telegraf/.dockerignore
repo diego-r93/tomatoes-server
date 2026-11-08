@@ -1,0 +1,8 @@
+**
+!Dockerfile
+!battery/
+!battery/*.py
+!battery/requirements.txt
+!battery/README.md
+battery/__pycache__/
+battery/*.pyc

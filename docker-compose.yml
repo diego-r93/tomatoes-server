@@ -88,11 +88,16 @@ services:
     entrypoint: [ "./entrypoint.sh" ]
 
   telegraf:
-    image: telegraf:1.40.3
+    image: tomatoes-telegraf:1.40.3-ble
+    build: ./telegraf
+    # D-Bus authenticates this non-root UID against the host account database.
+    user: "${TELEGRAF_UID:-65534}:${TELEGRAF_GID:-65534}"
     container_name: telegraf
     restart: unless-stopped
     volumes:
       - ${TELEGRAF_CFG_PATH}:/etc/telegraf/telegraf.conf:rw
+      # Bleak uses the host BlueZ service through D-Bus.
+      - ${BATTERY_DBUS_PATH:-/run/dbus}:/run/dbus:ro
       # Use the Raspberry Pi utility without modifying the host executable.
       - /usr/bin/vcgencmd:/usr/bin/vcgencmd:ro
     devices:

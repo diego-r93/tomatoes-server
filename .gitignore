@@ -61,3 +61,7 @@ passwd
 # Local web CA and HTTPS certificate material
 /nginx/web-ca/
 /nginx/tls/
+
+# Python collector caches
+__pycache__/
+*.py[cod]
