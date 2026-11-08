@@ -1,4 +1,5 @@
 import { readonly, ref } from 'vue';
+import { dashboardMessages } from '../locales/dashboard.js';
 import { interfaceMessages } from '../locales/interface.js';
 
 export const languageOptions = [
@@ -46,7 +47,7 @@ const messages = {
     "reduceMotion": "Reduce motion",
     "motionHelp": "Keep decorative animations still. Your system preference is also respected.",
     "language": "Language",
-    "languageHelp": "Choose the language for Configuration, Devices and the sidebar.",
+    "languageHelp": "Choose the language for Configuration, Devices, Dashboards and the sidebar.",
     "applied": "applied",
     "storageUnavailable": "Browser storage is unavailable; changes last for this session.",
     "saved": "Saved in this browser",
@@ -93,7 +94,7 @@ const messages = {
     "reduceMotion": "Reduzir movimento",
     "motionHelp": "Desative as animações decorativas. A preferência do sistema também é respeitada.",
     "language": "Idioma",
-    "languageHelp": "Escolha o idioma de Configuração, Dispositivos e do menu lateral.",
+    "languageHelp": "Escolha o idioma de Configuração, Dispositivos, Painéis e do menu lateral.",
     "applied": "aplicado",
     "storageUnavailable": "O armazenamento do navegador está indisponível. As alterações valem para esta sessão.",
     "saved": "Salvo neste navegador",
@@ -140,7 +141,7 @@ const messages = {
     "reduceMotion": "Reducir movimiento",
     "motionHelp": "Desactiva las animaciones decorativas. También se respeta la preferencia del sistema.",
     "language": "Idioma",
-    "languageHelp": "Elige el idioma de Configuración, Dispositivos y del menú lateral.",
+    "languageHelp": "Elige el idioma de Configuración, Dispositivos, Paneles y del menú lateral.",
     "applied": "aplicado",
     "storageUnavailable": "El almacenamiento del navegador no está disponible. Los cambios duran esta sesión.",
     "saved": "Guardado en este navegador",
@@ -173,7 +174,7 @@ function setLanguage(value) {
 }
 
 function t(key, parameters = {}) {
-  const message = messages[language.value][key] ?? interfaceMessages[language.value]?.[key] ?? messages.en[key] ?? key;
+  const message = messages[language.value][key] ?? interfaceMessages[language.value]?.[key] ?? dashboardMessages[language.value]?.[key] ?? messages.en[key] ?? key;
   if (typeof message !== 'string') return message;
   return message.replace(/\{(\w+)\}/g, (placeholder, name) => Object.hasOwn(parameters, name) ? String(parameters[name]) : placeholder);
 }

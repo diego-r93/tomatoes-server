@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { computed } from 'vue';
+import { dashboardMessages } from '../src/locales/dashboard.js';
 import { interfaceMessages } from '../src/locales/interface.js';
 
 const values = new Map();
@@ -45,4 +46,18 @@ test('storage failure keeps language functional in memory', () => {
   globalThis.localStorage.setItem = original;
   setLanguage('en');
   assert.equal(languageStorageUnavailable.value, false);
+});
+
+
+test('Dashboard translations react immediately and preserve placeholders and canonical query text', () => {
+ const {setLanguage,t}=useLanguage();const label=computed(()=>t('Latest sample'));
+ for(const language of ['pt-BR','es']) {
+  setLanguage(language); assert.notEqual(label.value,'Latest sample');
+  assert.equal(t('from(bucket: "tomatoes")'),'from(bucket: "tomatoes")');
+  assert.ok(t('Older than {seconds}s',{seconds:120}).includes('120'));
+ }
+ assert.deepEqual(Object.keys(dashboardMessages['pt-BR']).sort(),Object.keys(dashboardMessages.es).sort());
+ const parameters=text=>[...text.matchAll(/\{(\w+)\}/g)].map(item=>item[1]).sort();
+ for(const catalog of Object.values(dashboardMessages)) for(const [key,value] of Object.entries(catalog)) assert.deepEqual(parameters(value),parameters(key),key);
+ setLanguage('en');assert.equal(label.value,'Latest sample');
 });

@@ -1,19 +1,21 @@
 // Visualization settings are separate from the query and sample processing.
 export const visualizationTypes = [
   { value: 'time-series', title: 'Time series', description: 'Lines and areas over time · uPlot', icon: 'mdi-chart-line' },
+  { value: 'stat', title: 'Stat', description: 'A large value with optional trend and sample age', icon: 'mdi-numeric' },
   { value: 'gauge', title: 'Gauge', description: 'A reduced value with a scale and color thresholds', icon: 'mdi-gauge' },
 ];
 export const reducers = [{ value: 'last', title: 'Last non-null' }, { value: 'mean', title: 'Mean' }, { value: 'min', title: 'Minimum' }, { value: 'max', title: 'Maximum' }];
 export function visualizationFor(chart) {
-  return { type: 'time-series', reducer: 'last', series: null, min: 0, max: 100, color: '#73bf69', showThresholds: true, thresholds: [{ value: 80, color: '#f2cc0c' }, { value: 90, color: '#f2495c' }], ...chart?.visualization };
+  return { sparkline: true, staleAfterSeconds: 120, type: 'time-series', reducer: 'last', series: null, min: 0, max: 100, color: '#73bf69', showThresholds: true, thresholds: [{ value: 80, color: '#f2cc0c' }, { value: 90, color: '#f2495c' }], ...chart?.visualization };
 }
 export function visualizationError(chart) {
   const p = visualizationFor(chart);
   if (!visualizationTypes.some(item => item.value === p.type)) return 'Select a supported visualization.';
-  if (p.type !== 'gauge') return '';
+  if (!['gauge','stat'].includes(p.type)) return '';
+  if (p.type === 'stat' && (typeof p.sparkline !== 'boolean' || !Number.isInteger(p.staleAfterSeconds) || p.staleAfterSeconds < 1 || p.staleAfterSeconds > 604800)) return 'Stat requires a sparkline option and a sample age limit from 1 to 604800 seconds.';
   if (!reducers.some(item => item.value === p.reducer)) return 'Select a valid gauge calculation.';
   if (p.series !== null && (typeof p.series !== 'string' || !p.series || p.series.length > 4096)) return 'Select a valid gauge series.';
-  if (![p.min, p.max].every(Number.isFinite) || p.max <= p.min || !Number.isFinite(p.max - p.min)) return 'Gauge maximum must be greater than minimum. Both must be finite numbers.';
+  if (p.type === 'gauge' && (![p.min, p.max].every(Number.isFinite) || p.max <= p.min || !Number.isFinite(p.max - p.min))) return 'Gauge maximum must be greater than minimum. Both must be finite numbers.';
   if (!/^#[0-9a-f]{6}$/i.test(p.color) || typeof p.showThresholds !== 'boolean') return 'Select a valid gauge color and threshold display.';
   if (!Array.isArray(p.thresholds) || p.thresholds.length > 10) return 'Use at most 10 gauge thresholds.';
   for (let i = 0; i < p.thresholds.length; i++) {

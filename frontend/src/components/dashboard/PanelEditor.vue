@@ -1,79 +1,84 @@
 <template>
   <v-dialog :model-value="true" max-width="1120" scrollable @update:model-value="!$event && emit('close')">
     <v-card class="panel-editor">
-      <v-card-title class="editor-heading">{{ isNew ? 'Add panel' : 'Edit panel' }}<v-btn icon="mdi-close" variant="text" aria-label="Close panel editor" @click="emit('close')" /></v-card-title>
+      <v-card-title class="editor-heading">{{ t(isNew ? 'Add panel' : 'Edit panel') }}<v-btn icon="mdi-close" variant="text" :aria-label="t(&quot;Close panel editor&quot;)" @click="emit('close')" /></v-card-title>
       <v-card-text>
         <div class="editor-top">
-          <div><p class="muted mb-2">Panel preview · {{ panel.visualization.type === 'gauge' ? 'Gauge' : 'uPlot' }} · live InfluxDB data</p><div class="editor-preview app-panel"><PanelVisualization :chart="panel" :data="preview.data" :labels="preview.labels" :timezone="timezone" /></div></div>
+          <div><p class="muted mb-2">{{ t("Panel preview ·") }} {{ panel.visualization.type === 'time-series' ? 'uPlot' : panel.visualization.type === 'stat' ? 'Stat' : 'Gauge' }} {{ t("· live InfluxDB data") }}</p><div class="editor-preview app-panel"><PanelVisualization :chart="panel" :data="preview.data" :labels="preview.labels" :timezone="timezone" /></div></div>
           <div class="editor-fields">
-            <label class="wide">Visualization<select v-model="panel.visualization.type"><option v-for="item in visualizationTypes" :key="item.value" :value="item.value">{{ item.title }}</option></select><small>{{ visualizationTypes.find(item => item.value === panel.visualization.type)?.description }}</small></label>
-            <label>Panel title<input v-model="panel.options.chartTitle" maxlength="200"></label>
-            <label>Unit<input v-model="panel.options.unit" placeholder="°C, %, pH…"></label>
-            <label>Panel width<select v-model.number="panel.layout.w"><option :value="4">Third</option><option :value="6">Half</option><option :value="12">Full</option></select></label>
-            <label v-if="panel.visualization.type === 'time-series'">Series color<input v-model="color" type="color" @input="setColor"></label>
-            <label v-if="panel.visualization.type === 'time-series'" class="wide">Fill opacity · {{ opacity }}<input v-model.number="opacity" type="range" min="0" max="0.5" step="0.01" @input="setColor"></label>
+            <label class="wide">{{ t("Visualization") }}<select v-model="panel.visualization.type"><option v-for="item in visualizationTypes" :key="item.value" :value="item.value">{{ t(item.title) }}</option></select><small>{{ t(visualizationTypes.find(item => item.value === panel.visualization.type)?.description || '') }}</small></label>
+            <label>{{ t("Panel title") }}<input v-model="panel.options.chartTitle" maxlength="200"></label>
+            <label>{{ t("Unit") }}<input v-model="panel.options.unit" placeholder="°C, %, pH…"></label>
+            <label>{{ t("Panel width") }}<select v-model.number="panel.layout.w"><option :value="4">{{ t("Third") }}</option><option :value="6">{{ t("Half") }}</option><option :value="12">{{ t("Full") }}</option></select></label>
+            <label v-if="panel.visualization.type === 'time-series'">{{ t("Series color") }}<input v-model="color" type="color" @input="setColor"></label>
+            <label v-if="panel.visualization.type === 'time-series'" class="wide">{{ t("Fill opacity ·") }} {{ opacity }}<input v-model.number="opacity" type="range" min="0" max="0.5" step="0.01" @input="setColor"></label>
           </div>
         </div>
-        <section v-if="panel.visualization.type === 'gauge'" class="gauge-settings">
-          <h3>Gauge options</h3>
-          <p class="muted">Calculates one value from the processed samples returned for the selected time range. Last non-null uses the latest valid sample in that result, which may already be aggregated by your query.</p>
+        <section v-if="['gauge','stat'].includes(panel.visualization.type)" class="gauge-settings">
+          <h3>{{ t(panel.visualization.type === 'stat' ? 'Stat options' : 'Gauge options') }}</h3>
+          <p class="muted">{{ t("Calculates one value from the processed samples returned for the selected time range. Last non-null uses the latest valid sample in that result, which may already be aggregated by your query.") }}</p>
           <div class="editor-fields builder-fields">
-            <label>Calculation<select v-model="panel.visualization.reducer"><option v-for="item in reducers" :key="item.value" :value="item.value">{{ item.title }}</option></select></label>
-            <label>Series<select v-model="panel.visualization.series"><option :value="null">First returned series</option><option v-if="panel.visualization.series && !preview.labels.includes(panel.visualization.series)" :value="panel.visualization.series">{{ panel.visualization.series }} (not in current result)</option><option v-for="label in [...new Set(preview.labels)]" :key="label" :value="label">{{ label }}</option></select><small>Run query to load the available series.</small></label>
-            <label>Base color<input v-model="panel.visualization.color" type="color"></label>
-            <label>Scale minimum<input v-model.number="panel.visualization.min" type="number" step="any"></label>
-            <label>Scale maximum<input v-model.number="panel.visualization.max" type="number" step="any"></label>
-            <label class="check-field"><input v-model="panel.visualization.showThresholds" type="checkbox"> Show threshold markers</label>
+            <label>{{ t("Calculation") }}<select v-model="panel.visualization.reducer"><option v-for="item in reducers" :key="item.value" :value="item.value">{{ t(item.title) }}</option></select></label>
+            <label>{{ t("Series") }}<select v-model="panel.visualization.series"><option :value="null">{{ t("First returned series") }}</option><option v-if="panel.visualization.series && !preview.labels.includes(panel.visualization.series)" :value="panel.visualization.series">{{ panel.visualization.series }} {{ t("(not in current result)") }}</option><option v-for="label in [...new Set(preview.labels)]" :key="label" :value="label">{{ label }}</option></select><small>{{ t("Run query to load the available series.") }}</small></label>
+            <label>{{ t("Base color") }}<input v-model="panel.visualization.color" type="color"></label>
+            <label v-if="panel.visualization.type === 'gauge'">{{ t("Scale minimum") }}<input v-model.number="panel.visualization.min" type="number" step="any"></label>
+            <label v-if="panel.visualization.type === 'gauge'">{{ t("Scale maximum") }}<input v-model.number="panel.visualization.max" type="number" step="any"></label>
+            <label v-if="panel.visualization.type === 'gauge'" class="check-field"><input v-model="panel.visualization.showThresholds" type="checkbox"> {{ t("Show threshold markers") }}</label>
+            <label v-if="panel.visualization.type === 'stat'" class="check-field"><input v-model="panel.visualization.sparkline" type="checkbox"> {{ t("Show sparkline") }}</label>
+            <label v-if="panel.visualization.type === 'stat'">{{ t("Mark samples older than (seconds)") }}<input v-model.number="panel.visualization.staleAfterSeconds" type="number" min="1" max="604800" step="1"></label>
           </div>
-          <p class="muted">Scale and thresholds use the displayed unit. They do not clamp the data. Values outside the scale remain visible as numbers.</p>
-          <div class="threshold-heading"><h4>Color thresholds</h4><v-btn size="small" variant="outlined" prepend-icon="mdi-plus" :disabled="panel.visualization.thresholds.length >= 10" @click="addThreshold">Add threshold</v-btn></div>
-          <p class="muted">Base color applies below the first threshold. Each threshold applies at or above its value. Enter values in ascending order.</p>
+          <p v-if="panel.visualization.type === 'stat'" class="muted">{{ t("Sample age uses the latest valid timestamp returned by the query, not the request time. Historical ranges and aggregated timestamps may show older data.") }}</p>
+          <p class="muted">{{ t("Thresholds use the displayed unit and do not change the data. Gauge scale limits the arc only; Stat does not use a scale.") }}</p>
+          <div class="threshold-heading"><h4>{{ t("Color thresholds") }}</h4><v-btn size="small" variant="outlined" prepend-icon="mdi-plus" :disabled="panel.visualization.thresholds.length >= 10" @click="addThreshold">{{ t("Add threshold") }}</v-btn></div>
+          <p class="muted">{{ t("Base color applies below the first threshold. Each threshold applies at or above its value. Enter values in ascending order.") }}</p>
           <div v-for="(step,index) in panel.visualization.thresholds" :key="index" class="threshold-row">
-            <label :for="'threshold-value-'+index">Value<input :id="'threshold-value-'+index" v-model.number="step.value" type="number" step="any"></label>
-            <label :for="'threshold-color-'+index">Color<input :id="'threshold-color-'+index" v-model="step.color" type="color"></label>
-            <v-btn icon="mdi-close" size="small" variant="text" :aria-label="'Remove threshold '+(index+1)" @click="panel.visualization.thresholds.splice(index,1)" />
+            <label :for="'threshold-value-'+index">{{ t("Value") }}<input :id="'threshold-value-'+index" v-model.number="step.value" type="number" step="any"></label>
+            <label :for="'threshold-color-'+index">{{ t("Color") }}<input :id="'threshold-color-'+index" v-model="step.color" type="color"></label>
+            <v-btn icon="mdi-close" size="small" variant="text" :aria-label="t('Remove threshold {number}',{number:index+1})" @click="panel.visualization.thresholds.splice(index,1)" />
           </div>
-          <p v-if="!panel.visualization.thresholds.length" class="muted">One color for the entire scale.</p>
+          <p v-if="!panel.visualization.thresholds.length" class="muted">{{ t("One color for the entire scale.") }}</p>
         </section>
-        <div class="editor-tabs app-action-row"><v-btn v-for="name in ['Builder','Flux','Processing','Data preview']" :key="name" :variant="tab===name?'tonal':'text'" :color="tab===name?'primary':undefined" @click="tab=name">{{ name }}</v-btn><v-spacer/><v-btn prepend-icon="mdi-database-search" variant="outlined" @click="tab='Builder';loadMeasurements()">Browse data</v-btn><v-btn prepend-icon="mdi-play-outline" variant="outlined" :loading="running" :disabled="!!validation || !panel.query.trim()" @click="run">Run query</v-btn></div>
+        <div class="editor-tabs app-action-row"><v-btn v-for="name in ['Builder','Flux','Processing','Data preview']" :key="name" :variant="tab===name?'tonal':'text'" :color="tab===name?'primary':undefined" @click="tab=name">{{ t(name) }}</v-btn><v-spacer/><v-btn prepend-icon="mdi-database-search" variant="outlined" @click="tab='Builder';loadMeasurements()">{{ t("Browse data") }}</v-btn><v-btn prepend-icon="mdi-play-outline" variant="outlined" :loading="running" :disabled="!!validation || !panel.query.trim()" @click="run">{{ t("Run query") }}</v-btn></div>
         <div v-if="tab==='Builder'">
-          <p class="muted mb-4">Build a query from available InfluxDB fields. Generating replaces the Flux text only when you click Generate query.</p>
+          <p class="muted mb-4">{{ t("Build a query from available InfluxDB fields. Generating replaces the Flux text only when you click Generate query.") }}</p>
           <div class="editor-fields builder-fields">
-            <label>Bucket<input v-model="source.bucket"><v-btn size="small" variant="text" :loading="loadingSchema" @click="loadMeasurements">Load measurements</v-btn></label>
-            <label>Measurement<select v-model="source.measurement" @change="loadFields"><option value="">Select measurement</option><option v-for="name in measurements" :key="name">{{ name }}</option></select></label>
-            <label>Field<select v-model="source.field"><option value="">Select field</option><option v-for="name in fields" :key="name">{{ name }}</option></select></label>
-            <label>Tag filter<select v-model="source.tag" @change="loadTagValues"><option value="">No filter</option><option v-for="name in tags" :key="name">{{ name }}</option></select></label>
-            <label>Tag value<select v-model="source.tagValue"><option value="">All values</option><option v-for="name in tagValues" :key="name">{{ name }}</option></select></label>
-            <label>Aggregation<select v-model="source.aggregation"><option v-for="name in ['mean','min','max','sum','last','none']" :key="name">{{ name }}</option></select></label>
+            <label>{{ t("Bucket") }}<input v-model="source.bucket"><v-btn size="small" variant="text" :loading="loadingSchema" @click="loadMeasurements">{{ t("Load measurements") }}</v-btn></label>
+            <label>{{ t("Measurement") }}<select v-model="source.measurement" @change="loadFields"><option value="">{{ t("Select measurement") }}</option><option v-for="name in measurements" :key="name">{{ name }}</option></select></label>
+            <label>{{ t("Field") }}<select v-model="source.field"><option value="">{{ t("Select field") }}</option><option v-for="name in fields" :key="name">{{ name }}</option></select></label>
+            <label>{{ t("Tag filter") }}<select v-model="source.tag" @change="loadTagValues"><option value="">{{ t("No filter") }}</option><option v-for="name in tags" :key="name">{{ name }}</option></select></label>
+            <label>{{ t("Tag value") }}<select v-model="source.tagValue"><option value="">{{ t("All values") }}</option><option v-for="name in tagValues" :key="name">{{ name }}</option></select></label>
+            <label>{{ t("Aggregation") }}<select v-model="source.aggregation"><option v-for="name in ['mean','min','max','sum','last','none']" :key="name" :value="name">{{ t(name) }}</option></select></label>
           </div>
-          <label class="check-field"><input v-model="source.convertText" type="checkbox"> Convert numeric text to float before aggregation</label>
-          <p v-if="source.measurement==='mqtt_consumer'" class="muted">MQTT values can be text. Conversion fails for nonnumeric payloads; filter the appropriate topic first.</p>
-          <v-btn class="mt-4" variant="outlined" :disabled="!source.bucket || !source.measurement || !source.field" @click="generate">Generate query</v-btn>
-          <p class="muted mt-3">Schema covers the last 30 days and is limited to 300 entries per request. Empty lists can mean no recent data or insufficient access.</p>
+          <label class="check-field"><input v-model="source.convertText" type="checkbox"> {{ t("Convert numeric text to float before aggregation") }}</label>
+          <p v-if="source.measurement==='mqtt_consumer'" class="muted">{{ t("MQTT values can be text. Conversion fails for nonnumeric payloads; filter the appropriate topic first.") }}</p>
+          <v-btn class="mt-4" variant="outlined" :disabled="!source.bucket || !source.measurement || !source.field" @click="generate">{{ t("Generate query") }}</v-btn>
+          <p class="muted mt-3">{{ t("Schema covers the last 30 days and is limited to 300 entries per request. Empty lists can mean no recent data or insufficient access.") }}</p>
         </div>
-        <div v-else-if="tab==='Flux'"><label>Flux query<textarea v-model="panel.query" rows="11" spellcheck="false" /></label><p class="muted mt-2">Supported time macros: v.timeRangeStart, v.timeRangeStop and v.windowPeriod. Queries without these macros keep their own time range.</p></div>
+        <div v-else-if="tab==='Flux'"><label>{{ t("Flux query") }}<textarea v-model="panel.query" rows="11" spellcheck="false" /></label><p class="muted mt-2">{{ t("Supported time macros: v.timeRangeStart, v.timeRangeStop and v.windowPeriod. Queries without these macros keep their own time range.") }}</p></div>
         <div v-else-if="tab==='Processing'">
-          <p class="muted mb-4">Applied after the query. Stored measurements and the Flux program stay unchanged.</p>
+          <p class="muted mb-4">{{ t("Applied after the query. Stored measurements and the Flux program stay unchanged.") }}</p>
           <div class="editor-fields builder-fields">
-            <label>Multiplier<input v-model.number="panel.processing.multiplier" type="number" step="any"></label>
-            <label>Offset<input v-model.number="panel.processing.offset" type="number" step="any"></label>
-            <label>Clamp minimum<input v-model.number="panel.processing.minimum" type="number" step="any" placeholder="No limit"></label>
-            <label>Clamp maximum<input v-model.number="panel.processing.maximum" type="number" step="any" placeholder="No limit"></label>
-            <label>Decimal places<input v-model.number="panel.processing.decimals" type="number" min="0" max="6"></label>
-            <label>Line width<input v-model.number="panel.processing.lineWidth" type="number" min="0.5" max="5" step="0.5"></label>
-            <label>Missing values<select v-model="panel.processing.gaps"><option>Gaps</option><option>Connect gaps</option></select></label>
+            <label>{{ t("Multiplier") }}<input v-model.number="panel.processing.multiplier" type="number" step="any"></label>
+            <label>{{ t("Offset") }}<input v-model.number="panel.processing.offset" type="number" step="any"></label>
+            <label>{{ t("Clamp minimum") }}<input v-model.number="panel.processing.minimum" type="number" step="any" :placeholder="t(&quot;No limit&quot;)"></label>
+            <label>{{ t("Clamp maximum") }}<input v-model.number="panel.processing.maximum" type="number" step="any" :placeholder="t(&quot;No limit&quot;)"></label>
+            <label>{{ t("Decimal places") }}<input v-model.number="panel.processing.decimals" type="number" min="0" max="6"></label>
+            <label>{{ t("Line width") }}<input v-model.number="panel.processing.lineWidth" type="number" min="0.5" max="5" step="0.5"></label>
+            <label>{{ t("Missing values") }}<select v-model="panel.processing.gaps"><option value="Gaps">{{ t("Gaps") }}</option><option value="Connect gaps">{{ t("Connect gaps") }}</option></select></label>
           </div>
-          <div class="app-action-row mt-4"><label class="check-field"><input v-model="panel.processing.showPoints" type="checkbox"> Show sample points</label><label class="check-field"><input v-model="panel.processing.showLegend" type="checkbox"> Show legend</label></div>
+          <div class="app-action-row mt-4"><label class="check-field"><input v-model="panel.processing.showPoints" type="checkbox"> {{ t("Show sample points") }}</label><label class="check-field"><input v-model="panel.processing.showLegend" type="checkbox"> {{ t("Show legend") }}</label></div>
         </div>
-        <div v-else class="data-preview"><p class="muted mb-3">{{ rows.length }} returned samples. The table shows up to 50. Values are plotted only when numeric.</p><v-table density="compact"><thead><tr><th>Time</th><th>Field</th><th>Raw value</th><th>Plotted value</th></tr></thead><tbody><tr v-for="(row,index) in rows.slice(0,50)" :key="index"><td>{{ row._time }}</td><td>{{ row._field }}</td><td>{{ row._value ?? '—' }}</td><td>{{ processed(row._value) }}</td></tr><tr v-if="!rows.length"><td colspan="4">Run query to inspect samples.</td></tr></tbody></v-table></div>
-        <v-alert v-if="error || validation" class="mt-4" type="error" variant="tonal" role="alert">{{ validation || error }}</v-alert><p v-if="result" class="muted mt-4" role="status">{{ result }}</p>
-        <p class="editor-note mt-5">Apply panel updates your draft. Save dashboard commits all changes to MongoDB.</p>
+        <div v-else class="data-preview"><p class="muted mb-3">{{ t('{count} returned samples. The table shows up to 50. Values are plotted only when numeric.',{count:rows.length}) }}</p><v-table density="compact"><thead><tr><th>{{ t("Time") }}</th><th>{{ t("Field") }}</th><th>{{ t("Raw value") }}</th><th>{{ t("Plotted value") }}</th></tr></thead><tbody><tr v-for="(row,index) in rows.slice(0,50)" :key="index"><td>{{ row._time }}</td><td>{{ row._field }}</td><td>{{ row._value ?? '—' }}</td><td>{{ t(processed(row._value)) }}</td></tr><tr v-if="!rows.length"><td colspan="4">{{ t("Run query to inspect samples.") }}</td></tr></tbody></v-table></div>
+        <v-alert v-if="error || validation" class="mt-4" type="error" variant="tonal" role="alert">{{ t(validation || error) }}</v-alert><p v-if="result" class="muted mt-4" role="status">{{ t(result,{count:rows.length}) }}{{ result === 'Query complete · {count} samples' && rows.some(row=>typeof row._value!=='number') ? ' · '+t('Nonnumeric samples are not plotted') : '' }}</p>
+        <p class="editor-note mt-5">{{ t("Apply panel updates your draft. Save dashboard commits all changes to MongoDB.") }}</p>
       </v-card-text>
-      <v-card-actions><v-spacer/><v-btn @click="emit('close')">Cancel</v-btn><v-btn color="primary" variant="flat" :disabled="!!validation || !panel.query.trim()" @click="emit('apply',chartDefinition(panel))">Apply panel</v-btn></v-card-actions>
+      <v-card-actions><v-spacer/><v-btn @click="emit('close')">{{ t("Cancel") }}</v-btn><v-btn color="primary" variant="flat" :disabled="!!validation || !panel.query.trim()" @click="emit('apply',chartDefinition(panel))">{{ t("Apply panel") }}</v-btn></v-card-actions>
     </v-card>
   </v-dialog>
 </template>
 <script setup>
+import { useLanguage } from '@/composables/useLanguage';
+const {t} = useLanguage();
 import { ref,computed,onBeforeUnmount } from 'vue';
 import PanelVisualization from './PanelVisualization.vue';
 import { visualizationFor, visualizationError, visualizationTypes, reducers } from '@/composables/panelVisualization.mjs';
@@ -97,7 +102,7 @@ async function loadMeasurements(){const serial=++schemaSerial;error.value='';loa
 async function loadFields(){const serial=++schemaSerial;source.value.field='';source.value.tag='';source.value.tagValue='';fields.value=[];tags.value=[];tagValues.value=[];try{const {data}=await api.schema({bucket:source.value.bucket,measurement:source.value.measurement});if(serial===schemaSerial){fields.value=data.fields;tags.value=data.tags;}}catch{if(serial===schemaSerial)error.value='Could not load fields.';}}
 async function loadTagValues(){const serial=++schemaSerial;source.value.tagValue='';tagValues.value=[];if(!source.value.tag)return;try{const {data}=await api.schema({bucket:source.value.bucket,measurement:source.value.measurement,tag:source.value.tag});if(serial===schemaSerial)tagValues.value=data.values;}catch{if(serial===schemaSerial)error.value='Could not load tag values.';}}
 function generate(){panel.value.query=buildQuery(source.value);panel.value.source=clone(source.value);tab.value='Flux';rows.value=[];result.value='Query generated. Run query to preview live data.';}
-async function run(){queryController?.abort();queryController=new AbortController();running.value=true;error.value='';result.value='';try{const {data}=await http.post('/influx',{query:resolveQuery(panel.value.query,props.range,props.window,props.timezone)},{signal:queryController.signal,timeout:30000});alignRows(data,panel.value.processing);rows.value=data;result.value=`Query complete · ${data.length} samples${data.some(row=>typeof row._value!=='number')?' · nonnumeric samples are not plotted':''}`;}catch(e){if(e.code!=='ERR_CANCELED')error.value=e.message?.includes('30 series')?e.message:'Query failed. Check Flux, field types, time range and InfluxDB availability.';}finally{running.value=false;}}
+async function run(){queryController?.abort();queryController=new AbortController();running.value=true;error.value='';result.value='';try{const {data}=await http.post('/influx',{query:resolveQuery(panel.value.query,props.range,props.window,props.timezone)},{signal:queryController.signal,timeout:30000});alignRows(data,panel.value.processing);rows.value=data;result.value='Query complete · {count} samples';}catch(e){if(e.code!=='ERR_CANCELED')error.value=e.message?.includes('30 series')?e.message:'Query failed. Check Flux, field types, time range and InfluxDB availability.';}finally{running.value=false;}}
 onBeforeUnmount(()=>{queryController?.abort();schemaSerial++;});
 </script>
 <style scoped lang="scss">

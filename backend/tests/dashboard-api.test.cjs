@@ -29,3 +29,18 @@ test('gauge settings survive the save and export API without altering the query'
   assert.deepEqual(exported,charts);
  }finally{Dashboard.findOneAndUpdate=update;Dashboard.findById=find;}
 });
+
+test('Stat settings survive the save and export API without altering the query',async()=>{
+ const update=Dashboard.findOneAndUpdate,find=Dashboard.findById;
+ const visualization={type:'stat',sparkline:false,staleAfterSeconds:300,reducer:'mean',series:null,min:-10,max:50,color:'#73bf69',showThresholds:true,thresholds:[{value:30,color:'#ffcc00'}]};
+ const charts=[{id:'stat',data:[],query:'original query',options:{chartTitle:'Temperature',unit:'°C'},layout:{x:0,y:0,w:4,h:10,i:'stat'},visualization}];
+ let stored,response,exported;
+ Dashboard.findOneAndUpdate=(filter,operation)=>({lean:async()=>{stored={_id:filter._id,...operation.$set,revision:filter.revision+1};return stored;}});
+ Dashboard.findById=()=>({lean:async()=>stored});
+ try{
+  await controller.update({params:{id:'stat-test'},body:{name:'Test',charts,revision:1}},{json(value){response=value;}});
+  assert.equal(response.revision,2);assert.deepEqual(response.charts[0].visualization,visualization);
+  await controller.exportCharts({params:{id:'stat-test'}},{setHeader(){},send(value){exported=JSON.parse(value);}});
+  assert.deepEqual(exported,charts);
+ }finally{Dashboard.findOneAndUpdate=update;Dashboard.findById=find;}
+});

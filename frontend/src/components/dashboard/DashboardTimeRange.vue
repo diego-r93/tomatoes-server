@@ -1,23 +1,25 @@
 <template>
   <v-menu v-model="open" :close-on-content-click="false" location="bottom end">
-    <template #activator="{props: menuProps}"><v-btn v-bind="menuProps" class="time-range-button" variant="outlined" :aria-label="'Time range: ' + label"><v-icon icon="mdi-clock-outline" size="16"/><span>{{ label }}</span><v-icon icon="mdi-chevron-down" size="14"/></v-btn></template>
+    <template #activator="{props: menuProps}"><v-btn v-bind="menuProps" class="time-range-button" variant="outlined" :aria-label="t('Time range: {range}',{range:label})"><v-icon icon="mdi-clock-outline" size="16"/><span>{{ label }}</span><v-icon icon="mdi-chevron-down" size="14"/></v-btn></template>
     <v-card class="time-range-picker">
       <v-form class="custom-range" @submit.prevent="apply">
-        <h2>Custom time range</h2>
-        <label class="time-label">From<div class="time-field"><input v-model="from" aria-label="From" placeholder="now-1h" spellcheck="false"><input class="calendar-input" :style="{ colorScheme: calendarScheme }" type="datetime-local" step="1" aria-label="Choose From date" :value="calendarValue(from)" @change="from = $event.target.value.replace('T',' ')"></div></label>
-        <label class="time-label">To<div class="time-field"><input v-model="to" aria-label="To" placeholder="now" spellcheck="false"><input class="calendar-input" :style="{ colorScheme: calendarScheme }" type="datetime-local" step="1" aria-label="Choose To date" :value="calendarValue(to)" @change="to = $event.target.value.replace('T',' ')"></div></label>
-        <p class="time-hint">Dates use {{ timezoneName(timezone) }}. Examples: now-90m, now-2d, or 2026-11-02 08:00:00.</p>
-        <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mb-3" role="alert">{{ error }}</v-alert>
-        <v-btn type="submit" color="primary" class="apply-range">Apply time range</v-btn>
+        <h2>{{ t("Custom time range") }}</h2>
+        <label class="time-label">{{ t("From") }}<div class="time-field"><input v-model="from" :aria-label="t(&quot;From&quot;)" placeholder="now-1h" spellcheck="false"><input class="calendar-input" :style="{ colorScheme: calendarScheme }" type="datetime-local" step="1" :aria-label="t(&quot;Choose From date&quot;)" :value="calendarValue(from)" @change="from = $event.target.value.replace('T',' ')"></div></label>
+        <label class="time-label">{{ t("To") }}<div class="time-field"><input v-model="to" :aria-label="t(&quot;To&quot;)" placeholder="now" spellcheck="false"><input class="calendar-input" :style="{ colorScheme: calendarScheme }" type="datetime-local" step="1" :aria-label="t(&quot;Choose To date&quot;)" :value="calendarValue(to)" @change="to = $event.target.value.replace('T',' ')"></div></label>
+        <p class="time-hint">{{ t('Dates use {timezone}. Examples: now-90m, now-2d, or 2026-11-02 08:00:00.',{timezone:timezoneName(timezone)}) }}</p>
+        <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mb-3" role="alert">{{ t(error) }}</v-alert>
+        <v-btn type="submit" color="primary" class="apply-range">{{ t("Apply time range") }}</v-btn>
       </v-form>
-      <section class="quick-range-section" aria-label="Quick ranges">
-        <v-text-field v-model="search" aria-label="Search quick ranges" placeholder="Search quick ranges" prepend-inner-icon="mdi-magnify" clearable hide-details variant="outlined" density="compact" class="quick-range-search"/>
-        <div class="quick-ranges"><v-btn v-for="[title, value] in filteredRanges" :key="value" variant="text" size="small" :aria-pressed="modelValue === value" @click="emit('update:modelValue', value); open = false">{{ title }}</v-btn><p v-if="!filteredRanges.length" class="empty-search" role="status">No quick ranges found.</p></div>
+      <section class="quick-range-section" :aria-label="t(&quot;Quick ranges&quot;)">
+        <v-text-field v-model="search" :aria-label="t(&quot;Search quick ranges&quot;)" :placeholder="t(&quot;Search quick ranges&quot;)" prepend-inner-icon="mdi-magnify" clearable hide-details variant="outlined" density="compact" class="quick-range-search"/>
+        <div class="quick-ranges"><v-btn v-for="[title, value] in filteredRanges" :key="value" variant="text" size="small" :aria-pressed="modelValue === value" @click="emit('update:modelValue', value); open = false">{{ t(title) }}</v-btn><p v-if="!filteredRanges.length" class="empty-search" role="status">{{ t("No quick ranges found.") }}</p></div>
       </section>
     </v-card>
   </v-menu>
 </template>
 <script setup>
+import { useLanguage } from '@/composables/useLanguage';
+const {t} = useLanguage();
 import { computed, ref, watch } from 'vue';
 import { useTheme } from 'vuetify';
 import { timeRanges } from '@/composables/dashboardUtils.mjs';
@@ -26,8 +28,8 @@ const props = defineProps({ modelValue: { type: [String, Object], required: true
 const emit = defineEmits(['update:modelValue']);
 const theme = useTheme(), calendarScheme = computed(() => theme.current.value.dark ? 'dark' : 'light');
 const open = ref(false), from = ref('now-1h'), to = ref('now'), error = ref(''), search = ref('');
-const filteredRanges = computed(() => { const term = (search.value || '').trim().toLowerCase(); return timeRanges.filter(([title, value]) => `${title} ${value}`.toLowerCase().includes(term)); });
-const label = computed(() => typeof props.modelValue === 'string' ? timeRanges.find(([, value]) => value === props.modelValue)?.[0] || 'now' + props.modelValue : `${props.modelValue.from} → ${props.modelValue.to}`);
+const filteredRanges = computed(() => { const term = (search.value || '').trim().toLowerCase(); return timeRanges.filter(([title, value]) => `${t(title)} ${title} ${value}`.toLowerCase().includes(term)); });
+const label = computed(() => typeof props.modelValue === 'string' ? t(timeRanges.find(([, value]) => value === props.modelValue)?.[0] || 'now' + props.modelValue) : `${props.modelValue.from} → ${props.modelValue.to}`);
 watch(open, value => { if (value) { from.value = typeof props.modelValue === 'string' ? 'now' + props.modelValue : props.modelValue.from; to.value = typeof props.modelValue === 'string' ? 'now' : props.modelValue.to; error.value = ''; search.value = ''; } });
 function calendarValue(value) { try { return timeInput(parseTime(value, props.timezone), props.timezone); } catch { return ''; } }
 function apply() { try { const candidate = { from: from.value.trim(), to: to.value.trim() }; rangeBounds(candidate, props.timezone); emit('update:modelValue', candidate); open.value = false; } catch (issue) { error.value = issue.message; } }

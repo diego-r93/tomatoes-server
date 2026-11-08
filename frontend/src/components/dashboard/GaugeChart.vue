@@ -13,6 +13,8 @@
   </div>
 </template>
 <script setup>
+import { useLanguage } from '@/composables/useLanguage';
+const {t} = useLanguage();
 import { computed } from 'vue';
 import { gaugeReading, gaugeColor, gaugeFraction, gaugeSegments, gaugeArc, reducers } from '@/composables/panelVisualization.mjs';
 import { processingFor } from '@/composables/dashboardUtils.mjs';
@@ -21,12 +23,12 @@ const reading = computed(() => gaugeReading(props.data, props.labels, props.conf
 const scale = computed(() => props.chart.options?.axes?.[1]?.scale || props.chart.options?.series?.[1]?.scale);
 const unit = computed(() => props.chart.options?.unit || ({ C: '°C', mb: 'MB', gb: 'GB' }[scale.value] ?? ''));
 const divisor = computed(() => scale.value === 'mb' ? 1e6 : scale.value === 'gb' ? 1e9 : 1);
-const formatted = computed(() => reading.value.value === null ? 'No data' : (reading.value.value / divisor.value).toFixed(processingFor(props.chart).decimals));
+const formatted = computed(() => reading.value.value === null ? t('No data') : (reading.value.value / divisor.value).toFixed(processingFor(props.chart).decimals));
 const fontSize = computed(() => Math.max(18, Math.min(48, 220 / Math.max(formatted.value.length, 1))));
 const fraction = computed(() => gaugeFraction(reading.value.value / divisor.value, props.config.min, props.config.max));
 const color = computed(() => gaugeColor(reading.value.value / divisor.value, props.config));
 const segments = computed(() => gaugeSegments(props.config));
-const caption = computed(() => [reading.value.label || props.chart.options?.series?.[1]?.label, reducers.find(item => item.value === props.config.reducer)?.title].filter(Boolean).join(' · '));
+const caption = computed(() => [reading.value.label || props.chart.options?.series?.[1]?.label, t(reducers.find(item => item.value === props.config.reducer)?.title || '')].filter(Boolean).join(' · '));
 const accessibleLabel = computed(() => `${props.chart.options?.chartTitle || 'Gauge'}: ${formatted.value}${reading.value.value === null ? '' : ' ' + unit.value}. Scale ${props.config.min} to ${props.config.max}. ${caption.value}`);
 const compactBound = value => new Intl.NumberFormat('en', { maximumFractionDigits: 3, notation: Math.abs(value) >= 10000 ? 'compact' : 'standard' }).format(value);
 </script>

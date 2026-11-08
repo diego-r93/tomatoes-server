@@ -24,3 +24,12 @@ test('gauge definitions survive validation intact and invalid visualization sett
  for(const update of [{type:'unknown'},{min:100,max:100},{max:'100'},{reducer:'sum'},{series:42},{color:'url(https://invalid)'},{showThresholds:1},{thresholds:[{value:90,color:'#ff0000'},{value:80,color:'#ffff00'}]},{thresholds:[{value:null,color:'#ffffff'}]},{thresholds:Array.from({length:11},(_,value)=>({value,color:'#ffffff'}))}]) assert.throws(()=>validateCharts([{...panel,visualization:{...visualization,...update}}]));
  assert.throws(()=>validateCharts([{...panel,visualization:null}]));
 });
+
+
+test('Stat settings round-trip without samples; invalid age limits and options are rejected', () => {
+ const visualization={type:'stat',reducer:'mean',series:'battery',sparkline:false,staleAfterSeconds:300,color:'#73bf69',thresholds:[{value:80,color:'#ff0000'}]};
+ const panel={...original[0],visualization};
+ assert.deepEqual(JSON.parse(JSON.stringify(validateDashboard({name:'Stat',charts:[panel]}))).charts[0].visualization,visualization);
+ assert.equal(validateCharts([{...panel,visualization:{type:'stat'}}]).length,1);
+ for(const update of [{sparkline:1},{staleAfterSeconds:0},{staleAfterSeconds:1.5},{staleAfterSeconds:604801},{reducer:'sum'},{series:42},{color:'red'}]) assert.throws(()=>validateCharts([{...panel,visualization:{...visualization,...update}}]));
+});

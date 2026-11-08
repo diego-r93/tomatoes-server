@@ -4,12 +4,13 @@ import { HttpError } from '../../users/types';
 function validateVisualization(value: any) {
   if (value === undefined) return;
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new HttpError(400, 'Panel visualization must be an object.');
-  const v = { type: 'time-series', reducer: 'last', series: null, min: 0, max: 100, color: '#73bf69', showThresholds: true, thresholds: [{ value: 80, color: '#f2cc0c' }, { value: 90, color: '#f2495c' }], ...value };
-  if (!['time-series', 'gauge'].includes(v.type)) throw new HttpError(400, 'Unsupported panel visualization.');
-  if (v.type !== 'gauge') return;
+  const v = { sparkline: true, staleAfterSeconds: 120, type: 'time-series', reducer: 'last', series: null, min: 0, max: 100, color: '#73bf69', showThresholds: true, thresholds: [{ value: 80, color: '#f2cc0c' }, { value: 90, color: '#f2495c' }], ...value };
+  if (!['time-series', 'gauge', 'stat'].includes(v.type)) throw new HttpError(400, 'Unsupported panel visualization.');
+  if (!['gauge','stat'].includes(v.type)) return;
+  if (v.type === 'stat' && (typeof v.sparkline !== 'boolean' || !Number.isInteger(v.staleAfterSeconds) || v.staleAfterSeconds < 1 || v.staleAfterSeconds > 604800)) throw new HttpError(400, 'Stat requires a sparkline option and a sample age limit from 1 to 604800 seconds.');
   if (!['last', 'mean', 'min', 'max'].includes(v.reducer)) throw new HttpError(400, 'Invalid gauge calculation.');
   if (v.series !== null && (typeof v.series !== 'string' || !v.series || v.series.length > 4096)) throw new HttpError(400, 'Invalid gauge series.');
-  if (![v.min, v.max].every(Number.isFinite) || v.max <= v.min || !Number.isFinite(v.max - v.min)) throw new HttpError(400, 'Gauge maximum must exceed minimum. Both must be finite numbers.');
+  if (v.type === 'gauge' && (![v.min, v.max].every(Number.isFinite) || v.max <= v.min || !Number.isFinite(v.max - v.min))) throw new HttpError(400, 'Gauge maximum must exceed minimum. Both must be finite numbers.');
   const color = (item: unknown) => typeof item === 'string' && /^#[0-9a-f]{6}$/i.test(item);
   if (!color(v.color) || typeof v.showThresholds !== 'boolean') throw new HttpError(400, 'Invalid gauge color or threshold display.');
   if (!Array.isArray(v.thresholds) || v.thresholds.length > 10) throw new HttpError(400, 'Use at most 10 gauge thresholds.');
