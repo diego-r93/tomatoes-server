@@ -19,6 +19,7 @@ import { validatePresentedSession, userError } from './users/http';
 import { emailSettings } from './users/mail';
 import setupBoardsRoutes from './routes/boards-routes';
 import { migrateCharts } from './database/dashboard/migrate';
+import { provisionBatteryDashboard } from './database/dashboard/battery-dashboard';
 import setupDashBoardsRoutes from './routes/dashboards-routes';
 import setupMqttRoutes from './routes/mqtt-routes';
 import { startFactoryAdmission } from './mqtt/factoryAdmission';
@@ -39,7 +40,9 @@ const mongoReady = mongoose
   .connect(url)
   .then(() => {
     console.log("Connected to the database!");
-    return Promise.all([migrateCharts(), migrateRegisteredDevices()]);
+    return Promise.all([migrateCharts(), migrateRegisteredDevices(), provisionBatteryDashboard().catch(() => {
+      console.error("Battery dashboard provisioning failed. Existing dashboards were preserved.");
+    })]);
   })
   .catch((err: Error) => {
     console.log("Cannot connect to the database!", err);
