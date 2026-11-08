@@ -4,8 +4,8 @@
       <v-col cols="12" class="d-flex justify-center"><v-img src="@/assets/images/update-logo-dark.png" max-width="280" height="120" alt="ElegantOTA" /></v-col>
       <v-col v-if="busy" cols="12" class="upload-progress">
         <div class="progress-heading">
-          <strong>Upload to server</strong>
-          <span>{{ progress === null ? 'Sending…' : `${progress}%` }}</span>
+          <strong>{{ t('Upload to server') }}</strong>
+          <span>{{ progress === null ? t('Sending…') : `${progress}%` }}</span>
         </div>
         <v-progress-linear
           :model-value="progress ?? 0"
@@ -13,45 +13,45 @@
           :color="phase === 'verifying' ? 'success' : 'primary'"
           height="8"
           rounded
-          aria-label="Firmware upload to server"
+          :aria-label="t('Firmware upload to server')"
         />
         <div v-if="phase === 'verifying'" class="board-progress" role="status">
           <v-progress-circular indeterminate color="primary" size="20" width="2" aria-hidden="true" />
-          <span>File sent. Waiting for the board to confirm installation…</span>
+          <span>{{ t('File sent. Waiting for the board to confirm installation…') }}</span>
         </div>
-        <p v-else class="firmware-note" role="status">Sending the firmware file to the server.</p>
+        <p v-else class="firmware-note" role="status">{{ t('Sending the firmware file to the server.') }}</p>
       </v-col>
       <v-col v-else-if="phase === 'success'" cols="12" class="result-state">
-        <v-alert type="success" variant="tonal" title="Firmware installed" role="status">
+        <v-alert type="success" variant="tonal" :title="t('Firmware installed')" role="status">
           {{ confirmedByRestart
-            ? 'The board came back online after the transfer. The update was confirmed by its restart.'
-            : 'The board confirmed the firmware was installed and verified. It will restart shortly.' }}
+            ? t('The board came back online after the transfer. The update was confirmed by its restart.')
+            : t('The board confirmed the firmware was installed and verified. It will restart shortly.') }}
         </v-alert>
         <p class="firmware-note" role="status">{{ restartMessage }}</p>
-        <v-btn v-if="!waitingForRestart && !onlineFirmware && online" variant="text" :loading="refreshing" @click="emit('refresh')">Refresh connection</v-btn>
-        <div class="upload-action"><v-btn variant="outlined" :disabled="waitingForRestart" @click="reset">Choose another file</v-btn></div>
+        <v-btn v-if="!waitingForRestart && !onlineFirmware && online" variant="text" :loading="refreshing" @click="emit('refresh')">{{ t('Refresh connection') }}</v-btn>
+        <div class="upload-action"><v-btn variant="outlined" :disabled="waitingForRestart" @click="reset">{{ t('Choose another file') }}</v-btn></div>
       </v-col>
       <v-col v-else-if="phase === 'error' || phase === 'unconfirmed'" cols="12" class="result-state">
         <v-alert
           :type="phase === 'unconfirmed' ? 'warning' : 'error'"
-          :title="phase === 'unconfirmed' ? 'Installation not confirmed' : 'Firmware update failed'"
+          :title="phase === 'unconfirmed' ? t('Installation not confirmed') : t('Firmware update failed')"
           variant="tonal"
           role="alert"
         >
-          {{ error }}
-          <p v-if="phase === 'unconfirmed'" class="mt-2">Check the board before trying again.</p>
+          {{ t(error) }}
+          <p v-if="phase === 'unconfirmed'" class="mt-2">{{ t('Check the board before trying again.') }}</p>
         </v-alert>
-        <div class="upload-action"><v-btn variant="outlined" @click="reset">Back to file selection</v-btn></div>
+        <div class="upload-action"><v-btn variant="outlined" @click="reset">{{ t('Back to file selection') }}</v-btn></div>
       </v-col>
       <v-col v-else cols="12">
         <DropFile :key="fileKey" @file-selected="selectFile" />
         <p v-if="selectedFile" class="selected-file">{{ selectedFile.name }} · {{ formatSize(selectedFile.size) }}</p>
-        <v-alert v-if="validationError" type="error" variant="tonal" class="mt-4" role="alert">{{ validationError }}</v-alert>
-        <div class="upload-action"><v-btn color="primary" :disabled="!selectedFile || !online || !device.ip" @click="submit">Upload</v-btn></div>
+        <v-alert v-if="validationError" type="error" variant="tonal" class="mt-4" role="alert">{{ t(validationError) }}</v-alert>
+        <div class="upload-action"><v-btn color="primary" :disabled="!selectedFile || !online || !device.ip" @click="submit">{{ t('Upload') }}</v-btn></div>
       </v-col>
       <v-col v-if="!busy && !online" cols="12" class="firmware-note">
-        <p v-if="!waitingForRestart">The device has not replied recently.</p>
-        <v-btn variant="text" :loading="refreshing" @click="emit('refresh')">Refresh connection</v-btn>
+        <p v-if="!waitingForRestart">{{ t('The device has not replied recently.') }}</p>
+        <v-btn variant="text" :loading="refreshing" @click="emit('refresh')">{{ t('Refresh connection') }}</v-btn>
       </v-col>
       <v-col v-if="sha256" cols="12" class="text-center selected-file">SHA-256 {{ sha256 }}</v-col>
       <v-col cols="12" class="text-center target-device"><v-chip variant="outlined">{{ device.host }}</v-chip><v-chip class="ml-2" color="success" variant="tonal">{{ device.ip }}</v-chip></v-col>
@@ -59,6 +59,9 @@
   </div>
 </template>
 <script setup>
+import { useLanguage } from '@/composables/useLanguage';
+const { t } = useLanguage();
+
 import { computed, ref, watch } from 'vue';
 import DropFile from './DropZone.vue';
 import OTAService from '@/services/OTAService';
@@ -70,8 +73,8 @@ const restart = ref(null);
 const onlineFirmware = ref('');
 const waitingForRestart = computed(() => restart.value && !onlineFirmware.value && props.clock < restart.value.deadline);
 const restartMessage = computed(() => {
-  if (onlineFirmware.value) return `Back online, firmware ${onlineFirmware.value}`;
-  return waitingForRestart.value ? 'Waiting for the board to restart' : 'The board did not restart yet';
+  if (onlineFirmware.value) return t('Back online, firmware {fw}', { fw: onlineFirmware.value });
+  return waitingForRestart.value ? t('Waiting for the board to restart') : t('The board did not restart yet');
 });
 watch([() => props.device, () => props.online, restart], ([device, online, update]) => {
   if (!update || !device.fw || onlineFirmware.value) return;

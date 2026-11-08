@@ -1,20 +1,18 @@
 <template>
   <v-container fluid class="app-page">
-    <AppPageHeader title="Devices / Registration" icon="mdi-chip" />
+    <AppPageHeader :title="t('Devices / Registration')" icon="mdi-chip" />
     <header class="app-page-heading">
       <div>
-        <h1 class="app-page-title">Registration</h1>
-        <p>Review factory devices and installed boards.</p>
+        <h1 class="app-page-title">{{ t('Registration') }}</h1>
+        <p>{{ t('Review factory devices and installed boards.') }}</p>
       </div>
-      <v-btn variant="outlined" prepend-icon="mdi-refresh" :loading="loading" @click="refresh">
-        Refresh
-      </v-btn>
+      <v-btn variant="outlined" prepend-icon="mdi-refresh" :loading="loading" @click="refresh"> {{ t('Refresh') }} </v-btn>
     </header>
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-4" role="alert">
-      {{ error }}
+      {{ t(error) }}
     </v-alert>
-    <v-progress-linear v-if="loading" indeterminate aria-label="Loading board registration" />
+    <v-progress-linear v-if="loading" indeterminate :aria-label="t('Loading board registration')" />
 
     <section v-for="section in sections" :key="section.status" class="mt-6">
       <h2 class="app-section-title mb-3">{{ section.title }} · {{ section.boards.length }}</h2>
@@ -22,8 +20,8 @@
         <v-table>
           <thead>
             <tr>
-              <th scope="col">Hostname</th><th scope="col">Model</th><th scope="col">Firmware</th>
-              <th scope="col">PSRAM</th><th scope="col">First seen</th><th scope="col">Connection</th><th scope="col">Actions</th>
+              <th scope="col">{{ t('Hostname') }}</th><th scope="col">{{ t('Model') }}</th><th scope="col">{{ t('Firmware') }}</th>
+              <th scope="col">PSRAM</th><th scope="col">{{ t('First seen') }}</th><th scope="col">{{ t('Connection') }}</th><th scope="col">{{ t('Actions') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -32,16 +30,16 @@
               <td>{{ board.model || '—' }}</td>
               <td>{{ board.fw || '—' }}</td>
               <td>{{ board.psramMB == null ? '—' : board.psramMB + ' MB' }}</td>
-              <td>{{ formatDateTime(board.firstSeen, 'Browser', 'Not observed') }}</td>
+              <td>{{ formatDateTime(board.firstSeen, 'Browser', t('Not observed')) }}</td>
               <td>{{ connectionLabel(board) }}</td>
               <td>
-                <v-btn v-if="board.status === 'removed'" size="small" variant="text" color="primary" @click="confirm = { board, action: 'restore' }">Restore to pending</v-btn>
+                <v-btn v-if="board.status === 'removed'" size="small" variant="text" color="primary" @click="confirm = { board, action: 'restore' }">{{ t('Restore to pending') }}</v-btn>
                 <template v-else-if="board.factoryAuthenticated">
-                  <v-btn v-if="board.status === 'pending'" size="small" variant="text" color="primary" @click="confirm = { board, action: 'approve' }">Approve</v-btn>
-                  <v-btn v-if="board.status === 'pending'" size="small" variant="text" color="error" @click="confirm = { board, action: 'reject' }">Reject</v-btn>
-                  <v-btn v-else size="small" variant="text" color="error" @click="confirm = { board, action: 'remove' }">Remove</v-btn>
+                  <v-btn v-if="board.status === 'pending'" size="small" variant="text" color="primary" @click="confirm = { board, action: 'approve' }">{{ t('Approve') }}</v-btn>
+                  <v-btn v-if="board.status === 'pending'" size="small" variant="text" color="error" @click="confirm = { board, action: 'reject' }">{{ t('Reject') }}</v-btn>
+                  <v-btn v-else size="small" variant="text" color="error" @click="confirm = { board, action: 'remove' }">{{ t('Remove') }}</v-btn>
                 </template>
-                <span v-else-if="!waitingForReconnect(board)">Factory certificate not observed</span>
+                <span v-else-if="!waitingForReconnect(board)">{{ t('Factory certificate not observed') }}</span>
               </td>
             </tr>
             <tr v-if="!section.boards.length && !loading">
@@ -52,18 +50,18 @@
       </v-card>
     </section>
     <v-dialog :model-value="Boolean(confirm)" :persistent="saving" max-width="480" @update:model-value="!$event && (confirm = null)">
-      <v-card v-if="confirm" :title="actionLabels[confirm.action] + ' board?'">
+      <v-card v-if="confirm" :title="t(actionLabels[confirm.action] + ' board?')">
         <v-card-text>
           <strong>{{ confirm.board.host }}</strong>
-          <p v-if="confirm.action === 'approve'">This grants operational access and creates any missing outputs with empty schedules.</p>
-          <p v-else-if="confirm.action === 'restore'">The board can connect with its factory certificate and will need approval again. Existing pump records are kept.</p>
-          <p v-else>The board is disconnected immediately and future MQTT connections are refused. Existing pump records are kept.</p>
-          <v-alert v-if="actionError" type="error" variant="tonal" class="mt-3">{{ actionError }}</v-alert>
+          <p v-if="confirm.action === 'approve'">{{ t('This grants operational access and creates any missing outputs with empty schedules.') }}</p>
+          <p v-else-if="confirm.action === 'restore'">{{ t('The board can connect with its factory certificate and will need approval again. Existing pump records are kept.') }}</p>
+          <p v-else>{{ t('The board is disconnected immediately and future MQTT connections are refused. Existing pump records are kept.') }}</p>
+          <v-alert v-if="actionError" type="error" variant="tonal" class="mt-3">{{ t(actionError) }}</v-alert>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn :disabled="saving" @click="confirm = null">Cancel</v-btn>
-          <v-btn :loading="saving" :color="['approve', 'restore'].includes(confirm.action) ? 'primary' : 'error'" @click="applyAction">{{ actionLabels[confirm.action] }}</v-btn>
+          <v-btn :disabled="saving" @click="confirm = null">{{ t('Cancel') }}</v-btn>
+          <v-btn :loading="saving" :color="['approve', 'restore'].includes(confirm.action) ? 'primary' : 'error'" @click="applyAction">{{ t(actionLabels[confirm.action]) }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -71,6 +69,9 @@
 </template>
 
 <script setup>
+import { useLanguage } from '@/composables/useLanguage';
+const { t } = useLanguage();
+
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AppPageHeader from '@/components/navigation/AppPageHeader.vue';
 import { formatDateTime } from '@/composables/dateTime.mjs';
@@ -107,9 +108,9 @@ async function applyAction() {
 }
 
 const sections = computed(() => [
-  { status: 'pending', title: 'New boards', empty: 'No boards awaiting approval.' },
-  { status: 'approved', title: 'Installed boards', empty: 'No installed boards.' },
-  { status: 'removed', title: 'Removed boards', empty: 'No removed boards.' },
+  { status: 'pending', title: t('New boards'), empty: t('No boards awaiting approval.') },
+  { status: 'approved', title: t('Installed boards'), empty: t('No installed boards.') },
+  { status: 'removed', title: t('Removed boards'), empty: t('No removed boards.') },
 ].map(section => ({ ...section, boards: boards.value.filter(board => board.status === section.status) })));
 
 function waitingForReconnect(board) {
@@ -119,9 +120,9 @@ function waitingForReconnect(board) {
 }
 
 function connectionLabel(board) {
-  if (board.status === 'removed') return 'Blocked';
-  if (board.online) return 'Online';
-  return waitingForReconnect(board) ? 'Waiting for the board to reconnect (up to 2 min)' : 'Not seen';
+  if (board.status === 'removed') return t('Blocked');
+  if (board.online) return t('Online');
+  return waitingForReconnect(board) ? t('Waiting for the board to reconnect (up to 2 min)') : t('Not seen');
 }
 
 async function refresh(force = false) {

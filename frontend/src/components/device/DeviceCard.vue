@@ -1,13 +1,16 @@
 <template>
   <v-card variant="outlined" class="device-card" :class="{ 'device-card--selected': selected }">
-    <div class="device-card-top"><v-icon icon="mdi-chip" size="19" color="muted" /><span class="connection-status" :class="{ 'connection-status--online': online }">{{ online ? 'Online' : 'Not seen' }}</span></div>
+    <div class="device-card-top"><v-icon icon="mdi-chip" size="19" color="muted" /><span class="connection-status" :class="{ 'connection-status--online': online }">{{ online ? t('Online') : t('Not seen') }}</span></div>
     <button class="device-name" type="button" @click="$emit('select', device.key)">{{ device.host }}</button>
-    <div class="device-card-network"><span>{{ device.ip || 'No IP reported' }}</span><span :class="{ 'text-warning': online && weakSignal(device) }"><v-icon icon="mdi-wifi" size="15" /> {{ online ? signalText(device) : '—' }}</span></div>
-    <p v-if="showMac" class="device-card-mac">{{ device.mac || 'No MAC reported' }}</p>
-    <div class="device-card-footer"><span>{{ online ? `${device.outputs.filter(output => output.state === true).length} / ${device.outputs.length} outputs ON` : `Seen ${lastSeenLabel(device.receivedAt, clock)}` }}</span><v-btn variant="text" size="small" @click="$emit('select', device.key)">View</v-btn></div>
+    <div class="device-card-network"><span>{{ device.ip || t('No IP reported') }}</span><span :class="{ 'text-warning': online && weakSignal(device) }"><v-icon icon="mdi-wifi" size="15" /> {{ online ? t(signalText(device)) : '—' }}</span></div>
+    <p v-if="showMac" class="device-card-mac">{{ device.mac || t('No MAC reported') }}</p>
+    <div class="device-card-footer"><span>{{ online ? `${device.outputs.filter(output => output.state === true).length} / ${device.outputs.length} outputs ON` : `Seen ${lastSeenLabel(device.receivedAt, clock, t)}` }}</span><v-btn variant="text" size="small" @click="$emit('select', device.key)">{{ t('View') }}</v-btn></div>
   </v-card>
 </template>
 <script setup>
+import { useLanguage } from '@/composables/useLanguage';
+const { t } = useLanguage();
+
 import { lastSeenLabel, signalText, weakSignal } from '@/composables/deviceInventoryUtils';
 defineProps({ device: { type: Object, required: true }, online: Boolean, selected: Boolean, showMac: Boolean, clock: Number });
 defineEmits(['select']);

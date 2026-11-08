@@ -1,13 +1,16 @@
 <template>
   <div class="device-information">
-    <p class="information-host">{{ device.host }}</p><p class="information-note">Hardware identity and the latest information reported by this device.</p>
-    <section><h3>Identity & network</h3><dl class="information-grid"><div><dt>Hostname</dt><dd>{{ device.host }}</dd></div><div><dt>MAC address</dt><dd>{{ device.mac || 'Not reported' }}</dd></div><div><dt>IP address</dt><dd>{{ device.ip || 'Not reported' }}</dd></div><div><dt>Discovery status</dt><dd>{{ online ? 'Online' : 'Not seen recently' }}</dd></div><div><dt>Wi-Fi signal</dt><dd>{{ signalText(device) }}</dd></div><div><dt>Last discovery response</dt><dd>{{ lastSeenLabel(device.receivedAt, clock) }}</dd></div><div><dt>Response received at</dt><dd>{{ formatDateTime(device.receivedAt, 'Browser', 'Not observed') }}</dd></div><div v-if="device.datetime"><dt>Device timestamp</dt><dd>{{ formatDeviceTime(device.datetime) }}</dd></div></dl></section>
-    <section v-if="reportedDetails.length"><h3>Reported system information</h3><dl class="information-grid"><div v-for="item in reportedDetails" :key="item.label"><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div></dl></section>
-    <section><div class="outputs-heading"><h3>Reported outputs</h3><span>{{ onCount }} ON · {{ offCount }} OFF{{ unknownCount ? ` · ${unknownCount} unknown` : '' }}</span></div><v-table v-if="device.outputs.length" class="information-outputs"><thead><tr><th>GPIO</th><th>Output</th><th>State</th><th>Schedule source</th><th>Reported version</th><th>Sync</th></tr></thead><tbody><tr v-for="output in device.outputs" :key="output.gpio"><td>{{ output.gpio }}</td><td>{{ output.label }}</td><td>{{ output.state === null ? 'Unknown' : output.state ? 'ON' : 'OFF' }}</td><td>{{ scheduleInfo(output.code).source }}</td><td>{{ scheduleInfo(output.code).version }}</td><td>{{ scheduleInfo(output.code).status }}</td></tr></tbody></v-table><p v-else class="information-note">No outputs were reported.</p></section>
-    <p class="information-note">Read-only snapshot. Connection status is based on discovery responses. Device time and server reception time may differ.</p>
+    <p class="information-host">{{ device.host }}</p><p class="information-note">{{ t('Hardware identity and the latest information reported by this device.') }}</p>
+    <section><h3>{{ t('Identity & network') }}</h3><dl class="information-grid"><div><dt>{{ t('Hostname') }}</dt><dd>{{ device.host }}</dd></div><div><dt>{{ t('MAC address') }}</dt><dd>{{ device.mac || t('Not reported') }}</dd></div><div><dt>{{ t('IP address') }}</dt><dd>{{ device.ip || t('Not reported') }}</dd></div><div><dt>{{ t('Discovery status') }}</dt><dd>{{ online ? t('Online') : t('Not seen recently') }}</dd></div><div><dt>{{ t('Wi-Fi signal') }}</dt><dd>{{ t(signalText(device)) }}</dd></div><div><dt>{{ t('Last discovery response') }}</dt><dd>{{ lastSeenLabel(device.receivedAt, clock, t) }}</dd></div><div><dt>{{ t('Response received at') }}</dt><dd>{{ formatDateTime(device.receivedAt, 'Browser', t('Not observed')) }}</dd></div><div v-if="device.datetime"><dt>{{ t('Device timestamp') }}</dt><dd>{{ formatDeviceTime(device.datetime) }}</dd></div></dl></section>
+    <section v-if="reportedDetails.length"><h3>{{ t('Reported system information') }}</h3><dl class="information-grid"><div v-for="item in reportedDetails" :key="item.label"><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div></dl></section>
+    <section><div class="outputs-heading"><h3>{{ t('Reported outputs') }}</h3><span>{{ onCount }} ON · {{ offCount }} OFF{{ unknownCount ? ' · ' + t('{count} unknown', { count: unknownCount }) : '' }}</span></div><v-table v-if="device.outputs.length" class="information-outputs"><thead><tr><th>GPIO</th><th>{{ t('Output') }}</th><th>{{ t('State') }}</th><th>{{ t('Schedule source') }}</th><th>{{ t('Reported version') }}</th><th>{{ t('Sync') }}</th></tr></thead><tbody><tr v-for="output in device.outputs" :key="output.gpio"><td>{{ output.gpio }}</td><td>{{ output.label }}</td><td>{{ output.state === null ? t('Unknown') : output.state ? 'ON' : 'OFF' }}</td><td>{{ t(scheduleInfo(output.code).source) }}</td><td>{{ scheduleInfo(output.code).version }}</td><td>{{ scheduleInfo(output.code).status }}</td></tr></tbody></v-table><p v-else class="information-note">{{ t('No outputs were reported.') }}</p></section>
+    <p class="information-note">{{ t('Read-only snapshot. Connection status is based on discovery responses. Device time and server reception time may differ.') }}</p>
   </div>
 </template>
 <script setup>
+import { useLanguage } from '@/composables/useLanguage';
+const { t } = useLanguage();
+
 import { formatDateTime, formatDeviceTime } from '@/composables/dateTime.mjs';
 import { computed } from 'vue';
 import { lastSeenLabel, signalText } from '@/composables/deviceInventoryUtils';
@@ -20,25 +23,25 @@ function scheduleInfo(code) {
   const expected = props.device.scheduleVersions?.[code];
   const source = port?.configSource || 'Not reported';
   const version = port?.configVersion || '—';
-  if (!expected) return { source, version, status: 'No server schedule' };
-  if (!props.online) return { source, version, status: 'Awaiting device' };
-  if (source !== 'mqtt') return { source, version, status: 'Waiting for MQTT' };
-  return { source, version, status: version === expected ? 'In sync' : 'Version mismatch' };
+  if (!expected) return { source, version, status: t('No server schedule') };
+  if (!props.online) return { source, version, status: t('Awaiting device') };
+  if (source !== 'mqtt') return { source, version, status: t('Waiting for MQTT') };
+  return { source, version, status: version === expected ? t('In sync') : t('Version mismatch') };
 }
 const reportedDetails = computed(() => {
   const source = props.device;
   const fields = [
-    ['Board model', [source.model]],
-    ['MQTT TLS', [typeof source.mqttTls === 'boolean' ? (source.mqttTls ? 'On' : 'Off') : undefined]],
-    ['Chip model', [source.chipModel, source.chip_model, source.chip?.model]],
-    ['Firmware version', [source.fw, source.firmwareVersion, source.firmware_version, source.firmware?.version]],
-    ['SDK version', [source.sdkVersion, source.sdk_version]],
-    ['Reported uptime (seconds)', [source.uptime_s]],
-    ['Reported uptime', [source.uptime_s == null ? source.uptime : undefined]],
-    ['Last reset reason', [source.reset]],
-    ['Free heap (bytes)', [source.freeHeapBytes]],
-    ['Free heap (reported)', [source.freeHeap, source.free_heap]],
-    ['CPU frequency (MHz)', [source.cpuFrequencyMhz, source.cpu_frequency_mhz]],
+    [t('Board model'), [source.model]],
+    ['MQTT TLS', [typeof source.mqttTls === 'boolean' ? (source.mqttTls ? t('On') : t('Off')) : undefined]],
+    [t('Chip model'), [source.chipModel, source.chip_model, source.chip?.model]],
+    [t('Firmware version'), [source.fw, source.firmwareVersion, source.firmware_version, source.firmware?.version]],
+    [t('SDK version'), [source.sdkVersion, source.sdk_version]],
+    [t('Reported uptime (seconds)'), [source.uptime_s]],
+    [t('Reported uptime'), [source.uptime_s == null ? source.uptime : undefined]],
+    [t('Last reset reason'), [source.reset]],
+    [t('Free heap (bytes)'), [source.freeHeapBytes]],
+    [t('Free heap (reported)'), [source.freeHeap, source.free_heap]],
+    [t('CPU frequency (MHz)'), [source.cpuFrequencyMhz, source.cpu_frequency_mhz]],
   ];
   return fields.flatMap(([label, candidates]) => { const value = candidates.find(item => (typeof item === 'string' && item.trim()) || (typeof item === 'number' && Number.isFinite(item))); return value === undefined ? [] : [{ label, value }]; });
 });

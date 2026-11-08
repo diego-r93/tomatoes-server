@@ -1,21 +1,24 @@
 <template>
   <v-card variant="outlined" class="device-details">
-    <div class="details-heading"><h2 class="app-section-title">Device details</h2><v-btn variant="text" size="small" icon="mdi-close" aria-label="Close device details" @click="$emit('close')" /></div>
-    <h3 class="device-host">{{ device.host }}</h3><span class="connection-status" :class="{ 'connection-status--online': online }">{{ online ? 'Online' : 'Not seen' }}</span>
-    <dl><div><dt>IP address</dt><dd>{{ device.ip || 'Not reported' }}</dd></div><div><dt>MAC address</dt><dd>{{ device.mac || 'Not reported' }}</dd></div><div><dt>Signal strength</dt><dd :class="{ 'text-warning': online && weakSignal(device) }">{{ online ? signalText(device) : '—' }}</dd></div><div><dt>Last discovery response</dt><dd>{{ lastSeenLabel(device.receivedAt, clock) }}</dd></div><div v-if="device.datetime"><dt>Device timestamp</dt><dd>{{ formatDeviceTime(device.datetime) }}</dd></div></dl>
-    <section class="outputs-section"><h3>Manual outputs</h3>
-      <div v-for="output in device.outputs" :key="output.gpio" class="output-row"><div><span>GPIO {{ output.gpio }}</span><small>{{ output.label }}</small></div><div class="output-control"><v-switch :key="`${device.key}:${output.gpio}:${controlRevision}`" :model-value="output.state === true" color="primary" hide-details :loading="Boolean(pending[`${device.key}:${output.gpio}`])" :disabled="readonly || !online || sending || allOffPending || output.state === null || Boolean(pending[`${device.key}:${output.gpio}`])" :aria-label="`GPIO ${output.gpio} on ${device.host}`" @update:model-value="requestChange(output, $event)" /><span>{{ output.state === null ? 'Unknown' : output.state ? 'ON' : 'OFF' }}</span></div></div>
+    <div class="details-heading"><h2 class="app-section-title">{{ t('Device details') }}</h2><v-btn variant="text" size="small" icon="mdi-close" :aria-label="t('Close device details')" @click="$emit('close')" /></div>
+    <h3 class="device-host">{{ device.host }}</h3><span class="connection-status" :class="{ 'connection-status--online': online }">{{ online ? t('Online') : t('Not seen') }}</span>
+    <dl><div><dt>{{ t('IP address') }}</dt><dd>{{ device.ip || t('Not reported') }}</dd></div><div><dt>{{ t('MAC address') }}</dt><dd>{{ device.mac || t('Not reported') }}</dd></div><div><dt>{{ t('Signal strength') }}</dt><dd :class="{ 'text-warning': online && weakSignal(device) }">{{ online ? t(signalText(device)) : '—' }}</dd></div><div><dt>{{ t('Last discovery response') }}</dt><dd>{{ lastSeenLabel(device.receivedAt, clock, t) }}</dd></div><div v-if="device.datetime"><dt>{{ t('Device timestamp') }}</dt><dd>{{ formatDeviceTime(device.datetime) }}</dd></div></dl>
+    <section class="outputs-section"><h3>{{ t('Manual outputs') }}</h3>
+      <div v-for="output in device.outputs" :key="output.gpio" class="output-row"><div><span>GPIO {{ output.gpio }}</span><small>{{ output.label }}</small></div><div class="output-control"><v-switch :key="`${device.key}:${output.gpio}:${controlRevision}`" :model-value="output.state === true" color="primary" hide-details :loading="Boolean(pending[`${device.key}:${output.gpio}`])" :disabled="readonly || !online || sending || allOffPending || output.state === null || Boolean(pending[`${device.key}:${output.gpio}`])" :aria-label="`GPIO ${output.gpio} on ${device.host}`" @update:model-value="requestChange(output, $event)" /><span>{{ output.state === null ? t('Unknown') : output.state ? 'ON' : 'OFF' }}</span></div></div>
       <v-btn v-if="!readonly && device.outputs.length" class="mt-4 all-off-button" block color="error" variant="flat" size="large"
         prepend-icon="mdi-power" :loading="allOffPending"
         :disabled="!online || sending || allOffPending || device.outputs.some(output => pending[`${device.key}:${output.gpio}`])"
-        @click="$emit('all-off', { deviceKey: device.key, host: device.host, allOff: true })">Turn all outputs off</v-btn>
-      <p v-if="!device.outputs.length" class="details-note">No outputs were reported by this device.</p>
-      <p v-else class="details-note">{{ readonly ? 'Last reported output states. Open Devices to send a manual command.' : online ? 'Every manual change requires confirmation. States update only after a device response.' : 'This device did not respond recently. Last reported states are shown; manual control is unavailable.' }}</p>
+        @click="$emit('all-off', { deviceKey: device.key, host: device.host, allOff: true })">{{ t('Turn all outputs off') }}</v-btn>
+      <p v-if="!device.outputs.length" class="details-note">{{ t('No outputs were reported by this device.') }}</p>
+      <p v-else class="details-note">{{ readonly ? t('Last reported output states. Open Devices to send a manual command.') : online ? t('Every manual change requires confirmation. States update only after a device response.') : t('This device did not respond recently. Last reported states are shown; manual control is unavailable.') }}</p>
     </section>
-    <div class="details-actions"><v-btn variant="outlined" size="small" prepend-icon="mdi-information-outline" @click="$emit('information', device)">Information</v-btn><v-btn v-if="canUpdateFirmware" variant="outlined" size="small" prepend-icon="mdi-upload" :disabled="!online || !device.ip || sending" @click="$emit('firmware', device)">Firmware</v-btn></div>
+    <div class="details-actions"><v-btn variant="outlined" size="small" prepend-icon="mdi-information-outline" @click="$emit('information', device)">{{ t('Information') }}</v-btn><v-btn v-if="canUpdateFirmware" variant="outlined" size="small" prepend-icon="mdi-upload" :disabled="!online || !device.ip || sending" @click="$emit('firmware', device)">{{ t('Firmware') }}</v-btn></div>
   </v-card>
 </template>
 <script setup>
+import { useLanguage } from '@/composables/useLanguage';
+const { t } = useLanguage();
+
 import { formatDeviceTime } from '@/composables/dateTime.mjs';
 import { ref } from 'vue';
 import { lastSeenLabel, signalText, weakSignal } from '@/composables/deviceInventoryUtils';

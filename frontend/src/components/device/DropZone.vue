@@ -5,14 +5,17 @@
         accept=".bin" />
 
       <label :for="inputId" class="file-label">
-        <div v-if="isDragging">Release to drop files here.</div>
-        <div v-else>Drop a .bin file here or <u>click here</u> to upload.</div>
+        <div v-if="isDragging">{{ t('Release to drop files here.') }}</div>
+        <div v-else>{{ t('Drop a .bin file here or') }} <u>{{ t('click here') }}</u> {{ t('to upload.') }}</div>
       </label>
     </div>
   </div>
 </template>
 
 <script setup>
+import { useLanguage } from '@/composables/useLanguage';
+const { t } = useLanguage();
+
 import { ref, useId } from 'vue';
 const props = defineProps({ disabled: Boolean });
 const inputId = useId();

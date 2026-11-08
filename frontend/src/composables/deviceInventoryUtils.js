@@ -30,8 +30,11 @@ export const weakSignal = device => device.rssi !== null && device.rssi <= -75;
 export function signalText(device) {
   return device.rssi === null ? 'Unknown' : `${device.rssi} dBm`;
 }
-export function lastSeenLabel(timestamp, current = Date.now()) {
-  if (!timestamp) return 'Not observed';
+export function lastSeenLabel(timestamp, current = Date.now(), translate = (message, values = {}) => message.replace('{count}', values.count)) {
+  if (!timestamp) return translate('Not observed');
   const seconds = Math.max(0, Math.floor((current - timestamp) / 1000));
-  return seconds < 5 ? 'Just now' : seconds < 60 ? `${seconds} sec ago` : seconds < 3600 ? `${Math.floor(seconds / 60)} min ago` : `${Math.floor(seconds / 3600)} hr ago`;
+  if (seconds < 5) return translate('Just now');
+  if (seconds < 60) return translate('{count} sec ago', { count: seconds });
+  if (seconds < 3600) return translate('{count} min ago', { count: Math.floor(seconds / 60) });
+  return translate('{count} hr ago', { count: Math.floor(seconds / 3600) });
 }
