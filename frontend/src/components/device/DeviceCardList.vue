@@ -6,15 +6,13 @@
 
     <header class="app-page-heading"><div><h1 class="app-page-title">{{ t('Devices') }}</h1><p>{{ t('Your controllers, connections and outputs in one place.') }}</p></div><span v-if="hasLoaded" class="inventory-count">{{ t(devices.length === 1 ? '{count} known device' : '{count} known devices', { count: devices.length }) }}</span></header>
 
-    <v-alert v-if="notice" color="secondary" variant="tonal" closable class="mb-4" role="status" @click:close="notice = ''">{{ t(notice, noticeParameters) }}</v-alert>
+    <v-snackbar :model-value="Boolean(notice)" location="bottom start" :timeout="8000" color="secondary" :max-width="560" role="status" @update:model-value="!$event && (notice = '')">
+      {{ t(notice, noticeParameters) }}
+      <template #actions><v-btn variant="text" icon="mdi-close" :aria-label="t('Close')" @click="notice = ''" /></template>
+    </v-snackbar>
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-4" role="alert">{{ t(error) }}<template #append><v-btn variant="text" :disabled="loading" @click="refresh">{{ t('Retry') }}</v-btn></template></v-alert>
 
-    <v-alert v-if="feedbackError" type="warning" variant="tonal" class="mb-4">{{ t('Driver feedback updates are unavailable. Last observations are shown.') }}</v-alert>
-    <v-alert v-if="pumpIssues.length" type="warning" variant="tonal" class="mb-4" role="status">
-      <strong>{{ t('Pump driver needs attention') }}</strong>
-      <div v-for="issue in pumpIssues" :key="issue.code"><v-btn variant="text" size="small" @click="selectedKey = issue.deviceKey">{{ issue.host }} #{{ issue.pump }}</v-btn> {{ t(driverMessage(issue.result)) }}</div>
-    </v-alert>
     <div v-if="initialLoading" class="app-loading-state" role="status"><v-progress-circular :size="52" :width="4" indeterminate color="secondary" /><h2 class="app-section-title">{{ t('Loading devices…') }}</h2><p>{{ t('Waiting for device responses.') }}</p></div>
 
     <template v-else>
@@ -25,7 +23,7 @@
 
       <div class="inventory-meta"><span aria-live="polite">{{ t(filtered.length === 1 ? '{count} device in this view' : '{count} devices in this view', { count: filtered.length }) }}</span><span>{{ lastRefresh ? t('Last refreshed {time}', { time: lastSeenLabel(lastRefresh, clock, t) }) : t('Not refreshed yet') }}{{ settings.refreshSeconds ? ' · ' + t('Auto-refresh {seconds}s', { seconds: settings.refreshSeconds }) : ' · ' + t('Auto-refresh off') }}</span></div>
 
-      <v-progress-linear v-if="loading" indeterminate color="secondary" class="mb-3" :aria-label="t('Refreshing devices')" />
+      <div class="inventory-progress"><v-progress-linear :style="{ visibility: loading ? 'visible' : 'hidden' }" :active="loading" indeterminate color="secondary" :aria-hidden="!loading" :aria-label="t('Refreshing devices')" /></div>
 
       <div class="device-inventory" :class="{ 'device-inventory--details': selectedDevice }">
 
@@ -49,6 +47,11 @@
 
       </div>
 
+    <v-alert v-if="feedbackError" type="warning" variant="tonal" class="mt-4">{{ t('Driver feedback updates are unavailable. Last observations are shown.') }}</v-alert>
+    <v-alert v-if="pumpIssues.length" type="warning" variant="tonal" class="mt-4" role="status">
+      <strong>{{ t('Pump driver needs attention') }}</strong>
+      <div v-for="issue in pumpIssues" :key="issue.code"><v-btn variant="text" size="small" @click="selectedKey = issue.deviceKey">{{ issue.host }} #{{ issue.pump }}</v-btn> {{ t(driverMessage(issue.result)) }}</div>
+    </v-alert>
       <footer class="devices-footer"><span>Tomatoes v1.0.0</span><span>{{ t('Online: replied within 90 seconds · Not seen: no recent reply') }}</span></footer>
 
     </template>
@@ -198,6 +201,7 @@ watch(overlayDevice, device => { if (overlayKind.value === 'firmware' && !firmwa
 
 .firmware-dialog-title { display: flex; justify-content: space-between; align-items: center; gap: 12px; }.overlay-unavailable { min-height: 180px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; color: rgb(var(--v-theme-muted)); }
 
+.inventory-progress { height: 4px; margin-bottom: 12px; }
 .inventory-count { color: rgb(var(--v-theme-muted)); font-size: 12px; border: 1px solid rgb(var(--v-theme-border)); border-radius: 4px; padding: 4px 9px; }.devices-tools { display: grid; grid-template-columns: minmax(220px, 1fr) 190px 130px; gap: 12px; margin-bottom: 20px; }.connection-filters { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 14px; }.filter-count { margin-left: 8px; padding: 0 4px; border-radius: 3px; background: rgba(var(--v-theme-on-surface), .05); font-size: 12px; }.inventory-meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 12px; color: rgb(var(--v-theme-muted)); margin-bottom: 12px; }.device-inventory { display: grid; gap: 20px; align-items: start; }.device-inventory--details { grid-template-columns: minmax(0, 1fr) 320px; }.inventory-results { min-width: 0; }.device-table-card { border-color: rgb(var(--v-theme-border)); }.device-table { background: transparent; }.device-table :deep(table) { width: 100%; table-layout: fixed; }.device-table :deep(td) { height: 64px; }.device-table :deep(th:first-child) { width: 30%; }.device-table :deep(th:nth-child(2)) { width: 17%; }.device-table :deep(th:last-child) { width: 13%; }.device-table :deep(td) { overflow-wrap: anywhere; }.device-table :deep(td small) { display: block; color: rgb(var(--v-theme-muted)); font-size: 12px; margin-top: 4px; }.device-name { border: 0; padding: 0; text-align: left; color: inherit; background: transparent; font-weight: 500; overflow-wrap: anywhere; }.device-name:hover { text-decoration: underline; }.selected-row { background: rgb(var(--v-theme-selection)); }.connection-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: rgb(var(--v-theme-muted)); white-space: nowrap; }.connection-status:before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }.connection-status--online { color: rgb(var(--v-theme-success)); }.signal-reading { white-space: nowrap; font-size: 12px; }.device-inventory--details .network-column, .device-inventory--details .outputs-column { display: none; }.device-inventory--details .device-table :deep(th:first-child) { width: 48%; }.device-inventory--details .device-table :deep(th:nth-child(2)) { width: 30%; }.device-inventory--details .device-table :deep(th:last-child) { width: 22%; }
 
 .device-cards { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; }.device-inventory--details .device-cards { grid-template-columns: repeat(2,minmax(0,1fr)); }.device-card-placeholder { min-height: 184px; }.inventory-pagination { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; color: rgb(var(--v-theme-muted)); font-size: 12px; }.devices-footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 12px; color: rgb(var(--v-theme-muted)); margin-top: 24px; }.settings-note { color: rgb(var(--v-theme-muted)); font-size: 12px; margin-top: 14px; }
