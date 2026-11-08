@@ -57,3 +57,14 @@ The original dashboard ID remains `existing-charts` so bookmarks keep working, b
 ESP32 Boards contains nine panels for `esp32s3-07945C`: the existing pH, conductivity and NTC panels, plus SHT35 air temperature and humidity, compensated conductivity, TDS, sensor internal temperature and sensor supply voltage. New queries were checked against finite recent samples. The CN0326 external temperature feed returned infinity and was excluded. TDS is shown without an assumed unit because its MQTT payload does not specify one.
 
 The reorganization preserved all eight original queries and current user layouts, with positions repacked for the separate dashboards. Definitions before and after the change are backed up in `/home/diego/tomatoes-server-backups/dashboard-organized-20261102/`. This is a migration of this installation, not a new automatic seeder or a source of simulated telemetry.
+
+
+## Stat panels and dashboard languages (2026-11-08)
+
+Choose **Stat** in the panel editor's Visualization selector. It shares the existing Flux query, dashboard range, transformations, refresh and inspector. Select Last non-null, Mean, Minimum or Maximum and a returned series; configure unit, decimal places, base color and ordered thresholds. Optional sparkline paths preserve peaks with a bounded envelope and break at missing samples. Stat does not clamp the displayed value to Gauge scale limits.
+
+The sample timestamp is the newest valid numeric sample returned by the query, including for aggregate reducers. It is not the request time. An editable age threshold (default 120 seconds) marks old samples; historical ranges and query aggregation may therefore legitimately show old data. Missing numeric data displays **No data**, never zero. Future sample clocks have an explicit warning. Byte scales keep their existing MB/GB divisor; thresholds use the displayed unit.
+
+Stat settings are validated on the frontend and backend and persist with the existing chart JSON. Exports keep definitions and exclude live samples; Inspector retains CSV, Excel and JSON exports. Existing time-series and Gauge definitions stay valid. No dashboard is seeded or overwritten by this addition.
+
+Dashboard library, settings, toolbar, panel editor, inspector and time picker now use the same reactive English/Portuguese/Spanish language preference as Devices and Configuration. English remains the default for browsers without a saved preference. User-provided titles, folders, series, identifiers and Flux text are preserved; translated option labels keep canonical saved values.
