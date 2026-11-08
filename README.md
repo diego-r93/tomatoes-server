@@ -143,3 +143,16 @@ See [Users, groups and invitations](docs/user-management.md) for account migrati
 ### Alerting
 
 See [Alerting setup and rule behavior](docs/alerting.md) for background monitoring, sources, contact points and optional WhatsApp Cloud API configuration.
+
+
+## Automatic startup after a reboot
+
+After configuring .env and creating the containers with docker compose up -d, install the host startup service once.
+
+```sh
+sudo sh scripts/install-autostart.sh
+```
+
+The service reads the published host addresses from the resolved Compose configuration, waits until those addresses can be bound, and starts the existing containers. This retries startup after Docker encounters an address that is unavailable early in boot. It uses the addresses configured through .env and does not rebuild or recreate containers.
+
+Check its state with sudo systemctl status tomatoes-compose.service and its log with sudo journalctl -u tomatoes-compose.service -b. Run docker compose up -d when creating an installation or applying Compose changes.
