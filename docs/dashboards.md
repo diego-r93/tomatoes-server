@@ -68,3 +68,16 @@ The sample timestamp is the newest valid numeric sample returned by the query, i
 Stat settings are validated on the frontend and backend and persist with the existing chart JSON. Exports keep definitions and exclude live samples; Inspector retains CSV, Excel and JSON exports. Existing time-series and Gauge definitions stay valid. No dashboard is seeded or overwritten by this addition.
 
 Dashboard library, settings, toolbar, panel editor, inspector and time picker now use the same reactive English/Portuguese/Spanish language preference as Devices and Configuration. English remains the default for browsers without a saved preference. User-provided titles, folders, series, identifiers and Flux text are preserved; translated option labels keep canonical saved values.
+
+
+## Installation overview migration (2026-11-08)
+
+The explicit `backend/scripts/apply-dashboard-overviews.cjs` migration validates queries against recent InfluxDB samples before writing. Run a dry plan with `docker compose exec -T backend node /backend/scripts/apply-dashboard-overviews.cjs`, then add `--apply` to apply an authorized plan. It is not a startup hook and does not overwrite dashboard edits on restart. Repeated application recognizes overview IDs and existing rule names. It creates a private JSON backup in the container's `/tmp`; copy that file to an installation backup directory before recreating the container. MongoDB updates use revision checks, with rollback of the dashboard batch on conflict. Alert additions are idempotent and can be resumed if interrupted.
+
+Raspberry Pi now has 4 Stats, 3 percentage Gauges and its 9 historical panels. Hydroponics has 4 Stats, 3 Gauges, 3 live board/driver Stats and its 10 historical panels. Battery now has voltage/current/calculated-power/age Stats, charge/temperature/capacity Gauges, mapped Bluetooth/BMS states, cell difference and the existing historical/detail panels (21 total).
+
+Overview sensor queries use `last()` to retain the actual latest sample timestamp and avoid displaying the last average as the latest measurement. Their sparklines are disabled because those queries return one sample. Original historical queries remain. Gauge bounds for pH, humidity and temperature are display scales, not configured crop safety limits. No arbitrary crop thresholds were activated.
+
+`POST /dashboards/live` requires the existing web session. Members can read sources from saved dashboard/panel IDs; only administrators can preview a draft source. Sources are validated connection/driver observations for approved boards. No caller chooses a database or collection. The route returns numeric rows for the existing renderer; no telemetry, schedules or outputs are written. Live panels explicitly ignore the dashboard time range. Driver state is the **last pulse result**, not the present output state and not proof of water flow.
+
+Definitions before this installation change are backed up in `/home/diego/tomatoes-server-backups/dashboard-overviews-20261108/`. Sensor samples remain in InfluxDB.

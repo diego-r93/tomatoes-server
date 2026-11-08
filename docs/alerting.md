@@ -73,3 +73,14 @@ Meta requires appropriate recipient permission and approved templates for busine
 ## Validation
 
 `cd backend && node --test -r ts-node/register tests/alerting.test.cjs` runs against a temporary SQLite database and mocked transports, with no real email, WhatsApp or GPIO writes. `yarn build` checks backend TypeScript. The frontend uses the project's Node 24 runtime and its normal build and ESLint commands.
+
+
+## Driver and battery rules (2026-11-08)
+
+Pump-driver rules select an approved hostname, pump 1–4 and a condition: failed actuation, missing feedback, short circuit, overtemperature or pump supply absent/low. They use the existing pulse tracker (actual start/end packets and expected schedules), without publishing commands. Missing or incomplete feedback never becomes a successful pulse. Failed results remain until the next pulse; no pulse observed is No data. A driver ACTIVE report does not confirm water flow. Binary condition values are 1 (present) and 0 (absent).
+
+Metric and metric-age rules can use an exact `device` tag for the battery, alongside the fixed measurement/field/host filters. An age rule needs either an exact MQTT topic or an exact device tag; unmatched/multiple series remain No data/Error. BMS protection is its reported/calculated protection flag, not an inferred voltage threshold.
+
+The installation migration preserves the original three rules and adds in-app-only rules. After validation there are 32 rules: 12 enabled/Normal and 20 paused. New enabled rules cover the two scheduled bench pumps, disk usage, battery telemetry age and BMS protection. No external contacts were added. New rules for esp32s3-1C1250 are paused: its supply was powered temporarily for tests and will remain absent until greenhouse installation. Unused bench pump rules and the suggested low-charge rule are also paused. Review crop limits and battery low-charge limits before enabling them; after greenhouse installation review and resume that board's rules through the browser.
+
+GPIO-duration limits in this migration use configured pulse duration plus a 30-second margin and a 10-second pending period. This counts observed ON time; it does not turn a pump off and does not confirm continuous operation across monitoring gaps.
