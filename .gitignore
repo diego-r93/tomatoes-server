@@ -65,3 +65,6 @@ passwd
 # Python collector caches
 __pycache__/
 *.py[cod]
+
+# Private ACME accounts, renewal state and logs
+/nginx/acme/
