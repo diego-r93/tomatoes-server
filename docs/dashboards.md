@@ -89,3 +89,11 @@ The explicit script backend/scripts/create-pump-controller-dashboard.cjs creates
 Its 16 panels show connection, uptime, free heap/PSRAM, MQTT disconnects, driver SPI errors, all four latest driver outcomes, both CPU gauges and CPU/memory/MQTT/driver history. Queries use existing mqtt_consumer diagnostics converted to float. Diagnostics can be absent in non-debug firmware; counters reset at boot. Live driver cards show the most recent pulse with its timestamp, independent of the chart time range; they do not indicate that an output is ON now or prove water flow. The pump supply was connected temporarily for testing and will stay disconnected until greenhouse installation. New board alerts remain paused.
 
 Validated on 2026-11-08: all 11 Influx panel queries returned finite samples, five live Stats loaded in the browser, 30-second refresh selected, second script run preserved the dashboard. No MQTT output command, OTA, alert change or container restart was performed.
+
+### Bench diagnostics and stable Devices feedback
+
+The explicit script backend/scripts/add-bench-diagnostics.cjs appends 14 diagnostic panels to the existing Hydroponics — esp32s3-07945C dashboard (20 to 34), preserving every original definition. It validates all queries against recent actual Influx samples before writing, saves a mode-0600 full backup, guards the MongoDB revision and does not duplicate existing diagnostic IDs. Backups are retained outside git in /home/diego/tomatoes-server-backups/bench-diagnostics-20261108/.
+
+Panels cover uptime, heap/PSRAM, MQTT disconnect/drop counters, driver SPI errors, CPU 0/1 Gauges, CPU peaks, heap history, CPU other tasks and per-task CPU. Debug telemetry is required; per-task data is emitted only for reported active tasks and absence is not zero. Counters reset at boot. No startup migration, pump command or OTA is involved.
+
+DeviceCardList.vue now shows command feedback in a bottom-start snackbar (8 seconds, dismissible) outside document flow. The refresh progress slot has a fixed height; driver warnings are below the control panel. This prevents these notices from shifting manual-output controls. The confirmation flow and reported-state-only switches are unchanged.
