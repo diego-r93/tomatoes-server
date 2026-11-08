@@ -64,3 +64,6 @@ Firmware (Claude review): capability report, validated versioned sensor configur
 4. Implement peristaltic/PWM configuration after hardware feasibility and explicit tests; automatic dosing is separate future work.
 
 No .env secret, Mosquitto change, container restart, OTA, pump command or calibration was performed for this design stage.
+## Circuit-note and schematic calibration review
+
+Read the supplied CN0326/CN0411 circuit notes and visually reviewed TCC v2.0 sheets 6-8. The implementation requirements and actual-board differences are recorded in calibration-circuit-review.md. This addendum governs the earlier generic sensor proposal: EC temperature uses the current NTC divider/profile, pH uses its RTD path, factory electronics calibration is distinct from probe calibration, and original evaluation-board jumper names must not be copied into TCC instructions. Firmware contract review was sent to Claude; no active calibration or parameters have been changed.
