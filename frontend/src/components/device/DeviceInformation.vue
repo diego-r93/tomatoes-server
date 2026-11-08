@@ -1,5 +1,6 @@
 <template>
   <div class="device-information">
+    <v-btn v-if="canManage" :to="{ path: '/board-setup', query: { host: device.host } }" variant="outlined" size="small" prepend-icon="mdi-tune-variant" class="mb-4">{{ t('Board setup') }}</v-btn>
     <p class="information-host">{{ device.host }}</p><p class="information-note">{{ t('Hardware identity and the latest information reported by this device.') }}</p>
     <section><h3>{{ t('Identity & network') }}</h3><dl class="information-grid"><div><dt>{{ t('Hostname') }}</dt><dd>{{ device.host }}</dd></div><div><dt>{{ t('MAC address') }}</dt><dd>{{ device.mac || t('Not reported') }}</dd></div><div><dt>{{ t('IP address') }}</dt><dd>{{ device.ip || t('Not reported') }}</dd></div><div><dt>{{ t('Discovery status') }}</dt><dd>{{ online ? t('Online') : t('Not seen recently') }}</dd></div><div><dt>{{ t('Wi-Fi signal') }}</dt><dd>{{ t(signalText(device)) }}</dd></div><div><dt>{{ t('Last discovery response') }}</dt><dd>{{ lastSeenLabel(device.receivedAt, clock, t) }}</dd></div><div><dt>{{ t('Response received at') }}</dt><dd>{{ formatDateTime(device.receivedAt, 'Browser', t('Not observed')) }}</dd></div><div v-if="device.datetime"><dt>{{ t('Device timestamp') }}</dt><dd>{{ formatDeviceTime(device.datetime) }}</dd></div></dl></section>
     <section v-if="reportedDetails.length"><h3>{{ t('Reported system information') }}</h3><dl class="information-grid"><div v-for="item in reportedDetails" :key="item.label"><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div></dl></section>
@@ -8,6 +9,8 @@
   </div>
 </template>
 <script setup>
+import Authentication from '@/services/auth';
+const canManage = Boolean(Authentication.currentUser?.isAdmin);
 import { useLanguage } from '@/composables/useLanguage';
 const { t } = useLanguage();
 

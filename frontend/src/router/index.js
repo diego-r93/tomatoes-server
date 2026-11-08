@@ -5,7 +5,7 @@ import DashboardRoutes from "@/router/dashboard.routes"
 import DeviceRoutes from "@/router/device.routes"
 import DatabaseRoutes from "@/router/database.routes"
 import AlertingRoutes from "@/router/alerting.routes"
-import MDDRoutes from "@/router/mdd.routes"
+import BoardSetupRoutes from "@/router/board-setup.routes"
 import UsersRoutes from "@/router/users.routes"
 import ConfigurationRoutes from "@/router/configuration.routes"
 import AuthRoutes from "@/router/auth.routes"
@@ -28,7 +28,7 @@ const routes = [
   ...DeviceRoutes,
   ...DatabaseRoutes,
   ...AlertingRoutes,
-  ...MDDRoutes,
+  ...BoardSetupRoutes,
   ...UsersRoutes,
   ...ConfigurationRoutes,
   ...AuthRoutes,
@@ -54,6 +54,7 @@ router.beforeEach(async to => {
   try {
     const user = await Authentication.validateSession();
     if (!user) return '/login';
+    if (to.matched.some(record => record.meta.requiresAdmin) && !user.isAdmin) return '/device';
   } catch {
     // Keep the current page when the server is temporarily unavailable.
     return false;

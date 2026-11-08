@@ -57,7 +57,7 @@ const items = computed(() => [
   { title: t('device'), icon: 'mdi-chip', value: "device", path: '/device' },
   { title: t('database'), icon: 'mdi-database', value: "database", path: '/database' },
   { title: t('alerting'), icon: 'mdi-bell', value: "alerting", path: '/alerting' },
-  { title: t('mdd'), subtitle: t('comingSoon'), icon: 'mdi mdi-lan', value: "mdd", path: '/mdd' },
+  ...(Authentication.currentUser?.isAdmin ? [{ title: t('Board setup'), icon: 'mdi-tune-variant', value: 'board-setup', path: '/board-setup' }] : []),
   { title: t('users'), icon: 'mdi-account', value: "users", path: '/users' },
   { title: t('configuration'), icon: 'mdi-cog', value: "configuration", path: '/configuration' },
 ]);

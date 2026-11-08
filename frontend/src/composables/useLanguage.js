@@ -1,4 +1,5 @@
 import { readonly, ref } from 'vue';
+import { boardSetupMessages } from '../locales/boardSetup.js';
 import { dashboardMessages } from '../locales/dashboard.js';
 import { interfaceMessages } from '../locales/interface.js';
 
@@ -174,7 +175,7 @@ function setLanguage(value) {
 }
 
 function t(key, parameters = {}) {
-  const message = messages[language.value][key] ?? interfaceMessages[language.value]?.[key] ?? dashboardMessages[language.value]?.[key] ?? messages.en[key] ?? key;
+  const message = messages[language.value][key] ?? boardSetupMessages[language.value]?.[key] ?? interfaceMessages[language.value]?.[key] ?? dashboardMessages[language.value]?.[key] ?? messages.en[key] ?? key;
   if (typeof message !== 'string') return message;
   return message.replace(/\{(\w+)\}/g, (placeholder, name) => Object.hasOwn(parameters, name) ? String(parameters[name]) : placeholder);
 }
