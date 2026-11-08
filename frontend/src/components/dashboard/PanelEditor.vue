@@ -4,15 +4,37 @@
       <v-card-title class="editor-heading">{{ isNew ? 'Add panel' : 'Edit panel' }}<v-btn icon="mdi-close" variant="text" aria-label="Close panel editor" @click="emit('close')" /></v-card-title>
       <v-card-text>
         <div class="editor-top">
-          <div><p class="muted mb-2">Panel preview · uPlot · live InfluxDB data</p><div class="editor-preview app-panel"><Chart :chart-options="panel.options" :chart-data="preview.data" :labels="preview.labels" :processing="panel.processing" :timezone="timezone" /></div></div>
+          <div><p class="muted mb-2">Panel preview · {{ panel.visualization.type === 'gauge' ? 'Gauge' : 'uPlot' }} · live InfluxDB data</p><div class="editor-preview app-panel"><PanelVisualization :chart="panel" :data="preview.data" :labels="preview.labels" :timezone="timezone" /></div></div>
           <div class="editor-fields">
+            <label class="wide">Visualization<select v-model="panel.visualization.type"><option v-for="item in visualizationTypes" :key="item.value" :value="item.value">{{ item.title }}</option></select><small>{{ visualizationTypes.find(item => item.value === panel.visualization.type)?.description }}</small></label>
             <label>Panel title<input v-model="panel.options.chartTitle" maxlength="200"></label>
             <label>Unit<input v-model="panel.options.unit" placeholder="°C, %, pH…"></label>
             <label>Panel width<select v-model.number="panel.layout.w"><option :value="4">Third</option><option :value="6">Half</option><option :value="12">Full</option></select></label>
-            <label>Series color<input v-model="color" type="color" @input="setColor"></label>
-            <label class="wide">Fill opacity · {{ opacity }}<input v-model.number="opacity" type="range" min="0" max="0.5" step="0.01" @input="setColor"></label>
+            <label v-if="panel.visualization.type === 'time-series'">Series color<input v-model="color" type="color" @input="setColor"></label>
+            <label v-if="panel.visualization.type === 'time-series'" class="wide">Fill opacity · {{ opacity }}<input v-model.number="opacity" type="range" min="0" max="0.5" step="0.01" @input="setColor"></label>
           </div>
         </div>
+        <section v-if="panel.visualization.type === 'gauge'" class="gauge-settings">
+          <h3>Gauge options</h3>
+          <p class="muted">Calculates one value from the processed samples returned for the selected time range. Last non-null uses the latest valid sample in that result, which may already be aggregated by your query.</p>
+          <div class="editor-fields builder-fields">
+            <label>Calculation<select v-model="panel.visualization.reducer"><option v-for="item in reducers" :key="item.value" :value="item.value">{{ item.title }}</option></select></label>
+            <label>Series<select v-model="panel.visualization.series"><option :value="null">First returned series</option><option v-if="panel.visualization.series && !preview.labels.includes(panel.visualization.series)" :value="panel.visualization.series">{{ panel.visualization.series }} (not in current result)</option><option v-for="label in [...new Set(preview.labels)]" :key="label" :value="label">{{ label }}</option></select><small>Run query to load the available series.</small></label>
+            <label>Base color<input v-model="panel.visualization.color" type="color"></label>
+            <label>Scale minimum<input v-model.number="panel.visualization.min" type="number" step="any"></label>
+            <label>Scale maximum<input v-model.number="panel.visualization.max" type="number" step="any"></label>
+            <label class="check-field"><input v-model="panel.visualization.showThresholds" type="checkbox"> Show threshold markers</label>
+          </div>
+          <p class="muted">Scale and thresholds use the displayed unit. They do not clamp the data. Values outside the scale remain visible as numbers.</p>
+          <div class="threshold-heading"><h4>Color thresholds</h4><v-btn size="small" variant="outlined" prepend-icon="mdi-plus" :disabled="panel.visualization.thresholds.length >= 10" @click="addThreshold">Add threshold</v-btn></div>
+          <p class="muted">Base color applies below the first threshold. Each threshold applies at or above its value. Enter values in ascending order.</p>
+          <div v-for="(step,index) in panel.visualization.thresholds" :key="index" class="threshold-row">
+            <label :for="'threshold-value-'+index">Value<input :id="'threshold-value-'+index" v-model.number="step.value" type="number" step="any"></label>
+            <label :for="'threshold-color-'+index">Color<input :id="'threshold-color-'+index" v-model="step.color" type="color"></label>
+            <v-btn icon="mdi-close" size="small" variant="text" :aria-label="'Remove threshold '+(index+1)" @click="panel.visualization.thresholds.splice(index,1)" />
+          </div>
+          <p v-if="!panel.visualization.thresholds.length" class="muted">One color for the entire scale.</p>
+        </section>
         <div class="editor-tabs app-action-row"><v-btn v-for="name in ['Builder','Flux','Processing','Data preview']" :key="name" :variant="tab===name?'tonal':'text'" :color="tab===name?'primary':undefined" @click="tab=name">{{ name }}</v-btn><v-spacer/><v-btn prepend-icon="mdi-database-search" variant="outlined" @click="tab='Builder';loadMeasurements()">Browse data</v-btn><v-btn prepend-icon="mdi-play-outline" variant="outlined" :loading="running" :disabled="!!validation || !panel.query.trim()" @click="run">Run query</v-btn></div>
         <div v-if="tab==='Builder'">
           <p class="muted mb-4">Build a query from available InfluxDB fields. Generating replaces the Flux text only when you click Generate query.</p>
@@ -53,20 +75,22 @@
 </template>
 <script setup>
 import { ref,computed,onBeforeUnmount } from 'vue';
-import Chart from './Chart.vue';
+import PanelVisualization from './PanelVisualization.vue';
+import { visualizationFor, visualizationError, visualizationTypes, reducers } from '@/composables/panelVisualization.mjs';
 import api from '@/services/dashboardDataService';
 import { http } from '@/services/http-common';
 import { clone,processingFor,processingError,chartDefinition,buildQuery,resolveQuery,alignRows,processValue } from '@/composables/dashboardUtils.mjs';
 const props=defineProps({chart:{type:Object,required:true},isNew:Boolean,bucket:{type:String,default:'tomatoes'},range:{type:[String,Object],default:'-1h'},window:{type:String,default:'10s'},timezone:{type:String,default:'Browser'}}),emit=defineEmits(['close','apply']);
-const panel=ref(clone(props.chart));panel.value.processing=processingFor(panel.value);
+const panel=ref(clone(props.chart));panel.value.processing=processingFor(panel.value);panel.value.visualization=visualizationFor(panel.value);
 const tab=ref(panel.value.query?'Flux':'Builder'),rows=ref([]),error=ref(''),result=ref(''),running=ref(false),loadingSchema=ref(false),measurements=ref([]),fields=ref([]),tags=ref([]),tagValues=ref([]);
 const source=ref({bucket:props.bucket,measurement:'',field:'',tag:'',tagValue:'',aggregation:'mean',convertText:false,...panel.value.source});
 const color=ref('#80cbc4'),opacity=ref(.1);const oldColor=panel.value.options.series?.[1]?.stroke;
 if(/^#[0-9a-f]{6}$/i.test(oldColor||''))color.value=oldColor;else{const numbers=oldColor?.match(/\d+/g);if(numbers?.length>=3)color.value='#'+numbers.slice(0,3).map(n=>Number(n).toString(16).padStart(2,'0')).join('');}
 const oldFill=panel.value.options.series?.[1]?.fill;if(oldFill?.startsWith('rgba'))opacity.value=Number(oldFill.match(/[\d.]+/g)?.[3]??.1);else if(/^#[0-9a-f]{8}$/i.test(oldFill||''))opacity.value=Math.round(parseInt(oldFill.slice(7),16)/255*100)/100;
-const validation=computed(()=>!panel.value.options.chartTitle.trim()?'Enter a panel title.':processingError(panel.value));
+const validation=computed(()=>!panel.value.options.chartTitle.trim()?'Enter a panel title.':processingError(panel.value)||visualizationError(panel.value));
 const preview=computed(()=>{try{return alignRows(rows.value,panel.value.processing);}catch{return {data:[[],[]],labels:[]};}});
 let queryController,schemaSerial=0;
+function addThreshold(){const config=panel.value.visualization;const last=config.thresholds.at(-1)?.value ?? config.min;config.thresholds.push({value:Number.isFinite(last)?Number((last+(config.max-config.min)/10).toPrecision(12)):0,color:'#f2495c'});}
 function setColor(){panel.value.options.series ||= [{label:'Date'},{}];panel.value.options.series[1] ||= {};Object.assign(panel.value.options.series[1],{stroke:color.value,fill:color.value+Math.round(opacity.value*255).toString(16).padStart(2,'0')});}
 function processed(value){const v=processValue(value,panel.value.processing);return v===null?'Not numeric / missing':v.toFixed(panel.value.processing.decimals);}
 async function loadMeasurements(){const serial=++schemaSerial;error.value='';loadingSchema.value=true;try{const {data}=await api.schema({bucket:source.value.bucket});if(serial===schemaSerial)measurements.value=data.measurements;}catch(e){if(serial===schemaSerial)error.value=e.response?.data?.message||'Could not load InfluxDB measurements.';}finally{if(serial===schemaSerial)loadingSchema.value=false;}}
@@ -78,7 +102,7 @@ onBeforeUnmount(()=>{queryController?.abort();schemaSerial++;});
 </script>
 <style scoped lang="scss">
 .panel-editor{label{display:flex;flex-direction:column;gap:7px;color:rgb(var(--v-theme-muted));font-size:13px}input:not([type=checkbox]):not([type=range]),select,textarea{width:100%;background:rgb(var(--v-theme-background));border:1px solid rgb(var(--v-theme-border));border-radius:4px;padding:10px;color:rgb(var(--v-theme-on-surface));min-height:42px}textarea{font-family:monospace;font-size:12px;resize:vertical}input[type=color]{padding:5px!important}input[type=checkbox]{accent-color:rgb(var(--v-theme-primary))} .check-field{flex-direction:row;align-items:center;gap:8px}.muted{color:rgb(var(--v-theme-muted))}}
-.editor-heading{display:flex;align-items:center;justify-content:space-between}.editor-top{display:grid;grid-template-columns:1.2fr 1fr;gap:24px}.editor-preview{height:280px;padding:10px;min-width:0}.editor-fields{display:grid;grid-template-columns:1fr 1fr;gap:16px;min-width:0}.wide{grid-column:1/-1}.editor-tabs{border-top:1px solid rgb(var(--v-theme-border));padding-top:16px;margin:24px 0}.builder-fields{grid-template-columns:repeat(3,minmax(0,1fr))}.editor-note{border-left:3px solid rgb(var(--v-theme-secondary));padding:12px;background:rgba(var(--v-theme-secondary),.07);font-size:13px}.data-preview{max-width:100%;overflow:auto}
+.editor-heading{display:flex;align-items:center;justify-content:space-between}.gauge-settings{margin-top:22px;border-top:1px solid rgb(var(--v-theme-border));padding-top:18px;display:flex;flex-direction:column;gap:14px}.threshold-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.threshold-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(70px,100px) 32px;align-items:end;gap:12px;max-width:430px}.editor-top{display:grid;grid-template-columns:1.2fr 1fr;gap:24px}.editor-preview{height:280px;padding:10px;min-width:0}.editor-fields{display:grid;grid-template-columns:1fr 1fr;gap:16px;min-width:0}.wide{grid-column:1/-1}.editor-tabs{border-top:1px solid rgb(var(--v-theme-border));padding-top:16px;margin:24px 0}.builder-fields{grid-template-columns:repeat(3,minmax(0,1fr))}.editor-note{border-left:3px solid rgb(var(--v-theme-secondary));padding:12px;background:rgba(var(--v-theme-secondary),.07);font-size:13px}.data-preview{max-width:100%;overflow:auto}
 @media(max-width:760px){.editor-top{grid-template-columns:minmax(0,1fr)}.builder-fields{grid-template-columns:1fr 1fr}}
 @media(max-width:450px){.editor-fields,.builder-fields{grid-template-columns:minmax(0,1fr)}.editor-preview{height:250px}}
 </style>

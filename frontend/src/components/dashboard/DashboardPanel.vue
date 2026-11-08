@@ -4,13 +4,12 @@
       <v-menu><template #activator="{props}"><button v-bind="props" type="button" class="chart-title"><span>{{ chart.options.chartTitle }}</span><v-icon icon="mdi-chevron-down" size="12" aria-hidden="true"/></button></template><v-list density="compact"><v-list-item prepend-icon="mdi-eye-outline" title="View" @click="emit('view')"/><v-list-item prepend-icon="mdi-magnify" title="Inspect" @click="emit('inspect')"/><v-list-item v-if="editing" prepend-icon="mdi-square-edit-outline" title="Edit" @click="emit('edit')"/><v-divider v-if="editing"/><v-list-item v-if="editing" prepend-icon="mdi-trash-can-outline" title="Remove" @click="emit('remove')"/></v-list></v-menu>
       <div class="app-action-row"><v-menu><template #activator="{props}"><v-btn v-bind="props" icon="mdi-dots-vertical" size="small" variant="text" :aria-label="`Panel menu: ${chart.options.chartTitle}`" /></template><v-list density="compact"><v-list-item title="View" prepend-icon="mdi-eye-outline" @click="emit('view')"/><v-list-item title="Inspect" prepend-icon="mdi-magnify" @click="emit('inspect')"/><v-list-item v-if="editing" title="Edit" prepend-icon="mdi-square-edit-outline" @click="emit('edit')"/><v-list-item v-if="editing" title="Move earlier" prepend-icon="mdi-arrow-left" @click="emit('move')"/><v-divider v-if="editing"/><v-list-item v-if="editing" title="Remove" prepend-icon="mdi-trash-can-outline" @click="emit('remove')"/></v-list></v-menu></div>
     </header>
-    <div class="chart-content"><Chart v-if="result?.data?.[0]?.length" :chart-options="chart.options" :chart-data="result.data" :labels="result.labels" :processing="processingFor(chart)" :timezone="timezone"/><div v-else class="chart-empty"><v-progress-circular v-if="result?.loading" indeterminate size="28"/><span>{{ result?.loading ? 'Loading data…' : result?.error || 'No numeric data in this time range' }}</span></div></div>
+    <div class="chart-content"><PanelVisualization v-if="result?.data?.[0]?.length" :chart="chart" :data="result.data" :labels="result.labels" :timezone="timezone"/><div v-else class="chart-empty"><v-progress-circular v-if="result?.loading" indeterminate size="28"/><span>{{ result?.loading ? 'Loading data…' : result?.error || 'No numeric data in this time range' }}</span></div></div>
     <div v-if="result?.error && result?.data?.[0]?.length" class="chart-warning" role="status">{{ result.error }} · previous samples shown</div>
   </article>
 </template>
 <script setup>
-import Chart from './Chart.vue';
-import { processingFor } from '@/composables/dashboardUtils.mjs';
+import PanelVisualization from './PanelVisualization.vue';
 defineProps({chart:{type:Object,required:true},result:{type:Object,default:()=>({})},editing:Boolean,timezone:{type:String,default:'Browser'}});
 const emit=defineEmits(['view','inspect','edit','remove','move']);
 </script>

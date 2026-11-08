@@ -15,3 +15,12 @@ test('migration verifies exact data and does not overwrite edits on restart',asy
  Dashboard.findById=()=>({lean:async()=>stored});Dashboard.updateOne=async(_filter,operation)=>{writes++;stored={...operation.$setOnInsert};};
  try{assert.deepEqual(await migrateCharts(file),{migrated:true,count:8});assert.deepEqual(stored.charts,original);assert(fs.existsSync(file));stored.charts=[];await migrateCharts(file);assert.equal(writes,1);assert.deepEqual(stored.charts,[]);}finally{Dashboard.findById=find;Dashboard.updateOne=update;fs.rmSync(dir,{recursive:true});}
 });
+
+test('gauge definitions survive validation intact and invalid visualization settings are refused', () => {
+ const visualization={type:'gauge',reducer:'last',series:'cell=1',min:0,max:100,color:'#73bf69',showThresholds:true,thresholds:[{value:80,color:'#f2cc0c'},{value:90,color:'#f2495c'}]};
+ const panel={...original[0],visualization};
+ assert.equal(validateCharts([panel])[0],panel);
+ assert.deepEqual(JSON.parse(JSON.stringify(validateDashboard({name:'Battery',charts:[panel]}))).charts[0].visualization,visualization);
+ for(const update of [{type:'unknown'},{min:100,max:100},{max:'100'},{reducer:'sum'},{series:42},{color:'url(https://invalid)'},{showThresholds:1},{thresholds:[{value:90,color:'#ff0000'},{value:80,color:'#ffff00'}]},{thresholds:[{value:null,color:'#ffffff'}]},{thresholds:Array.from({length:11},(_,value)=>({value,color:'#ffffff'}))}]) assert.throws(()=>validateCharts([{...panel,visualization:{...visualization,...update}}]));
+ assert.throws(()=>validateCharts([{...panel,visualization:null}]));
+});

@@ -1,5 +1,24 @@
 import { HttpError } from '../../users/types';
 
+// Optional for existing uPlot panels. New settings travel with the chart JSON.
+function validateVisualization(value: any) {
+  if (value === undefined) return;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new HttpError(400, 'Panel visualization must be an object.');
+  const v = { type: 'time-series', reducer: 'last', series: null, min: 0, max: 100, color: '#73bf69', showThresholds: true, thresholds: [{ value: 80, color: '#f2cc0c' }, { value: 90, color: '#f2495c' }], ...value };
+  if (!['time-series', 'gauge'].includes(v.type)) throw new HttpError(400, 'Unsupported panel visualization.');
+  if (v.type !== 'gauge') return;
+  if (!['last', 'mean', 'min', 'max'].includes(v.reducer)) throw new HttpError(400, 'Invalid gauge calculation.');
+  if (v.series !== null && (typeof v.series !== 'string' || !v.series || v.series.length > 4096)) throw new HttpError(400, 'Invalid gauge series.');
+  if (![v.min, v.max].every(Number.isFinite) || v.max <= v.min || !Number.isFinite(v.max - v.min)) throw new HttpError(400, 'Gauge maximum must exceed minimum. Both must be finite numbers.');
+  const color = (item: unknown) => typeof item === 'string' && /^#[0-9a-f]{6}$/i.test(item);
+  if (!color(v.color) || typeof v.showThresholds !== 'boolean') throw new HttpError(400, 'Invalid gauge color or threshold display.');
+  if (!Array.isArray(v.thresholds) || v.thresholds.length > 10) throw new HttpError(400, 'Use at most 10 gauge thresholds.');
+  for (let index = 0; index < v.thresholds.length; index++) {
+    const step = v.thresholds[index];
+    if (!step || !Number.isFinite(step.value) || !color(step.color) || (index > 0 && step.value <= v.thresholds[index - 1].value)) throw new HttpError(400, 'Gauge thresholds need ascending finite values and valid colors.');
+  }
+}
+
 export function validateCharts(value: unknown): any[] {
   if (!Array.isArray(value) || value.length > 100) throw new HttpError(400, 'Charts must be an array with at most 100 panels.');
   const ids = new Set<string>();
@@ -10,6 +29,7 @@ export function validateCharts(value: unknown): any[] {
     if (typeof chart.options.chartTitle !== 'string' || chart.options.chartTitle.length > 200) throw new HttpError(400, 'Panel titles must contain at most 200 characters.');
     for (const key of ['x', 'y', 'w', 'h']) if (!Number.isInteger(chart.layout[key]) || chart.layout[key] < (['w', 'h'].includes(key) ? 1 : 0) || chart.layout[key] > (key === 'w' || key === 'x' ? 12 : 10000)) throw new HttpError(400, 'Panel layout is invalid.');
     if (!Array.isArray(chart.data) || chart.data.length) throw new HttpError(400, 'Save chart definitions with an empty data array. Samples stay in InfluxDB.');
+    validateVisualization(chart.visualization);
     if (chart.processing) {
       const p = chart.processing;
       for (const key of ['multiplier', 'offset']) if (typeof p[key] !== 'number' || !Number.isFinite(p[key])) throw new HttpError(400, 'Panel processing requires finite numbers.');

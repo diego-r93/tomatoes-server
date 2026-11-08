@@ -156,3 +156,12 @@ sudo sh scripts/install-autostart.sh
 The service reads the published host addresses from the resolved Compose configuration, waits until those addresses can be bound, and starts the existing containers. This retries startup after Docker encounters an address that is unavailable early in boot. It uses the addresses configured through .env and does not rebuild or recreate containers.
 
 Check its state with sudo systemctl status tomatoes-compose.service and its log with sudo journalctl -u tomatoes-compose.service -b. Run docker compose up -d when creating an installation or applying Compose changes.
+
+
+### Dashboard visualizations
+
+Open a panel menu and select **Edit**, then choose **Time series** or **Gauge** under **Visualization**. Existing panels keep using uPlot unless you change their visualization. **Apply panel** changes the draft, and **Save dashboard** persists it in MongoDB. Exported chart JSON includes the visualization settings and keeps `data: []`, since samples remain in InfluxDB.
+
+Gauge supports Last non-null, Mean, Minimum and Maximum over the numeric samples returned by the query in the dashboard time range. The Flux query may already aggregate those samples. Run the query in the editor to select a specific returned series. Missing samples are not treated as zero, and a missing selected series shows No data.
+
+Scale bounds and ascending color thresholds use the displayed unit. They affect the gauge appearance without clamping the source values. Processing (multiplier, offset and optional clamping) is applied before visualization. With the legacy `mb` and `gb` scales, gauge bounds use MB and GB respectively. Thresholds are visual indicators and do not create alert rules or control outputs.
