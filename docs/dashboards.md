@@ -96,4 +96,4 @@ The explicit script backend/scripts/add-bench-diagnostics.cjs appends 14 diagnos
 
 Panels cover uptime, heap/PSRAM, MQTT disconnect/drop counters, driver SPI errors, CPU 0/1 Gauges, CPU peaks, heap history, CPU other tasks and per-task CPU. Debug telemetry is required; per-task data is emitted only for reported active tasks and absence is not zero. Counters reset at boot. No startup migration, pump command or OTA is involved.
 
-DeviceCardList.vue now shows command feedback in a bottom-start snackbar (8 seconds, dismissible) outside document flow. The refresh progress slot has a fixed height; driver warnings are below the control panel. This prevents these notices from shifting manual-output controls. The confirmation flow and reported-state-only switches are unchanged.
+DeviceCardList.vue now shows command feedback in a top-center snackbar below the header (8 seconds, dismissible) outside document flow. The refresh progress slot has a fixed height; driver warnings are below the control panel. This prevents these notices from shifting manual-output controls. The confirmation flow and reported-state-only switches are unchanged.
