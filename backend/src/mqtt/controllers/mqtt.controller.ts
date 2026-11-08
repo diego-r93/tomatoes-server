@@ -1,3 +1,4 @@
+import { expectPumpPulse, pumpDriverSnapshots } from '../pumpDrivers';
 import { scheduleVersions } from '../schedules';
 import { discoverDevices, observedOutputs, recentDevice } from '../../alerts/sources';
 import MQTTService from '../service/mqttService';
@@ -56,6 +57,10 @@ export const updateGPIO = async (req: Request, res: Response): Promise<void> => 
         const topic = `${host}/output`;
         const message = { [Number(gpio)]: state };
         mqttClient.publish(topic, JSON.stringify(message));
+        if (state === true) {
+            const code = Object.entries(device.ports || {}).find(([, port]) => Number(port?.gpio) === Number(gpio))?.[0];
+            if (code) await expectPumpPulse(code, Date.now(), 'command');
+        }
         res.status(200).json({ status: "200", message: "Successfully published MQTT Message" });
     } catch (error: any) {
         res.status(400).json({ status: 400, message: error.message });
@@ -87,10 +92,12 @@ export const getDevices = async (_req: Request, res: Response): Promise<void> =>
     try {
         const devices = await discoverDevices();
         const versions = devices.length ? await scheduleVersions(devices.map(device => String(device.host))) : {};
+        const driver = new Map((await pumpDriverSnapshots(devices.map(device => String(device.host)))).map(entry => [entry.host, entry.pumps]));
         res.json({
             devicesNumber: devices.length,
             devicesInformation: devices.map(device => ({
                 ...device,
+                driverPulses: driver.get(String(device.host)) || [],
                 scheduleVersions: Object.fromEntries(Object.entries(versions).filter(([code]) => code.startsWith(String(device.host) + '#'))),
             })),
         });

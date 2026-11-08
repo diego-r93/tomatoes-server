@@ -88,7 +88,7 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
   assert.equal(parseDeviceReport('sensors/esp32s3-07945C', payload), null);
  });
  await t.test('MQTT startup uses the installed named API and only publishes discovery',()=>{
-  const {EventEmitter}=require('node:events');const fake=new EventEmitter(),published=[];fake.connected=true;fake.subscribe=(topic,callback)=>{assert.deepEqual(topic,['devices/+','+/status']);callback(null,topic.map(topic=>({topic,qos:0})));};fake.publish=(...args)=>published.push(args);fake.end=()=>{};
+  const {EventEmitter}=require('node:events');const fake=new EventEmitter(),published=[];fake.connected=true;fake.subscribe=(topic,callback)=>{assert.deepEqual(topic,['devices/+','+/status','sensors/+/pump/+/+/+']);callback(null,topic.map(topic=>({topic,qos:0})));};fake.publish=(...args)=>published.push(args);fake.end=()=>{};
   process.env.MQTT_HOST_NAME='mqtt://test.invalid';let connected=false;
   const stop=startDiscovery((host,options)=>{connected=true;assert.equal(host,'mqtt://test.invalid');assert.equal(options.resubscribe,false);return fake;});fake.emit('connect');assert(connected);assert.equal(sourceHealth.mqttConnected,true);fake.emit('close');assert.equal(sourceHealth.mqttConnected,false);fake.emit('connect');assert.equal(sourceHealth.mqttConnected,true);assert.deepEqual(published,[['getdevices','get all'],['getdevices','get all']]);stop();delete process.env.MQTT_HOST_NAME;
  });

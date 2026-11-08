@@ -1,13 +1,15 @@
+import { mergeDriverFeedback } from './pumpDriverFeedback.mjs';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import mqttDataService from '@/services/mqttDataService';
 import { isResponding, mergeDeviceDiscovery } from './deviceInventoryUtils';
 
 export function useDeviceInventory() {
   const devices = ref([]), loading = ref(false), error = ref(''), notice = ref(''), clock = ref(Date.now()), lastRefresh = ref(null);
+  const feedbackError = ref(false);
   const noticeParameters = ref({});
   function notify(message, parameters) { notice.value = message; noticeParameters.value = parameters; }
   const pending = ref({}), pendingAll = ref({}), sending = ref(false), hasLoaded = ref(false);
-  let controller, request, refreshTimer, clockTimer, lastBulkPoll = 0;
+  let controller, request, refreshTimer, clockTimer, feedbackTimer, feedbackRequest, feedbackController, lastBulkPoll = 0;
   const pendingKey = (device, gpio) => `${device.key}:${gpio}`;
   const selectedPending = (device, gpio) => pending.value[pendingKey(device, gpio)];
   function refresh() {
@@ -35,6 +37,13 @@ export function useDeviceInventory() {
       error.value = issue.code === 'ECONNABORTED' ? 'Device discovery timed out. No replies may have been received. Try refreshing.' : issue.response?.data?.message || 'Could not discover devices. Check the connection and try again.';
     }).finally(() => { loading.value = false; request = null; });
     return request;
+  }
+  function refreshFeedback() {
+    if (feedbackRequest || document.hidden || !hasLoaded.value) return;
+    feedbackController = new AbortController();
+    feedbackRequest = mqttDataService.getPumpDriver({ signal: feedbackController.signal, timeout: 8000 }).then(({data}) => {
+      devices.value = mergeDriverFeedback(devices.value, data.devices); feedbackError.value = false;
+    }).catch(issue => { if (issue.code !== 'ERR_CANCELED') feedbackError.value = true; }).finally(() => {feedbackRequest = null;});
   }
   function setRefreshInterval(seconds) {
     clearInterval(refreshTimer);
@@ -70,6 +79,7 @@ export function useDeviceInventory() {
   }
   onMounted(() => {
     refresh();
+    feedbackTimer = setInterval(refreshFeedback, 2000);
     clockTimer = setInterval(() => {
       clock.value = Date.now();
       for (const [key, command] of Object.entries(pending.value)) if (clock.value - command.submittedAt > 30000) {
@@ -87,6 +97,6 @@ export function useDeviceInventory() {
       }
     }, 1000);
   });
-  onBeforeUnmount(() => { controller?.abort(); clearInterval(refreshTimer); clearInterval(clockTimer); });
-  return { devices, loading, initialLoading: computed(() => loading.value && !hasLoaded.value && !devices.value.length), hasLoaded, error, notice, noticeParameters, clock, lastRefresh, pending, pendingAll, sending, selectedPending, refresh, setRefreshInterval, sendOutput, sendAllOff };
+  onBeforeUnmount(() => { controller?.abort(); feedbackController?.abort(); clearInterval(refreshTimer); clearInterval(clockTimer); clearInterval(feedbackTimer); });
+  return { devices, feedbackError, loading, initialLoading: computed(() => loading.value && !hasLoaded.value && !devices.value.length), hasLoaded, error, notice, noticeParameters, clock, lastRefresh, pending, pendingAll, sending, selectedPending, refresh, setRefreshInterval, sendOutput, sendAllOff };
 }

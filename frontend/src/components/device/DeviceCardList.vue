@@ -10,6 +10,11 @@
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-4" role="alert">{{ t(error) }}<template #append><v-btn variant="text" :disabled="loading" @click="refresh">{{ t('Retry') }}</v-btn></template></v-alert>
 
+    <v-alert v-if="feedbackError" type="warning" variant="tonal" class="mb-4">{{ t('Driver feedback updates are unavailable. Last observations are shown.') }}</v-alert>
+    <v-alert v-if="pumpIssues.length" type="warning" variant="tonal" class="mb-4" role="status">
+      <strong>{{ t('Pump driver needs attention') }}</strong>
+      <div v-for="issue in pumpIssues" :key="issue.code"><v-btn variant="text" size="small" @click="selectedKey = issue.deviceKey">{{ issue.host }} #{{ issue.pump }}</v-btn> {{ t(driverMessage(issue.result)) }}</div>
+    </v-alert>
     <div v-if="initialLoading" class="app-loading-state" role="status"><v-progress-circular :size="52" :width="4" indeterminate color="secondary" /><h2 class="app-section-title">{{ t('Loading devices…') }}</h2><p>{{ t('Waiting for device responses.') }}</p></div>
 
     <template v-else>
@@ -61,6 +66,7 @@
 </template>
 
 <script setup>
+import { driverIssues, driverMessage } from '@/composables/pumpDriverFeedback.mjs';
 import { useLanguage } from '@/composables/useLanguage';
 const { t } = useLanguage();
 
@@ -88,7 +94,9 @@ import { useDeviceStore } from '@/store/deviceData';
 
 const router = useRouter(), route = useRoute(), deviceStore = useDeviceStore();
 
-const { devices, loading, initialLoading, hasLoaded, error, notice, noticeParameters, clock, lastRefresh, pending, pendingAll, sending, refresh, setRefreshInterval, sendOutput, sendAllOff } = useDeviceInventory();
+const { devices, feedbackError, loading, initialLoading, hasLoaded, error, notice, noticeParameters, clock, lastRefresh, pending, pendingAll, sending, refresh, setRefreshInterval, sendOutput, sendAllOff } = useDeviceInventory();
+
+const pumpIssues = computed(() => driverIssues(devices.value));
 
 const query = ref(''), filter = ref('all'), page = ref(1), selectedKey = ref(''), settingsOpen = ref(false), commandOpen = ref(false), command = ref(null), commandError = ref('');
 

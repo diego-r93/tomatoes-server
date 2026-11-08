@@ -1,3 +1,4 @@
+import { observePumpDriver, observePumpOutputs } from '../mqtt/pumpDrivers';
 import { setTimeout as delay } from 'node:timers/promises';
 import { installedDeviceInventory, observeDeviceDiscovery, observeDeviceStatus } from '../mqtt/deviceRegistry';
 import { mqttCredentials } from '../mqtt/config/mqtt.config';
@@ -53,8 +54,8 @@ export function startDiscovery(connect=mqtt.connect) {
  if(!process.env.MQTT_HOST_NAME)return ()=>{};
  client=connect(process.env.MQTT_HOST_NAME,{...mqttCredentials(),clientId:`tomatoes-alerts-${process.pid}`,reconnectPeriod:5000,connectTimeout:10000,clean:true,resubscribe:false});
  const discover=()=>{if(client?.connected){client.publish('getdevices','get all');sourceHealth.lastDiscovery=Date.now();}};
- client.on('connect',()=>client!.subscribe(['devices/+', '+/status'], (error, grants) => {
-  sourceHealth.mqttConnected = !error && Boolean(grants?.length === 2 && grants.every(grant => grant.qos <= 2));
+ client.on('connect',()=>client!.subscribe(['devices/+', '+/status', 'sensors/+/pump/+/+/+'], (error, grants) => {
+  sourceHealth.mqttConnected = !error && Boolean(grants?.length === 3 && grants.every(grant => grant.qos <= 2));
   if (sourceHealth.mqttConnected) discover();
  }));
  client.on('close',()=>{sourceHealth.mqttConnected=false;});
@@ -62,10 +63,14 @@ export function startDiscovery(connect=mqtt.connect) {
  client.on('message', (topic, payload, packet) => {
   const time = Date.now();
   void (async () => {
+   if (topic.startsWith('sensors/')) return observePumpDriver(topic, payload, packet.retain, time);
    if (topic.endsWith('/status')) return observeDeviceStatus(topic, payload, packet.retain, time);
    if (packet.retain) return;
    const data = parseDeviceReport(topic, payload);
-   if (data && await observeDeviceDiscovery(data.host, data, time)) await ingestDevice(topic, payload, time);
+   if (data && await observeDeviceDiscovery(data.host, data, time)) {
+    await observePumpOutputs(data.host, data.ports, time);
+    await ingestDevice(topic, payload, time);
+   }
   })().catch(error => console.warn('Device observation failed:', error instanceof Error ? error.name : 'Unknown error'));
  });
  const timer=setInterval(discover,30000);timer.unref();

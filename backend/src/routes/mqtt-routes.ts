@@ -1,3 +1,4 @@
+import { pumpDriverSnapshots } from '../mqtt/pumpDrivers';
 import { changeRegistration, listRegisteredDevices } from '../mqtt/deviceRegistry';
 import { queueScheduleSync } from "../mqtt/schedules";
 import { authenticate, context, endpoint, requireAdmin } from '../users/http';
@@ -11,6 +12,7 @@ const mqttRoutes = (app: Express) => {
     router.post("/", authenticate, requireAdmin, publisherController.publishMQTTMessage);
     router.patch("/:id/outputs/off", authenticate, publisherController.turnOffAllOutputs);
     router.patch("/:id", authenticate, publisherController.updateGPIO);
+    router.get("/pump-driver", authenticate, endpoint(async (_req, res) => { res.json({ devices: await pumpDriverSnapshots(), observedAt: Date.now() }); }));
     router.get("/getdevices", authenticate, publisherController.getDevices);
 
     router.get("/registry", authenticate, requireAdmin, endpoint(async (_req, res) => { res.json(await listRegisteredDevices()); }));

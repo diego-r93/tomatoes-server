@@ -12,10 +12,12 @@
       <p v-if="!device.outputs.length" class="details-note">{{ t('No outputs were reported by this device.') }}</p>
       <p v-else class="details-note">{{ readonly ? t('Last reported output states. Open Devices to send a manual command.') : online ? t('Every manual change requires confirmation. States update only after a device response.') : t('This device did not respond recently. Last reported states are shown; manual control is unavailable.') }}</p>
     </section>
+    <PumpDriverFeedback :device="device" :clock="clock" />
     <div class="details-actions"><v-btn variant="outlined" size="small" prepend-icon="mdi-information-outline" @click="$emit('information', device)">{{ t('Information') }}</v-btn><v-btn v-if="canUpdateFirmware" variant="outlined" size="small" prepend-icon="mdi-upload" :disabled="!online || !device.ip || sending" @click="$emit('firmware', device)">{{ t('Firmware') }}</v-btn></div>
   </v-card>
 </template>
 <script setup>
+import PumpDriverFeedback from './PumpDriverFeedback.vue';
 import { useLanguage } from '@/composables/useLanguage';
 const { t } = useLanguage();
 

@@ -1,3 +1,4 @@
+import { startPumpDriverTracking } from './mqtt/pumpDrivers';
 import dotenv from 'dotenv';
 
 dotenv.config({ quiet: true });
@@ -110,6 +111,8 @@ OTARoutes(app);
 // Listen the server
 app.use(userError);
 Promise.all([usersReady, alertsReady, mongoReady]).then(async () => {
+  try { await startPumpDriverTracking(); }
+  catch (error) { console.warn('Pump driver tracking startup failed:', error instanceof Error ? error.name : 'Unknown error'); }
   try { await startAlerts(); }
   catch (error) {
     monitor.running=false;
