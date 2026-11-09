@@ -32,7 +32,7 @@
     </div>
   </v-card>
 </template>
-<script setup>
+<script setup lang="ts">
 import PumpDriverFeedback from './PumpDriverFeedback.vue';
 import { useLanguage } from '@/composables/useLanguage';
 const { t } = useLanguage();
@@ -40,12 +40,31 @@ const { t } = useLanguage();
 import { formatDeviceTime } from '@/composables/dateTime.mjs';
 import { ref } from 'vue';
 import { lastSeenLabel, signalText, weakSignal } from '@/composables/deviceInventoryUtils';
-const props = defineProps({ device: { type: Object, required: true }, online: Boolean, clock: Number, pending: { type: Object, default: () => ({}) }, sending: Boolean, allOffPending: Boolean, canUpdateFirmware: Boolean, readonly: Boolean, standalone: Boolean });
+import type { DeviceOutput, DiscoveredDevice } from '@/composables/deviceInventoryUtils';
+import type { AllOffDraft, OutputDraft, PendingOutput } from '@/composables/deviceOutputCommands';
+
+const props = withDefaults(defineProps<{
+  device: DiscoveredDevice;
+  online?: boolean;
+  clock?: number;
+  pending?: Partial<Record<string, PendingOutput>>;
+  sending?: boolean;
+  allOffPending?: boolean;
+  canUpdateFirmware?: boolean;
+  readonly?: boolean;
+  standalone?: boolean;
+}>(), { pending: () => ({}) });
 const controlRevision = ref(0);
-const heading = ref(null);
+const heading = ref<HTMLElement | null>(null);
 defineExpose({ focusHeading: () => heading.value?.focus() });
-const emit = defineEmits(['close', 'change', 'all-off', 'information', 'firmware']);
-function requestChange(output, value) { if (value !== output.state && !props.readonly) { controlRevision.value++; emit('change', { deviceKey: props.device.key, host: props.device.host, gpio: output.gpio, target: value, originalState: output.state }); } }
+const emit = defineEmits<{
+  close: [];
+  change: [draft: OutputDraft];
+  'all-off': [draft: AllOffDraft];
+  information: [device: DiscoveredDevice];
+  firmware: [device: DiscoveredDevice];
+}>();
+function requestChange(output: DeviceOutput, value: unknown) { if (typeof value === 'boolean' && value !== output.state && !props.readonly) { controlRevision.value++; emit('change', { deviceKey: props.device.key, host: props.device.host, gpio: output.gpio, target: value, originalState: output.state }); } }
 </script>
 <style scoped lang="scss">
 .device-details {

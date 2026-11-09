@@ -102,7 +102,10 @@ const { devices, feedbackError, loading, initialLoading, hasLoaded, error, notic
 
 const pumpIssues = computed(() => driverIssues(devices.value));
 
-const query = ref(''), filter = ref('all'), page = ref(1), selectedKey = ref(''), settingsOpen = ref(false), commandOpen = ref(false), command = ref(null), commandError = ref('');
+const query = ref(''), filter = ref('all'), page = ref(1), selectedKey = ref(''), settingsOpen = ref(false), commandOpen = ref(false), commandError = ref('');
+
+/** @type {import('vue').Ref<import('@/composables/deviceOutputCommands').OutputCommandDraft | null>} */
+const command = ref(null);
 
 const settings = reactive({ layout: 'details', sort: 'host', pageSize: 8, showMac: false, refreshSeconds: 30 });
 
@@ -167,9 +170,10 @@ watch(filtered, list => { if (selectedKey.value && !list.some(device => device.k
 
 function clearSearch() { query.value = ''; filter.value = 'all'; }
 
+/** @param {import('@/composables/deviceOutputCommands').OutputCommandDraft} draft */
 function openCommand(draft) { command.value = draft; commandError.value = ''; commandOpen.value = true; }
 
-async function confirmCommand() { if (!command.value || sending.value) return; commandError.value = ''; try { const draft = command.value; if (draft.allOff) await sendAllOff(draft.deviceKey); else await sendOutput(draft.deviceKey, draft.gpio, draft.target, draft.originalState); commandOpen.value = false; } catch (issue) { commandError.value = issue.response?.data?.message || issue.message || 'The command could not be submitted.'; } }
+async function confirmCommand() { if (!command.value || sending.value) return; commandError.value = ''; try { const draft = command.value; if ('allOff' in draft) await sendAllOff(draft.deviceKey); else await sendOutput(draft.deviceKey, draft.gpio, draft.target, draft.originalState); commandOpen.value = false; } catch (issue) { commandError.value = issue.response?.data?.message || issue.message || 'The command could not be submitted.'; } }
 
 const overlayKind = ref(''), overlayHost = ref(''), firmwareTarget = ref(null), firmwareBusy = ref(false);
 

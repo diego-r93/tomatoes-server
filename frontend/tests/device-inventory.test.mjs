@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { confirmsOutputCommand } from '../src/composables/deviceOutputCommands.ts';
 import { devicePorts, isResponding, mergeDeviceDiscovery, weakSignal } from '../src/composables/deviceInventoryUtils.ts';
 
 test('normalizes reported output states without guessing unknown values or creating duplicate GPIOs', () => {
@@ -30,4 +31,19 @@ test('keeps offline registration visible and preserves metadata without inventin
   assert.equal(isResponding(offline, 1000), false);
   assert.deepEqual(offline.ports, {});
   assert.deepEqual(offline.outputs, []);
+});
+
+test('GPIO confirmation requires a fresh reply with the requested state for every affected output', () => {
+  const ports = { first: { gpio: 1, state: false }, second: { gpio: 2, state: null } };
+  const report = (receivedAt, reportedPorts = ports, online = true) =>
+    mergeDeviceDiscovery([{ host: 'esp32s3-A', receivedAt, online, ports: reportedPorts }], [], 4000)[0];
+  const command = { deviceKey: 'esp32s3-A', gpio: 1, target: false, submittedAt: 2000 };
+  const allOff = { host: 'esp32s3-A', gpios: [1, 2], submittedAt: 2000 };
+
+  assert.equal(confirmsOutputCommand(report(1999), command), false);
+  assert.equal(confirmsOutputCommand(report(2000, ports, false), command), false);
+  assert.equal(confirmsOutputCommand(report(2000), { ...command, target: true }), false);
+  assert.equal(confirmsOutputCommand(report(2000), command), true);
+  assert.equal(confirmsOutputCommand(report(3000), allOff), false);
+  assert.equal(confirmsOutputCommand(report(3000, { ...ports, second: { gpio: 2, state: '0' } }), allOff), true);
 });
