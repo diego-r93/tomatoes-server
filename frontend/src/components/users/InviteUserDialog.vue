@@ -13,15 +13,18 @@
     </v-card-text></v-card>
   </v-dialog>
 </template>
-<script setup>
+<script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import userService from '@/services/userService';
 import { required, validEmail, userError } from '@/composables/userManagementUtils';
+import type { InvitationFields, UserGroup } from '@/services/userTypes';
+import type { SubmitEventPromise } from 'vuetify';
+
 const props = defineProps({ modelValue: Boolean, defaultDays: { type: Number, default: 7 } });
-const emit = defineEmits(['update:modelValue', 'created']);
+const emit = defineEmits<{ 'update:modelValue': [open: boolean]; created: [] }>();
 const visible = computed({ get: () => props.modelValue, set: value => emit('update:modelValue', value) });
-const draft = reactive({ email: '', groupIds: [], expiresInDays: 7, message: '' });
-const groups = ref([]), error = ref(''), busy = ref(false), loading = ref(false);
+const draft = reactive<InvitationFields>({ email: '', groupIds: [], expiresInDays: 7, message: '' });
+const groups = ref<UserGroup[]>([]), error = ref(''), busy = ref(false), loading = ref(false);
 watch(visible, async open => {
   if (!open) return;
   Object.assign(draft, { email: '', groupIds: [], expiresInDays: props.defaultDays, message: '' }); error.value = ''; loading.value = true;
@@ -29,7 +32,7 @@ watch(visible, async open => {
   catch (issue) { error.value = userError(issue); }
   finally { loading.value = false; }
 });
-async function submit(event) {
+async function submit(event: SubmitEventPromise) {
   const result = await event; if (!result.valid || busy.value) return;
   busy.value = true; error.value = '';
   try { await userService.invite({ ...draft, groupIds: [...draft.groupIds] }); visible.value = false; emit('created'); }

@@ -2,6 +2,6 @@
   <UsersConfiguration />
 </template>
 
-<script setup>
+<script setup lang="ts">
   import UsersConfiguration from '@/components/users/UsersConfiguration.vue'
 </script>

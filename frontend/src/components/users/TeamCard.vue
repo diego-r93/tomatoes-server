@@ -16,17 +16,20 @@
     <v-dialog v-model="deleteOpen" max-width="440" persistent><v-card title="Delete group?"><v-card-text>Remove {{ draft.name }}? Its members will keep their accounts.<v-alert v-if="dialogError" type="error" variant="tonal" class="mt-3">{{ dialogError }}</v-alert></v-card-text><v-card-actions><v-spacer /><v-btn :disabled="busy" @click="deleteOpen = false">Cancel</v-btn><v-btn color="error" :loading="busy" :disabled="busy" @click="remove">Delete group</v-btn></v-card-actions></v-card></v-dialog>
   </div>
 </template>
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import userService from '@/services/userService';
 import { fullName, required, userError } from '@/composables/userManagementUtils';
-const groups = ref([]), users = ref([]), loading = ref(false), error = ref(''), dialog = ref(false), deleteOpen = ref(false), busy = ref(false), dialogError = ref('');
-const draft = reactive({ id: null, name: '', description: '', memberIds: [], isBuiltin: false });
+import type { GroupFields, UserGroup, UserRecord } from '@/services/userTypes';
+import type { SubmitEventPromise } from 'vuetify';
+
+const groups = ref<UserGroup[]>([]), users = ref<UserRecord[]>([]), loading = ref(false), error = ref(''), dialog = ref(false), deleteOpen = ref(false), busy = ref(false), dialogError = ref('');
+const draft = reactive<GroupFields & { id: number | null; isBuiltin: boolean }>({ id: null, name: '', description: '', memberIds: [], isBuiltin: false });
 const eligibleUsers = computed(() => users.value.filter(user => draft.isBuiltin ? user.isBuiltin : !user.isBuiltin));
 async function load() { loading.value = true; error.value = ''; try { const [g, u] = await Promise.all([userService.groups(), userService.getAll()]); groups.value = g.data; users.value = u.data; } catch (issue) { error.value = userError(issue); } finally { loading.value = false; } }
-function edit(group) { Object.assign(draft, group ? { ...group, memberIds: [...group.memberIds] } : { id: null, name: '', description: '', memberIds: [], isBuiltin: false }); dialogError.value = ''; dialog.value = true; }
-async function save(event) { const result = await event; if (!result.valid || busy.value) return; busy.value = true; dialogError.value = ''; try { await userService.saveGroup(draft.id, { name: draft.name, description: draft.description, memberIds: [...draft.memberIds] }); dialog.value = false; await load(); } catch (issue) { dialogError.value = userError(issue); } finally { busy.value = false; } }
-async function remove() { if (busy.value) return; busy.value = true; dialogError.value = ''; try { await userService.deleteGroup(draft.id); deleteOpen.value = false; dialog.value = false; await load(); } catch (issue) { dialogError.value = userError(issue); } finally { busy.value = false; } }
+function edit(group?: UserGroup) { Object.assign(draft, group ? { ...group, memberIds: [...group.memberIds] } : { id: null, name: '', description: '', memberIds: [], isBuiltin: false }); dialogError.value = ''; dialog.value = true; }
+async function save(event: SubmitEventPromise) { const result = await event; if (!result.valid || busy.value) return; busy.value = true; dialogError.value = ''; try { await userService.saveGroup(draft.id, { name: draft.name, description: draft.description, memberIds: [...draft.memberIds] }); dialog.value = false; await load(); } catch (issue) { dialogError.value = userError(issue); } finally { busy.value = false; } }
+async function remove() { const id = draft.id; if (busy.value || id === null || draft.isBuiltin) return; busy.value = true; dialogError.value = ''; try { await userService.deleteGroup(id); deleteOpen.value = false; dialog.value = false; await load(); } catch (issue) { dialogError.value = userError(issue); } finally { busy.value = false; } }
 onMounted(load);
 </script>
 <style scoped lang="scss">

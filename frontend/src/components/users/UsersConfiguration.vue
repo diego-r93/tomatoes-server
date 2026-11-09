@@ -14,17 +14,19 @@
     </template>
   </v-container>
 </template>
-<script setup>
+<script setup lang="ts">
 import AppPageHeader from '@/components/navigation/AppPageHeader.vue';
 import { onMounted, provide, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Authentication from '@/services/auth';
 import userService from '@/services/userService';
 import { userError } from '@/composables/userManagementUtils';
+import type { EmailConfiguration, UserIdentity } from '@/services/userTypes';
+import { userManagementKey } from './userManagementContext';
 import InviteUserDialog from './InviteUserDialog.vue';
 const route = useRoute(), router = useRouter();
-const actor = ref(null), loading = ref(false), error = ref(''), inviteOpen = ref(false);
-const emailConfiguration = ref({ configured: false, defaultInvitationDays: 7 });
+const actor = ref<UserIdentity | null>(null), loading = ref(false), error = ref(''), inviteOpen = ref(false);
+const emailConfiguration = ref<EmailConfiguration>({ configured: false, defaultInvitationDays: 7 });
 function openInvite() { if (emailConfiguration.value.configured) inviteOpen.value = true; }
 async function loadIdentity() {
   loading.value = true; error.value = '';
@@ -38,7 +40,7 @@ async function loadIdentity() {
 }
 function invitationCreated() { if (route.path === '/users/invitations') refreshInvitations.value++; else router.push('/users/invitations'); }
 const refreshInvitations = ref(0);
-provide('userManagement', { actor, emailConfiguration, openInvite, loadIdentity, refreshInvitations });
+provide(userManagementKey, { actor, emailConfiguration, loadIdentity, refreshInvitations });
 onMounted(loadIdentity);
 </script>
 <style scoped lang="scss">

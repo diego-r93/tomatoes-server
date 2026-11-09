@@ -31,6 +31,7 @@ class Authentication {
     localStorage.setItem('tomatoesExpiration', String(expiry));
     this.updateUser(user); this.validatedAt = Date.now(); this.startTokenRenewal();
   }
+  /** @returns {Promise<import('./userTypes').UserIdentity | null>} */
   async validateSession(force = false) {
     if (!this.isAuthenticated()) return null;
     if (!force && this.currentUser && Date.now() - this.validatedAt < 30000) return this.currentUser;

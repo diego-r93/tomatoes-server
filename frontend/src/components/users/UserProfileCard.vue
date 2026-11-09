@@ -1,10 +1,10 @@
 <template>
   <div>
-    <v-btn v-if="actor.isAdmin" to="/users/users" variant="text" prepend-icon="mdi-arrow-left" class="mb-4">All users</v-btn>
+    <v-btn v-if="actor?.isAdmin" to="/users/users" variant="text" prepend-icon="mdi-arrow-left" class="mb-4">All users</v-btn>
     <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
     <v-alert v-if="notice" type="success" variant="tonal" class="mb-4">{{ notice }}</v-alert>
     <v-progress-linear v-if="loading" indeterminate />
-    <template v-if="user">
+    <template v-if="user && actor">
       <div class="profile-heading"><v-avatar color="primary" size="52">{{ initials(user) }}</v-avatar><div><h2>{{ fullName(user) }}</h2><p>{{ user.username }} · {{ user.email }}</p></div><v-chip :color="user.isAdmin ? 'primary' : undefined" variant="outlined">{{ userRoleLabel(user) }}</v-chip><v-chip :color="user.enabled ? 'success' : undefined" variant="tonal">{{ user.enabled ? 'Active' : 'Disabled' }}</v-chip></div>
       <v-alert v-if="user.isBuiltin" variant="tonal" color="secondary" class="mb-5">The built-in administrator is a system account. Its profile and credentials are read-only; it cannot be deleted or disabled.</v-alert>
       <v-card variant="outlined" class="profile-section" title="User information"><v-card-text>
@@ -27,44 +27,75 @@
     <v-dialog :model-value="Boolean(confirm)" max-width="460" persistent><v-card :title="confirmationTitle"><v-card-text>{{ confirmationText }}<v-alert v-if="dialogError" type="error" variant="tonal" class="mt-3">{{ dialogError }}</v-alert></v-card-text><v-card-actions><v-spacer /><v-btn :disabled="busy" @click="confirm = ''; dialogError = ''">Cancel</v-btn><v-btn :color="confirm === 'delete' ? 'error' : 'primary'" :loading="busy" :disabled="busy" @click="execute">Confirm</v-btn></v-card-actions></v-card></v-dialog>
   </div>
 </template>
-<script setup>
-import { computed, inject, onMounted, reactive, ref } from 'vue';
+<script setup lang="ts">
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import userService from '@/services/userService';
 import UserActivityHistory from './UserActivityHistory.vue';
 import Authentication from '@/services/auth';
 import { dateTime, fullName, initials, required, userError, userRoleLabel, validEmail } from '@/composables/userManagementUtils';
-const { actor, emailConfiguration, loadIdentity } = inject('userManagement');
-const route = useRoute(), router = useRouter(), user = ref(null), sessions = ref([]), historyRevision = ref(0), groups = ref([]), groupIds = ref([]);
-const loading = ref(false), busy = ref(false), error = ref(''), notice = ref(''), confirm = ref(''), dialogError = ref(''), sessionTarget = ref(null);
-const builtinFields = [{ key: 'firstName', label: 'First name' }, { key: 'lastName', label: 'Last name' }, { key: 'email', label: 'Email' }, { key: 'username', label: 'Username' }, { key: 'phone', label: 'Phone' }, { key: 'state', label: 'Location' }];
-const draft = reactive({}), password = reactive({ oldPassword: '', newPassword: '' });
-const passwordRule = value => (value?.length >= 8 && new TextEncoder().encode(value).length <= 72) || 'Use at least 8 characters and no more than 72 bytes.';
+import type { ActiveSession, PasswordFields, UserGroup, UserProfileFields, UserRecord } from '@/services/userTypes';
+import type { SubmitEventPromise } from 'vuetify';
+import { useUserManagement } from './userManagementContext';
+
+type ProfileAction = 'disable' | 'enable' | 'delete' | 'reset' | 'session' | 'sessions';
+
+const { actor, emailConfiguration, loadIdentity } = useUserManagement();
+const route = useRoute(), router = useRouter(), user = ref<UserRecord | null>(null), sessions = ref<ActiveSession[]>([]), historyRevision = ref(0), groups = ref<UserGroup[]>([]), groupIds = ref<number[]>([]);
+const loading = ref(false), busy = ref(false), error = ref(''), notice = ref(''), confirm = ref<ProfileAction | ''>(''), dialogError = ref(''), sessionTarget = ref<string | null>(null);
+const builtinFields = [{ key: 'firstName', label: 'First name' }, { key: 'lastName', label: 'Last name' }, { key: 'email', label: 'Email' }, { key: 'username', label: 'Username' }, { key: 'phone', label: 'Phone' }, { key: 'state', label: 'Location' }] as const;
+const draft = reactive<UserProfileFields>({ firstName: '', lastName: '', email: '', username: '', phone: '', state: '' });
+const password = reactive<PasswordFields>({ oldPassword: '', newPassword: '' });
+const passwordRule = (value: string | null | undefined) => (typeof value === 'string' && value.length >= 8 && new TextEncoder().encode(value).length <= 72) || 'Use at least 8 characters and no more than 72 bytes.';
 const availableGroups = computed(() => groups.value.filter(group => !group.isBuiltin));
-const confirmationTitle = computed(() => ({ disable: 'Disable user?', enable: 'Enable user?', delete: 'Delete user?', reset: 'Send reset email?', session: 'Force logout?', sessions: 'Force logout from all devices?' }[confirm.value] || 'Confirm action'));
-const confirmationText = computed(() => ({ disable: 'The user will be signed out and cannot sign in until enabled again.', enable: 'Allow this account to sign in again.', delete: 'Permanently delete this account and its group memberships.', reset: 'Send a one-time password reset link to the account email.', session: 'End the selected session. The current session will also sign out if selected.', sessions: 'End every active session for this account, including this one when applicable.' }[confirm.value]));
+const confirmationTitle = computed(() => confirm.value ? ({ disable: 'Disable user?', enable: 'Enable user?', delete: 'Delete user?', reset: 'Send reset email?', session: 'Force logout?', sessions: 'Force logout from all devices?' }[confirm.value]) : 'Confirm action');
+const confirmationText = computed(() => confirm.value ? ({ disable: 'The user will be signed out and cannot sign in until enabled again.', enable: 'Allow this account to sign in again.', delete: 'Permanently delete this account and its group memberships.', reset: 'Send a one-time password reset link to the account email.', session: 'End the selected session. The current session will also sign out if selected.', sessions: 'End every active session for this account, including this one when applicable.' }[confirm.value]) : '')
 async function load() {
   loading.value = true; error.value = '';
   try {
     const id = route.params.id;
-    const results = await Promise.all([userService.get(id), userService.sessions(id), actor.value.isAdmin ? userService.groups() : Promise.resolve({ data: [] })]);
-    user.value = results[0].data; sessions.value = results[1].data; groups.value = results[2].data; historyRevision.value++;
-    for (const key of ['firstName', 'lastName', 'email', 'username', 'phone', 'state']) draft[key] = user.value[key];
-    groupIds.value = user.value.groups.filter(group => !group.isBuiltin).map(group => group.id);
+    if (typeof id !== 'string') throw new Error('User not found.');
+    const [profile, activeSessions, available] = await Promise.all([
+      userService.get(id),
+      userService.sessions(id),
+      actor.value?.isAdmin ? userService.groups() : Promise.resolve({ data: [] }),
+    ]);
+    const record = profile.data;
+    user.value = record;
+    sessions.value = activeSessions.data;
+    groups.value = available.data;
+    historyRevision.value++;
+    for (const { key } of builtinFields) draft[key] = record[key];
+    groupIds.value = record.groups.filter(group => !group.isBuiltin).map(group => group.id);
   } catch (issue) { error.value = userError(issue); } finally { loading.value = false; }
 }
-async function run(work, message) { busy.value = true; error.value = ''; notice.value = ''; try { await work(); notice.value = message; await load(); } catch (issue) { error.value = userError(issue); } finally { busy.value = false; } }
-async function saveProfile(event) { if (!(await event).valid) return; await run(async () => { await userService.update(user.value.id, draft); if (user.value.id === actor.value.id) await loadIdentity(); }, 'Profile saved.'); }
-async function saveMembership() { await run(() => userService.membership(user.value.id, groupIds.value), 'Membership saved.'); }
-async function changePassword(event) { if (!(await event).valid) return; await run(async () => { await userService.updatePassword(password); password.oldPassword = ''; password.newPassword = ''; }, 'Password changed. Other sessions were signed out.'); }
+async function run(work: () => Promise<unknown>, message: string) { if (busy.value) return; busy.value = true; error.value = ''; notice.value = ''; try { await work(); notice.value = message; await load(); } catch (issue) { error.value = userError(issue); } finally { busy.value = false; } }
+async function saveProfile(event: SubmitEventPromise) {
+  if (!(await event).valid || !user.value) return;
+  const { id } = user.value;
+  await run(async () => {
+    await userService.update(id, draft);
+    if (id === actor.value?.id) await loadIdentity();
+  }, 'Profile saved.');
+}
+async function saveMembership() {
+  if (!user.value) return;
+  const { id } = user.value;
+  await run(() => userService.membership(id, groupIds.value), 'Membership saved.');
+}
+async function changePassword(event: SubmitEventPromise) { if (!(await event).valid) return; await run(async () => { await userService.updatePassword(password); password.oldPassword = ''; password.newPassword = ''; }, 'Password changed. Other sessions were signed out.'); }
 async function execute() {
+  if (busy.value || !user.value || !confirm.value) return;
+  const { id } = user.value;
+  const action = confirm.value;
+  const target = sessionTarget.value;
+  if (action === 'session' && target === null) return;
   busy.value = true; dialogError.value = ''; notice.value = '';
   try {
-    const id = user.value.id, action = confirm.value;
     if (action === 'delete') { await userService.delete(id); await router.push('/users/users'); return; }
     if (action === 'disable' || action === 'enable') await userService.setEnabled(id, action === 'enable');
     if (action === 'reset') await userService.adminPasswordReset(id);
-    if (action === 'session' || action === 'sessions') { const { data } = await userService.revokeSessions(id, sessionTarget.value); if (data.revokedCurrent) { Authentication.logout({ notifyServer: false }); await router.push('/login'); return; } }
+    if (action === 'session' || action === 'sessions') { const { data } = await userService.revokeSessions(id, action === 'session' ? target : null); if (data.revokedCurrent) { Authentication.logout({ notifyServer: false }); await router.push('/login'); return; } }
     confirm.value = ''; notice.value = action === 'reset' ? 'The email was submitted to the provider.' : 'Changes applied.'; await load();
   } catch (issue) { dialogError.value = userError(issue); } finally { busy.value = false; }
 }

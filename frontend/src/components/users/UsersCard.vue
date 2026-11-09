@@ -12,15 +12,19 @@
     <p class="users-note"><v-icon icon="mdi-lock-outline" size="16" /> The built-in admin account cannot be deleted or disabled.</p>
   </div>
 </template>
-<script setup>
-import { computed, inject, onMounted, ref } from 'vue';
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import userService from '@/services/userService';
 import { dateTime, fullName, initials, userError, userRoleLabel } from '@/composables/userManagementUtils';
-const { actor } = inject('userManagement');
-const router = useRouter(), users = ref([]), query = ref(''), loading = ref(false), error = ref('');
+import type { UserRecord } from '@/services/userTypes';
+import { useUserManagement } from './userManagementContext';
+
+const { actor } = useUserManagement();
+const router = useRouter(), users = ref<UserRecord[]>([]), query = ref<string | null>(''), loading = ref(false), error = ref('');
 const filtered = computed(() => { const term = (query.value || '').toLowerCase(); return users.value.filter(user => `${fullName(user)} ${user.username} ${user.email}`.toLowerCase().includes(term)); });
 async function load() {
+  if (!actor.value) return;
   if (!actor.value.isAdmin) { router.replace(`/users/users/${actor.value.id}`); return; }
   loading.value = true; error.value = '';
   try { users.value = (await userService.getAll()).data; } catch (issue) { error.value = userError(issue); }

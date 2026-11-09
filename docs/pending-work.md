@@ -23,7 +23,7 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 | Planned | SQLite file permissions | Restrict access to the database and its WAL and SHM files to the backend identity and authorized administrators. Verify permissions after a container restart. |
 | Planned | SQLite backup and restore | Create a consistent backup while the backend is running and verify restoration on an isolated copy. Include user and alert data in the check. |
 | Planned | SQLite library update | Keep SQLite and update the backend driver to a build with the WAL reset fix. Confirm the SQLite version loaded by the container and validate login and alert behavior on a restored copy before deployment. |
-| In progress | Gradual frontend migration to TypeScript | Devices and Alerting are validated in production. Dashboard queries, series, Time series/Gauge/Stat renderers, editor and inspector, Database schedules, Configuration, Help, sign-in and user activity use typed contracts. Continue with Users and the remaining legacy modules. The production build runs `vue-tsc` for migrated components and TypeScript modules. |
+| In progress | Gradual frontend migration to TypeScript | Devices and Alerting are validated in production. Dashboard queries, series, Time series/Gauge/Stat renderers, editor and inspector, Database schedules, Configuration, Help, sign-in and the authenticated Users area use typed contracts. Continue with the public invitation and password-reset screens, followed by the remaining legacy modules. The production build runs `vue-tsc` for migrated components and TypeScript modules. |
 | In progress | Broader backend refactoring | Express assembly and backend startup are separate. Dashboard library, export, schema and saved-panel reads are in production. Dashboard writes are in production. Concurrent editing and draft retention were verified. The live-observation service is in production. Verified the greenhouse connection and latest driver feedback for all four outputs through the saved dashboard API. Offline, stale and disconnected states passed isolated tests. An isolated broker outage confirmed that a saved pump schedule is published again after reconnect. |
 | Planned | Grafana retirement | Remove the temporary comparison service when the Tomatoes dashboards cover the required features. Grafana is already upgraded and isolated behind HTTPS. |
 | Planned | MQTT hostname | Plan mqtt.ceresgrow.com.br, broker certificate SAN and factory endpoint configuration. Do not expose MQTT externally as part of the local portal setup. |
@@ -37,7 +37,7 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 
 1. Replace the factory administrator credential and verify secure rotation.
 2. Protect the SQLite files, test a consistent backup and restore, and validate the library update on the restored copy.
-3. Continue the frontend TypeScript migration with the remaining Users screens.
+3. Continue the frontend TypeScript migration with the public invitation acceptance and password-reset screens.
 4. Translate Database into Portuguese and Spanish and verify both languages plus the English default in the portal. Continue with Users and Alerting as separate deliveries.
 5. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
 
@@ -47,6 +47,8 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 - Greenhouse and battery checks need physical validation. Historical MQTT disconnects need the original log archive. Firmware publication, pull-based OTA and the next PCB require separate coordination.
 
 ### Recently completed
+
+- **Users administration in TypeScript.** Migrated the user list, profile, sessions, groups, invitations and user API client. Verified search, protected administrator profile, sessions, activity, group draft cancellation and the invitations list in Chrome after deployment. Typecheck, lint, production build, 51 frontend tests and 12 isolated user-management integration tests passed. Production email remains unconfigured.
 
 - **Dashboard editor and inspector in TypeScript.** Deployed the frontend and verified Time series, Gauge, Stat, Flux execution, the inspector tabs and the panel draft workflow in Chrome. Typecheck, lint, build and all 51 frontend tests passed. A temporary API test confirmed a stale revision returns HTTP 409.
 

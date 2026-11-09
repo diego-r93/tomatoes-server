@@ -9,18 +9,21 @@
     <v-dialog v-model="confirmation" max-width="460" persistent><v-card :title="actionTitle"><v-card-text>{{ actionDescription }}<v-alert v-if="actionError" type="error" variant="tonal" class="mt-3">{{ actionError }}</v-alert></v-card-text><v-card-actions><v-spacer /><v-btn :disabled="busy" @click="confirmation = false">Cancel</v-btn><v-btn color="primary" :loading="busy" :disabled="busy" @click="perform">Confirm</v-btn></v-card-actions></v-card></v-dialog>
   </div>
 </template>
-<script setup>
-import { inject, onMounted, ref, watch } from 'vue';
+<script setup lang="ts">
+import { onMounted, ref, watch } from 'vue';
 import userService from '@/services/userService';
 import { dateTime, userError } from '@/composables/userManagementUtils';
-const { emailConfiguration, refreshInvitations } = inject('userManagement');
-const invitations = ref([]), loading = ref(false), error = ref(''), notice = ref(''), preview = ref(null), confirmation = ref(false), busy = ref(false), actionError = ref(''), actionTitle = ref(''), actionDescription = ref('');
-let selectedAction;
-const deliveryLabel = value => ({ sent: 'Submitted to provider', failed: 'Not sent', queued: 'Sending' }[value] || value);
+import type { Invitation } from '@/services/userTypes';
+import { useUserManagement } from './userManagementContext';
+
+const { emailConfiguration, refreshInvitations } = useUserManagement();
+const invitations = ref<Invitation[]>([]), loading = ref(false), error = ref(''), notice = ref(''), preview = ref<Invitation | null>(null), confirmation = ref(false), busy = ref(false), actionError = ref(''), actionTitle = ref(''), actionDescription = ref('');
+let selectedAction: (() => Promise<unknown>) | undefined;
+const deliveryLabel = (value: Invitation['deliveryStatus']) => ({ sent: 'Submitted to provider', failed: 'Not sent', queued: 'Sending' }[value] || value);
 async function load() { loading.value = true; error.value = ''; try { invitations.value = (await userService.invitations()).data; } catch (issue) { error.value = userError(issue); } finally { loading.value = false; } }
-function confirmResend(invitation) { actionTitle.value = 'Resend invitation?'; actionDescription.value = `Send a new invitation to ${invitation.email}? The previous link will stop working.`; selectedAction = () => userService.resendInvitation(invitation.id); actionError.value = ''; confirmation.value = true; }
-function confirmRevoke(invitation) { actionTitle.value = 'Revoke invitation?'; actionDescription.value = `The invitation for ${invitation.email} will no longer be usable.`; selectedAction = () => userService.revokeInvitation(invitation.id); actionError.value = ''; confirmation.value = true; }
-async function perform() { if (busy.value) return; busy.value = true; actionError.value = ''; notice.value = ''; try { await selectedAction(); confirmation.value = false; notice.value = 'Invitation updated.'; } catch (issue) { actionError.value = userError(issue); } finally { busy.value = false; await load(); } }
+function confirmResend(invitation: Invitation) { actionTitle.value = 'Resend invitation?'; actionDescription.value = `Send a new invitation to ${invitation.email}? The previous link will stop working.`; selectedAction = () => userService.resendInvitation(invitation.id); actionError.value = ''; confirmation.value = true; }
+function confirmRevoke(invitation: Invitation) { actionTitle.value = 'Revoke invitation?'; actionDescription.value = `The invitation for ${invitation.email} will no longer be usable.`; selectedAction = () => userService.revokeInvitation(invitation.id); actionError.value = ''; confirmation.value = true; }
+async function perform() { if (busy.value || !selectedAction) return; busy.value = true; actionError.value = ''; notice.value = ''; try { await selectedAction(); confirmation.value = false; notice.value = 'Invitation updated.'; } catch (issue) { actionError.value = userError(issue); } finally { busy.value = false; await load(); } }
 watch(refreshInvitations, () => { notice.value = 'Invitation submitted to the email provider.'; load(); });
 onMounted(load);
 </script>

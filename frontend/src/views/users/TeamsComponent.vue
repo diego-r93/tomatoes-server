@@ -2,6 +2,6 @@
   <TeamsCard />
 </template>
 
-<script setup>
+<script setup lang="ts">
   import TeamsCard from '@/components/users/TeamCard.vue'
 </script>
