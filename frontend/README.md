@@ -26,9 +26,9 @@ yarn build
 `yarn lint` reports problems without changing files. `yarn lint:fix` applies
 automatic fixes.
 
-The pump history dialog and API client are the first TypeScript modules.
-Existing JavaScript can still be imported. The production Docker build runs
-`yarn typecheck` before compiling the app with Vite.
+Pump history and the read-only Devices discovery, inventory normalization and
+compact card use TypeScript. Existing JavaScript can still be imported. The
+production Docker build runs `yarn typecheck` before compiling the app with Vite.
 
 ## Update dependencies
 

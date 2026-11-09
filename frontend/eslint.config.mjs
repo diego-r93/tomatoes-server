@@ -4,7 +4,8 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import vueParser from 'vue-eslint-parser';
 
-const typedFiles = ['src/**/*.ts', 'src/components/device/PumpHistoryDialog.vue'];
+const typedComponents = ['src/components/device/DeviceCard.vue', 'src/components/device/PumpHistoryDialog.vue'];
+const typedFiles = ['src/**/*.ts', ...typedComponents];
 
 export default [
   { ignores: ['node_modules/**', 'dist/**'] },
@@ -18,7 +19,7 @@ export default [
   },
   ...tseslint.configs.recommended.map(config => ({ ...config, files: typedFiles })),
   {
-    files: ['src/components/device/PumpHistoryDialog.vue'],
+    files: typedComponents,
     languageOptions: {
       parser: vueParser,
       parserOptions: { parser: tseslint.parser },

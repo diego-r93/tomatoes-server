@@ -1,4 +1,4 @@
-import { lastSeenLabel } from './deviceInventoryUtils.js';
+import { lastSeenLabel } from './deviceInventoryUtils.ts';
 
 export const boardHost = value => String(value || '').trim().replace(/#[^#]*$/, '');
 export const CONNECTION_FRESHNESS_MS = 90000;

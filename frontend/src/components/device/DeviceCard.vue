@@ -7,13 +7,20 @@
     <div class="device-card-footer"><span>{{ online ? `${device.outputs.filter(output => output.state === true).length} / ${device.outputs.length} outputs ON` : `Seen ${lastSeenLabel(device.receivedAt, clock, t)}` }}</span><v-btn variant="text" size="small" @click="$emit('select', device.key, $event)">{{ t('View') }}</v-btn></div>
   </v-card>
 </template>
-<script setup>
+<script setup lang="ts">
 import { useLanguage } from '@/composables/useLanguage';
-const { t } = useLanguage();
-
 import { lastSeenLabel, signalText, weakSignal } from '@/composables/deviceInventoryUtils';
-defineProps({ device: { type: Object, required: true }, online: Boolean, selected: Boolean, showMac: Boolean, clock: Number });
-defineEmits(['select']);
+import type { DiscoveredDevice } from '@/composables/deviceInventoryUtils';
+
+const { t } = useLanguage();
+defineProps<{
+  device: DiscoveredDevice;
+  online?: boolean;
+  selected?: boolean;
+  showMac?: boolean;
+  clock?: number;
+}>();
+defineEmits<{ select: [key: string, event: MouseEvent] }>();
 </script>
 <style scoped lang="scss">
 .device-card { padding: 16px; border-color: rgb(var(--v-theme-border)); }

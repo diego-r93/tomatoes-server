@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { devicePorts, isResponding, mergeDeviceDiscovery, weakSignal } from '../src/composables/deviceInventoryUtils.js';
+import { devicePorts, isResponding, mergeDeviceDiscovery, weakSignal } from '../src/composables/deviceInventoryUtils.ts';
 
 test('normalizes reported output states without guessing unknown values or creating duplicate GPIOs', () => {
   const ports = devicePorts({ a: { gpio: 4, state: false }, b: { gpio: 5, state: '1' }, c: { gpio: 6, state: 'unknown' }, duplicate: { gpio: 4, state: true }, invalid: { gpio: null, state: true } });
@@ -18,4 +18,16 @@ test('malformed responses cannot silently replace the inventory or invent device
   const [unknown] = mergeDeviceDiscovery([{ host: 'esp32s3-A', rssi: null, ports: {} }]);
   assert.equal(unknown.rssi, null); assert.equal(weakSignal(unknown), false);
   assert.equal(weakSignal({ rssi: -75 }), true);
+});
+
+test('keeps offline registration visible and preserves metadata without inventing network or GPIO data', () => {
+  const [offline] = mergeDeviceDiscovery([
+    { host: 'esp32s3-A', online: false, receivedAt: null, ports: 'invalid', model: 'N16R8V' },
+  ], [], 1000);
+  assert.equal(offline.host, 'esp32s3-A');
+  assert.equal(offline.model, 'N16R8V');
+  assert.equal(offline.receivedAt, null);
+  assert.equal(isResponding(offline, 1000), false);
+  assert.deepEqual(offline.ports, {});
+  assert.deepEqual(offline.outputs, []);
 });
