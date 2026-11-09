@@ -16,15 +16,29 @@
   <v-dialog v-model="deleteOpen" max-width="430" persistent><v-card><v-card-title>Delete schedule?</v-card-title><v-card-text>Remove {{ draft.driveTimes[removeIndex]?.time }} from this pump? Save changes to apply this deletion.</v-card-text><v-card-actions><v-spacer/><v-btn @click="deleteOpen = false">Cancel</v-btn><v-btn color="error" @click="draft.driveTimes.splice(removeIndex, 1); deleteOpen = false">Delete schedule</v-btn></v-card-actions></v-card></v-dialog>
   <v-dialog v-model="deletePumpOpen" max-width="460" persistent><v-card><v-card-title>Delete pump?</v-card-title><v-card-text>Delete {{ cardData.pumperName }} and all its stored schedules? This immediately removes the pump from MongoDB.<v-alert v-if="deleteError" type="error" variant="tonal" class="mt-4">{{ deleteError }}</v-alert></v-card-text><v-card-actions><v-spacer/><v-btn :disabled="working" @click="deletePumpOpen = false">Cancel</v-btn><v-btn color="error" :disabled="working" :loading="working" @click="deletePump">Delete pump</v-btn></v-card-actions></v-card></v-dialog>
 </template>
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { isAxiosError } from 'axios';
+import type { DriveTime, PumpSchedule } from '@/services/mongoDataService';
+import type { ScheduleStatus } from '@/composables/boardScheduleUtils';
+import type { BoardConnection } from './BoardConnectionBadge.vue';
 import mongoDataService from '@/services/mongoDataService';
 import BoardConnectionBadge from './BoardConnectionBadge.vue';
 import { boardId, boardDetails, pulseLabel, scheduleEntries, validatedTime } from '@/composables/boardScheduleUtils';
-const props = defineProps({ canManage: Boolean, connection: { type: Object, default: null }, cardData: { type: Object, required: true }, query: { type: String, default: '' }, status: { type: String, default: 'all' }, showSeconds: { type: Boolean, default: false }, durationUnit: { type: String, default: 'minutes' }, rows: { type: Number, default: 8 } });
-const emit = defineEmits(['updated', 'delete', 'busy', 'dirty', 'back']);
-const clone = value => JSON.parse(JSON.stringify(value));
-const fields = board => ({ pumperName: board.pumperName, pulseDuration: board.pulseDuration, driveTimes: clone(board.driveTimes || []) });
+const props = withDefaults(defineProps<{
+  canManage?: boolean;
+  connection?: BoardConnection | null;
+  cardData: PumpSchedule;
+  query?: string;
+  status?: ScheduleStatus;
+  showSeconds?: boolean;
+  durationUnit?: 'minutes' | 'milliseconds';
+  rows?: number;
+}>(), { connection: null, query: '', status: 'all', durationUnit: 'minutes', rows: 8 });
+const emit = defineEmits<{ updated: [board: PumpSchedule]; delete: [id: string]; busy: [active: boolean]; dirty: [changed: boolean]; back: [] }>();
+const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
+const fields = (board: PumpSchedule) => ({ pumperName: board.pumperName, pulseDuration: board.pulseDuration, driveTimes: clone(board.driveTimes || []) });
+const issueMessage = (issue: unknown) => issue instanceof Error ? issue.message : String(issue);
 const baseline = ref(fields(props.cardData)), draft = ref(clone(baseline.value));
 const dirty = computed(() => JSON.stringify(draft.value) !== JSON.stringify(baseline.value));
 watch(dirty, value => emit('dirty', value), { immediate: true });
@@ -33,9 +47,10 @@ const working = ref(false), error = ref(''), deleteError = ref('');
 const period = ref('all'), timeQuery = ref(/^\d/.test(props.query) ? props.query : ''), timeStatus = ref(props.status), page = ref(1);
 const periods = [{ value: 'all', title: 'All times', from: 0, to: 24 }, { value: 'night', title: 'Night', from: 0, to: 6 }, { value: 'morning', title: 'Morning', from: 6, to: 12 }, { value: 'afternoon', title: 'Afternoon', from: 12, to: 18 }, { value: 'evening', title: 'Evening', from: 18, to: 24 }];
 const statusOptions = [{ title: 'All schedules', value: 'all' }, { title: 'Enabled', value: 'enabled' }, { title: 'Disabled', value: 'disabled' }];
-const inPeriod = (time, item) => Number(time.slice(0, 2)) >= item.from && Number(time.slice(0, 2)) < item.to;
-const periodCount = item => draft.value.driveTimes.filter(entry => inPeriod(entry.time, item)).length;
-const entries = computed(() => scheduleEntries(draft.value, timeQuery.value || '', timeStatus.value).filter(entry => inPeriod(entry.time, periods.find(item => item.value === period.value))));
+type Period = (typeof periods)[number];
+const inPeriod = (time: string, item: Period) => Number(time.slice(0, 2)) >= item.from && Number(time.slice(0, 2)) < item.to;
+const periodCount = (item: Period) => draft.value.driveTimes.filter(entry => inPeriod(entry.time, item)).length;
+const entries = computed(() => scheduleEntries(draft.value, timeQuery.value || '', timeStatus.value).filter(entry => inPeriod(entry.time, periods.find(item => item.value === period.value) ?? periods[0])));
 const enabledCount = computed(() => draft.value.driveTimes.filter(entry => entry.state).length);
 const pageCount = computed(() => Math.max(1, Math.ceil(entries.value.length / props.rows)));
 const visibleEntries = computed(() => entries.value.slice((page.value - 1) * props.rows, page.value * props.rows));
@@ -45,11 +60,11 @@ watch(pageCount, count => { page.value = Math.min(page.value, count); });
 const pumpOpen = ref(false), timeOpen = ref(false), deleteOpen = ref(false), deletePumpOpen = ref(false), dialogError = ref('');
 const nameDraft = ref(''), pulseDraft = ref(''), startDraft = ref(''), endDraft = ref('18:00'), stepDraft = ref(30), addMode = ref('single'), editIndex = ref(-1), removeIndex = ref(-1);
 function openPump() { nameDraft.value = draft.value.pumperName; pulseDraft.value = String(props.durationUnit === 'minutes' ? draft.value.pulseDuration / 60000 : draft.value.pulseDuration); dialogError.value = ''; pumpOpen.value = true; }
-function applyPump() { try { Object.assign(draft.value, boardDetails(nameDraft.value, Math.round(Number(pulseDraft.value) * (props.durationUnit === 'minutes' ? 60000 : 1)))); pumpOpen.value = false; } catch (issue) { dialogError.value = issue.message; } }
+function applyPump() { try { Object.assign(draft.value, boardDetails(nameDraft.value, Math.round(Number(pulseDraft.value) * (props.durationUnit === 'minutes' ? 60000 : 1)))); pumpOpen.value = false; } catch (issue) { dialogError.value = issueMessage(issue); } }
 function openAdd() { editIndex.value = -1; addMode.value = 'single'; startDraft.value = '06:00'; endDraft.value = '18:00'; stepDraft.value = 30; dialogError.value = ''; timeOpen.value = true; }
-function openTime(entry) { editIndex.value = entry.index; addMode.value = 'single'; startDraft.value = entry.time; dialogError.value = ''; timeOpen.value = true; }
-const seconds = time => { const [h, m, s = 0] = time.split(':').map(Number); return h * 3600 + m * 60 + s; };
-const fromSeconds = value => [Math.floor(value / 3600), Math.floor(value % 3600 / 60), value % 60].map(n => String(n).padStart(2, '0')).join(':');
+function openTime(entry: DriveTime & { index: number }) { editIndex.value = entry.index; addMode.value = 'single'; startDraft.value = entry.time; dialogError.value = ''; timeOpen.value = true; }
+const seconds = (time: string) => { const [h, m, s = 0] = time.split(':').map(Number); return h * 3600 + m * 60 + s; };
+const fromSeconds = (value: number) => [Math.floor(value / 3600), Math.floor(value % 3600 / 60), value % 60].map(n => String(n).padStart(2, '0')).join(':');
 const generated = computed(() => { try { const start = seconds(validatedTime(startDraft.value, [])), end = seconds(validatedTime(endDraft.value, [])), step = Number(stepDraft.value) * 60; if (end < start || step < 60) return []; return Array.from({ length: Math.floor((end - start) / step) + 1 }, (_, i) => fromSeconds(start + i * step)).filter(time => !draft.value.driveTimes.some(entry => entry.time === time)); } catch { return []; } });
 function applyTimes() {
   try {
@@ -57,7 +72,7 @@ function applyTimes() {
     else if (addMode.value === 'single') draft.value.driveTimes.push({ time: validatedTime(startDraft.value, draft.value.driveTimes), state: false });
     else { if (!generated.value.length) throw new Error('Choose a valid range containing new start times.'); draft.value.driveTimes.push(...generated.value.map(time => ({ time, state: false }))); }
     timeOpen.value = false;
-  } catch (issue) { dialogError.value = issue.message; }
+  } catch (issue) { dialogError.value = issueMessage(issue); }
 }
 function discard() { draft.value = clone(baseline.value); error.value = ''; }
 async function save() {
@@ -73,7 +88,7 @@ async function save() {
     await mongoDataService.updateBoard(boardId(props.cardData), payload);
     baseline.value = clone(payload); draft.value = clone(payload);
     emit('updated', { ...props.cardData, ...payload }); return true;
-  } catch (issue) { error.value = issue.response ? 'The change could not be saved. Your draft is still here; try again.' : issue.message; return false; }
+  } catch (issue) { error.value = isAxiosError(issue) && issue.response ? 'The change could not be saved. Your draft is still here; try again.' : issueMessage(issue); return false; }
   finally { working.value = false; emit('busy', false); }
 }
 async function deletePump() {

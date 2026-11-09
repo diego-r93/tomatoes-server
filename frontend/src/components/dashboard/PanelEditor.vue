@@ -84,7 +84,7 @@ import { ref,computed,onBeforeUnmount } from 'vue';
 import PanelVisualization from './PanelVisualization.vue';
 import { visualizationFor, visualizationError, visualizationTypes, reducers } from '@/composables/panelVisualization.mjs';
 import api from '@/services/dashboardDataService';
-import { http } from '@/services/http-common';
+import { runDashboardQuery } from '@/services/dashboardQuery';
 import { clone,processingFor,processingError,chartDefinition,buildQuery,resolveQuery,alignRows,processValue } from '@/composables/dashboardUtils.mjs';
 const props=defineProps({chart:{type:Object,required:true},isNew:Boolean,bucket:{type:String,default:'tomatoes'},range:{type:[String,Object],default:'-1h'},window:{type:String,default:'10s'},timezone:{type:String,default:'Browser'}}),emit=defineEmits(['close','apply']);
 const panel=ref(clone(props.chart));panel.value.processing=processingFor(panel.value);panel.value.visualization=visualizationFor(panel.value);
@@ -103,7 +103,11 @@ async function loadMeasurements(){const serial=++schemaSerial;error.value='';loa
 async function loadFields(){const serial=++schemaSerial;source.value.field='';source.value.tag='';source.value.tagValue='';fields.value=[];tags.value=[];tagValues.value=[];try{const {data}=await api.schema({bucket:source.value.bucket,measurement:source.value.measurement});if(serial===schemaSerial){fields.value=data.fields;tags.value=data.tags;}}catch{if(serial===schemaSerial)error.value='Could not load fields.';}}
 async function loadTagValues(){const serial=++schemaSerial;source.value.tagValue='';tagValues.value=[];if(!source.value.tag)return;try{const {data}=await api.schema({bucket:source.value.bucket,measurement:source.value.measurement,tag:source.value.tag});if(serial===schemaSerial)tagValues.value=data.values;}catch{if(serial===schemaSerial)error.value='Could not load tag values.';}}
 function generate(){panel.value.query=buildQuery(source.value);panel.value.source=clone(source.value);tab.value='Flux';rows.value=[];result.value='Query generated. Run query to preview live data.';}
-async function run(){queryController?.abort();queryController=new AbortController();running.value=true;error.value='';result.value='';try{const {data}=await http.post(panel.value.liveSource?'/dashboards/live':'/influx',panel.value.liveSource?{source:panel.value.liveSource}:{query:resolveQuery(panel.value.query,props.range,props.window,props.timezone)},{signal:queryController.signal,timeout:30000});alignRows(data,panel.value.processing);rows.value=data;result.value='Query complete · {count} samples';}catch(e){if(e.code!=='ERR_CANCELED')error.value=e.message?.includes('30 series')?e.message:'Query failed. Check Flux, field types, time range and InfluxDB availability.';}finally{running.value=false;}}
+async function run(){queryController?.abort();queryController=new AbortController();running.value=true;error.value='';result.value='';try{const {data}=await runDashboardQuery(
+  panel.value.liveSource ? {path:'/dashboards/live',body:{source:panel.value.liveSource}}
+    : {path:'/influx',body:{query:resolveQuery(panel.value.query,props.range,props.window,props.timezone)}},
+  queryController.signal,
+ );alignRows(data,panel.value.processing);rows.value=data;result.value='Query complete · {count} samples';}catch(e){if(e.code!=='ERR_CANCELED')error.value=e.message?.includes('30 series')?e.message:'Query failed. Check Flux, field types, time range and InfluxDB availability.';}finally{running.value=false;}}
 if(panel.value.liveSource)void run();
 onBeforeUnmount(()=>{queryController?.abort();schemaSerial++;});
 </script>

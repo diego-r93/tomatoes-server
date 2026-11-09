@@ -1,27 +1,48 @@
 <template><div ref="container" class="dashboard-plot" role="img" :aria-label="chartOptions.chartTitle || 'Time series chart'"><div ref="plotHost" class="plot-canvas"/><div v-if="processingFor({processing}).showLegend" class="plot-legend"><span v-for="(item,index) in legend" :key="index" class="legend-series" :title="item.label"><i :style="{background:item.color}"/><span class="legend-label">{{ item.label }}</span><span v-if="hoverValues[index]!==undefined">{{ hoverValues[index] }}</span></span></div><div v-if="tooltip.visible" class="plot-tooltip" role="tooltip" :style="{left:tooltip.x+'px',top:tooltip.y+'px'}"><strong>{{ tooltip.time }}</strong><div v-for="(item,index) in tooltip.items" :key="index" class="tooltip-row"><i :style="{background:item.color}"/><span class="tooltip-label" :title="item.label">{{ item.label }}</span><span class="tooltip-value">{{ item.value }}</span></div></div></div></template>
-<script setup>
+<script setup lang="ts">
 import { chartTimeLabel } from '@/composables/dateTime.mjs';
 import 'uplot/dist/uPlot.min.css';
 import uPlot from 'uplot';
 import { ref,computed,watch,onMounted,onBeforeUnmount } from 'vue';
 import { useTheme } from 'vuetify';
+import type { PlotData, Processing } from '@/composables/dashboardSeries';
+import type { ChartOptions, SeriesStyle } from '@/composables/dashboardPanelTypes';
 import { processingFor } from '@/composables/dashboardUtils.mjs';
 defineOptions({name:'DashboardChart'});
-const props=defineProps({chartOptions:{type:Object,required:true},chartData:{type:Array,required:true},processing:{type:Object,default:()=>({})},labels:{type:Array,default:()=>[]},timezone:{type:String,default:'Browser'}});
-const container=ref(null),plotHost=ref(null),legend=ref([]),hoverValues=ref([]),tooltip=ref({visible:false,items:[]}),theme=useTheme();let plot,observer,resizeFrame;
+const props = withDefaults(defineProps<{
+ chartOptions: ChartOptions;
+ chartData: PlotData | [];
+ processing?: Partial<Processing>;
+ labels?: string[];
+ timezone?: string;
+}>(), { processing: () => ({}), labels: () => [], timezone: 'Browser' });
+type LegendItem = { label: string; color: string };
+type PlotTooltip = { visible: false } | { visible: true; x: number; y: number; time: string; items: (LegendItem & { value: string })[] };
+const container = ref<HTMLElement | null>(null), plotHost = ref<HTMLElement | null>(null);
+const legend = ref<LegendItem[]>([]), hoverValues = ref<string[]>([]);
+const tooltip = ref<PlotTooltip>({ visible: false }), theme = useTheme();
+let plot: uPlot | null = null, observer: ResizeObserver | undefined, resizeFrame = 0;
 const palette=computed(()=>theme.current.value.colors);
+function chartColor(key: 'muted' | 'chart-grid') {
+ const color = palette.value[key];
+ return typeof color === 'string' ? color : undefined;
+}
+const timeSpan = (chart: uPlot) => (chart.scales.x.max ?? 0) - (chart.scales.x.min ?? 0);
 function draw(){
- if(!container.value||!plotHost.value)return;plot?.destroy();plot=null;hoverValues.value=[];tooltip.value={visible:false,items:[]};
- const p=processingFor({processing:props.processing}),width=Math.floor(container.value.clientWidth),height=Math.floor(container.value.clientHeight)-(p.showLegend?26:0);if(width<100||height<80)return;
- const data=props.chartData.length>1&&props.chartData[0]?.length?props.chartData:[[],[]],count=data.length-1;
+ const host = container.value;
+ if(!host||!plotHost.value)return;plot?.destroy();plot=null;hoverValues.value=[];tooltip.value={visible:false};
+ const p=processingFor({processing:props.processing}),width=Math.floor(host.clientWidth),height=Math.floor(host.clientHeight)-(p.showLegend?26:0);if(width<100||height<80)return;
+ const [timestamps, ...values] = props.chartData;
+ const data: PlotData = timestamps?.length && values.length ? [timestamps, ...values] : [[], []];
+ const count = data.length - 1;
  const original=props.chartOptions.series||[{},{}],base=original[1]||{},scale=props.chartOptions.axes?.[1]?.scale||base.scale;
  const colors=[base.stroke||'#80cbc4','#90caf9','#ffcc80','#ce93d8','#a5d6a7','#ef9a9a'];
- const format=value=>{if(value==null)return '—';const divisor=scale==='mb'?1e6:scale==='gb'?1e9:1;return (value/divisor).toFixed(p.decimals)+(props.chartOptions.unit?` ${props.chartOptions.unit}`:scale==='mb'?' MB':scale==='gb'?' GB':scale==='C'?' °C':'');};
- const series=[{label:original[0]?.label||'Date'},...Array.from({length:count},(_,i)=>({...base,label:count===1?(base.label||props.chartOptions.chartTitle||'Value'):(props.labels[i]||base.label||'Value'),scale:'y',stroke:colors[i%colors.length],fill:i===0?base.fill:undefined,width:p.lineWidth,spanGaps:p.gaps==='Connect gaps',points:{...base.points,show:p.showPoints},value:(_,v)=>format(v)}))];
- legend.value=series.slice(1).map(s=>({label:s.label,color:s.stroke}));
- plot=new uPlot({width,height,padding:[12,10,0,0],tzDate:ts=>uPlot.tzDate(new Date(ts*1000),props.timezone==='Browser'?Intl.DateTimeFormat().resolvedOptions().timeZone:props.timezone),legend:{show:false},series,scales:{x:{time:true},y:{auto:true}},axes:[{stroke:palette.value.muted,font:'11px Roboto',grid:{stroke:palette.value['chart-grid'],width:.6},ticks:{show:false},size:u=>u.scales.x.max-u.scales.x.min>86400?42:30,values:(u,ticks)=>ticks.map(ts=>chartTimeLabel(ts*1000,u.scales.x.max-u.scales.x.min,props.timezone,true))},{stroke:palette.value.muted,font:'11px Roboto',grid:{stroke:palette.value['chart-grid'],width:.6},ticks:{show:false},size:(_,labels)=>Math.max(44,...(labels||[]).map(value=>String(value).length*6+12)),values:(_,ticks)=>ticks.map(format)}],hooks:{setCursor:[u=>{const at=u.cursor.idx;if(at==null||u.cursor.left<0||u.cursor.top<0){hoverValues.value=[];tooltip.value.visible=false;return;}hoverValues.value=u.data.slice(1).map(values=>format(values[at]));const root=container.value.getBoundingClientRect(),over=u.over.getBoundingClientRect(),items=legend.value.map((item,i)=>({...item,label:props.labels[i]?`${item.label} {${props.labels[i]}}`:item.label,value:format(u.data[i+1][at])}));tooltip.value={visible:true,x:Math.max(8,Math.min(over.left-root.left+u.cursor.left+14,root.width-Math.min(420,root.width-16)-8)),y:Math.max(8,Math.min(over.top-root.top+u.cursor.top+16,root.height-Math.min(32+items.length*26,200)-8)),time:chartTimeLabel(u.data[0][at]*1000,u.scales.x.max-u.scales.x.min,props.timezone),items};}]}},data,plotHost.value);
+ const format=(value: number | null | undefined)=>{if(value==null)return '—';const divisor=scale==='mb'?1e6:scale==='gb'?1e9:1;return (value/divisor).toFixed(p.decimals)+(props.chartOptions.unit?` ${props.chartOptions.unit}`:scale==='mb'?' MB':scale==='gb'?' GB':scale==='C'?' °C':'');};
+ const series: SeriesStyle[] = [{label:original[0]?.label||'Date'},...Array.from({length:count},(_,i)=>({...base,label:count===1?(base.label||props.chartOptions.chartTitle||'Value'):(props.labels[i]||base.label||'Value'),scale:'y',stroke:colors[i%colors.length],fill:i===0?base.fill:undefined,width:p.lineWidth,spanGaps:p.gaps==='Connect gaps',points:{...base.points,show:p.showPoints},value:(_: uPlot,v: number)=>format(v)}))];
+ legend.value=series.slice(1).map(s=>({label:s.label || 'Value',color:s.stroke || colors[0]}));
+ plot=new uPlot({width,height,padding:[12,10,0,0],tzDate:ts=>uPlot.tzDate(new Date(ts*1000),props.timezone==='Browser'?Intl.DateTimeFormat().resolvedOptions().timeZone:props.timezone),legend:{show:false},series,scales:{x:{time:true},y:{auto:true}},axes:[{stroke:chartColor('muted'),font:'11px Roboto',grid:{stroke:chartColor('chart-grid'),width:.6},ticks:{show:false},size:u=>timeSpan(u)>86400?42:30,values:(u,ticks)=>ticks.map(ts=>chartTimeLabel(ts*1000,timeSpan(u),props.timezone,true))},{stroke:chartColor('muted'),font:'11px Roboto',grid:{stroke:chartColor('chart-grid'),width:.6},ticks:{show:false},size:(_,labels)=>Math.max(44,...(labels||[]).map(value=>String(value).length*6+12)),values:(_,ticks)=>ticks.map(format)}],hooks:{setCursor:[u=>{const at=u.cursor.idx,left=u.cursor.left ?? -1,top=u.cursor.top ?? -1;if(at==null||left<0||top<0){hoverValues.value=[];tooltip.value={visible:false};return;}hoverValues.value=u.data.slice(1).map(values=>format(values[at]));const root=host.getBoundingClientRect(),over=u.over.getBoundingClientRect(),items=legend.value.map((item,i)=>({...item,label:props.labels[i]?`${item.label} {${props.labels[i]}}`:item.label,value:format(u.data[i+1][at])}));tooltip.value={visible:true,x:Math.max(8,Math.min(over.left-root.left+left+14,root.width-Math.min(420,root.width-16)-8)),y:Math.max(8,Math.min(over.top-root.top+top+16,root.height-Math.min(32+items.length*26,200)-8)),time:chartTimeLabel(u.data[0][at]*1000,timeSpan(u),props.timezone),items};}]}},data,plotHost.value);
 }
-onMounted(()=>{observer=new ResizeObserver(()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(draw);});observer.observe(container.value);draw();});
+onMounted(()=>{observer=new ResizeObserver(()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(draw);});if(container.value)observer.observe(container.value);draw();});
 watch(()=>[props.chartData,props.chartOptions,props.processing,props.labels,props.timezone,palette.value],draw,{deep:true});
 onBeforeUnmount(()=>{observer?.disconnect();cancelAnimationFrame(resizeFrame);plot?.destroy();});
 </script>

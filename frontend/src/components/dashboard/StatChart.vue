@@ -9,25 +9,36 @@
     </div>
   </div>
 </template>
-<script setup>
+<script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { useLanguage } from '@/composables/useLanguage';
 import { formatDateTime } from '@/composables/dateTime.mjs';
 import { processingFor } from '@/composables/dashboardUtils.mjs';
 import { gaugeColor, reducers } from '@/composables/panelVisualization.mjs';
 import { statReading, statUnit, statFreshness, statSparkline } from '@/composables/statVisualization.mjs';
-const props = defineProps({chart:{type:Object,required:true},data:{type:Array,required:true},labels:{type:Array,default:()=>[]},config:{type:Object,required:true},timezone:{type:String,default:'Browser'}});
-const {t} = useLanguage(), clock = ref(Date.now()); let timer;
+import type { PlotData } from '@/composables/dashboardSeries';
+import type { DashboardPanelModel, ReducedReading, VisualizationSettings } from '@/composables/dashboardPanelTypes';
+const props = withDefaults(defineProps<{
+  chart: DashboardPanelModel;
+  data: PlotData | [];
+  labels?: string[];
+  config: VisualizationSettings;
+  timezone?: string;
+}>(), { labels: () => [], timezone: 'Browser' });
+const {t} = useLanguage(), clock = ref(Date.now()); let timer: ReturnType<typeof setInterval> | undefined;
 onMounted(()=>{timer=setInterval(()=>{clock.value=Date.now();},5000);});
 onBeforeUnmount(()=>clearInterval(timer));
-const reading = computed(()=>statReading(props.data,props.labels,props.config));
+const reading = computed<ReducedReading>(()=>statReading(props.data,props.labels,props.config));
 const unit = computed(()=>statUnit(props.chart));
-const mapped = computed(()=>props.config.mappings?.find(item=>item.value===reading.value.value/unit.value.divisor)?.text);
+const mapped = computed(() => {
+  const value = reading.value.value;
+  return value === null ? undefined : props.config.mappings.find(item => item.value === value / unit.value.divisor)?.text;
+});
 const formatted = computed(()=>reading.value.value === null ? t('No data') : mapped.value || (reading.value.value/unit.value.divisor).toFixed(processingFor(props.chart).decimals));
-const color = computed(()=>gaugeColor(reading.value.value/unit.value.divisor,props.config));
+const color = computed(()=>gaugeColor((reading.value.value ?? 0)/unit.value.divisor,props.config));
 const spark = computed(()=>statSparkline(props.data,props.labels,props.config));
 const freshness = computed(()=>statFreshness(reading.value,clock.value,props.config.staleAfterSeconds));
-const sampleTime = computed(()=>Number.isFinite(reading.value.timestamp) ? formatDateTime(reading.value.timestamp*1000,props.timezone) : t('Unknown'));
+const sampleTime = computed(()=>reading.value.timestamp !== null && Number.isFinite(reading.value.timestamp) ? formatDateTime(reading.value.timestamp*1000,props.timezone) : t('Unknown'));
 const caption = computed(()=>[reading.value.label === 'Ambiguous series. Add a tag or field filter to the query.' ? t(reading.value.label) : reading.value.label,t(reducers.find(item=>item.value===props.config.reducer)?.title || '')].filter(Boolean).join(' · '));
 const accessibleLabel = computed(()=>`${props.chart.options?.chartTitle || 'Stat'}: ${formatted.value} ${reading.value.value === null ? '' : unit.value.unit}. ${caption.value}. ${reading.value.value === null ? '' : sampleTime.value}. ${freshness.value === 'stale' ? t('Older than {seconds}s',{seconds:props.config.staleAfterSeconds}) : ''}`);
 </script>

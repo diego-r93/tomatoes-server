@@ -37,7 +37,7 @@
   </v-container>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import AppPageHeader from '@/components/navigation/AppPageHeader.vue';
 import HistoryRetention from './HistoryRetention.vue';
 import Authentication from '@/services/auth';

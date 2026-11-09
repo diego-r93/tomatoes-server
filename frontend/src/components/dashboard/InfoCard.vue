@@ -74,7 +74,7 @@ import { useRoute,useRouter,onBeforeRouteLeave,onBeforeRouteUpdate } from 'vue-r
 import { GridLayout,GridItem } from 'grid-layout-plus';
 import { useDisplay } from 'vuetify';
 import api from '@/services/dashboardDataService';
-import { http } from '@/services/http-common';
+import { runDashboardQuery } from '@/services/dashboardQuery';
 import DashboardPanel from './DashboardPanel.vue';
 import PanelEditor from './PanelEditor.vue';
 import PanelInspector from './PanelInspector.vue';
@@ -106,9 +106,13 @@ async function refreshData(){
   try{
    if(!chart.query.trim())throw new Error('No query configured.');
    resolvedQuery=resolveQuery(chart.query,queryRange,window,queryTimezone,queryNow);
-   const queryPath = chart.liveSource ? '/dashboards/live' : canManage ? '/influx' : '/influx/panel';
-   const queryBody = chart.liveSource ? {dashboardId:dashboard.value._id,panelId:id} : canManage ? { query: resolvedQuery } : { dashboardId: dashboard.value._id, panelId: id, start: bounds.start, stop: bounds.stop, window };
-   const {data}=await http.post(queryPath,queryBody,{signal:controller.signal,timeout:30000});
+   const savedPanel = { dashboardId: dashboard.value._id, panelId: id };
+   const {data} = await runDashboardQuery(
+     chart.liveSource ? { path: '/dashboards/live', body: savedPanel }
+       : canManage ? { path: '/influx', body: { query: resolvedQuery } }
+       : { path: '/influx/panel', body: { ...savedPanel, start: bounds.start, stop: bounds.stop, window } },
+     controller.signal,
+   );
    const durationMs=Math.round(performance.now()-started),aligned=alignRows(data,processingFor(chart));
    if(serial===fetchSerial)results.value[id]={...aligned,rawRows:data,resolvedQuery,queryRange:rangeDescription,rangeStart:data[0]?._start||bounds.startISO,rangeStop:data[0]?._stop||bounds.stopISO,queryWindow:window,durationMs,responseBytes:new TextEncoder().encode(JSON.stringify(data)).length,loading:false,updated:Date.now(),error:data.length&&!aligned.data.slice(1).some(values=>values.some(v=>v!==null))?'The query returned no numeric values. Check the field type.':''};
   }catch(e){if(serial===fetchSerial&&e.code!=='ERR_CANCELED')results.value[id]={...results.value[id],loading:false,lastAttempt:{query:resolvedQuery,range:rangeDescription,window,durationMs:Math.round(performance.now()-started),at:new Date().toISOString()},error:chart.liveSource?(e.response?.data?.message||'Could not load live board observations.'):e.message?.includes('30 series')?e.message:'Could not query InfluxDB. Check the query and connection.'};}

@@ -2,10 +2,12 @@ import { lastSeenLabel } from './deviceInventoryUtils.ts';
 
 export const boardHost = value => String(value || '').trim().replace(/#[^#]*$/, '');
 export const CONNECTION_FRESHNESS_MS = 90000;
+/** @returns {{ host: string, state: 'online' | 'unknown' | 'unseen', label: string, detail: string, receivedAt: number | null }} */
 export function boardConnection(code, snapshot, now = Date.now()) {
   const host = boardHost(code), row = snapshot?.devices?.find(item => item.host === host);
   const receivedAt = typeof row?.received_at === 'number' && Number.isFinite(row.received_at) && row.received_at > 0 ? row.received_at : null;
   const lastResponse = receivedAt ? `Last response: ${lastSeenLabel(receivedAt, now)}.` : 'No response has been observed for this board.';
+  /** @returns {ReturnType<typeof boardConnection>} */
   const unknown = reason => ({ host, state: 'unknown', label: 'Unknown', detail: `${reason} ${lastResponse}`, receivedAt });
   if (!host) return unknown('No board is assigned.');
   if (!snapshot) return unknown('Waiting for connection information.');

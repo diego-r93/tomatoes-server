@@ -8,31 +8,35 @@
     <nav class="activity-pagination" aria-label="Activity pages"><span aria-live="polite">{{ total ? (page-1)*pageSize+1 : 0 }}–{{ Math.min(page*pageSize,total) }} of {{ total }} events</span><div><label>Rows per page<select v-model.number="pageSize" aria-label="Activity rows per page"><option :value="10">10</option><option :value="25">25</option><option :value="50">50</option></select></label><v-btn icon="mdi-chevron-left" size="small" variant="text" aria-label="Previous activity page" :disabled="loading || page === 1" @click="changePage(page-1)"/><span>Page {{ page }} of {{ pageCount }}</span><v-btn icon="mdi-chevron-right" size="small" variant="text" aria-label="Next activity page" :disabled="loading || page === pageCount" @click="changePage(page+1)"/></div></nav>
   </v-card-text></v-card>
 </template>
-<script setup>
+<script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { isCancel } from 'axios';
+import type { ActivityFilters, UserActivity } from '@/services/userTypes';
 import userService from '@/services/userService';
 import { dateTime, userError } from '@/composables/userManagementUtils';
 const props = defineProps({ userId: { type: Number, required: true }, refreshKey: { type: Number, default: 0 } });
-const items = ref([]), total = ref(0), page = ref(1), pageSize = ref(10), search = ref(''), action = ref(''), from = ref(''), through = ref(''), actions = ref([]), loading = ref(false), error = ref('');
+const items = ref<UserActivity[]>([]), total = ref(0), page = ref(1), pageSize = ref(10), search = ref(''), action = ref(''), from = ref(''), through = ref(''), actions = ref<string[]>([]), loading = ref(false), error = ref('');
 const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value))), hasFilters = computed(() => Boolean(search.value || action.value || from.value || through.value));
-const actionLabel = value => String(value).replace(/[._]/g, ' ').replace(/^./, character => character.toUpperCase());
+const actionLabel = (value: string) => String(value).replace(/[._]/g, ' ').replace(/^./, character => character.toUpperCase());
 const actionOptions = computed(() => [{title:'All activity',value:''}, ...actions.value.map(value => ({ title: actionLabel(value), value }))]);
-let timer, serial = 0, controller;
+let timer: ReturnType<typeof setTimeout> | undefined;
+let controller: AbortController | undefined;
+let serial = 0;
 async function load() {
   clearTimeout(timer); const current = ++serial; controller?.abort(); controller = new AbortController(); loading.value = true; error.value = '';
   try {
     if (from.value && through.value && from.value > through.value) throw new Error('From date must be on or before To date.');
-    const params = {page:page.value,pageSize:pageSize.value,search:search.value || '',action:action.value};
+    const params: ActivityFilters = {page:page.value,pageSize:pageSize.value,search:search.value || '',action:action.value};
     if (from.value) params.from = new Date(from.value + 'T00:00:00').toISOString();
     if (through.value) { const end = new Date(through.value + 'T00:00:00'); end.setDate(end.getDate()+1); params.before = end.toISOString(); }
     const {data} = await userService.activity(props.userId, params, controller.signal);
     if (current !== serial) return;
     items.value = data.items; total.value = data.total; page.value = data.page; actions.value = data.actions;
-  } catch (issue) { if (current === serial && issue.code !== 'ERR_CANCELED') { items.value = []; total.value = 0; page.value = 1; error.value = userError(issue); } }
+  } catch (issue) { if (current === serial && !isCancel(issue)) { items.value = []; total.value = 0; page.value = 1; error.value = userError(issue); } }
   finally { if (current === serial) loading.value = false; }
 }
-function changePage(value) { page.value = value; load(); }
+function changePage(value: number) { page.value = value; load(); }
 function clearFilters() { search.value = ''; action.value = ''; from.value = ''; through.value = ''; }
 watch([search, action, from, through, pageSize], () => { page.value = 1; controller?.abort(); serial++; clearTimeout(timer); timer = setTimeout(load, 250); });
 watch(() => [props.userId, props.refreshKey], () => { page.value = 1; load(); }, { immediate:true });

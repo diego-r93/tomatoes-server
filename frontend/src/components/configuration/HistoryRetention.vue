@@ -24,12 +24,14 @@
   </v-card>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { isAxiosError } from 'axios';
 import { http } from '@/services/http-common';
 import { useLanguage } from '@/composables/useLanguage';
 const { t } = useLanguage();
-const days = ref(''), savedDays = ref(null);
+interface RetentionSettings { days: number }
+const days = ref<string | number>(''), savedDays = ref<number | null>(null);
 const loading = ref(false), saving = ref(false), confirmOpen = ref(false);
 const error = ref(''), message = ref('');
 const path = '/mqtt/history-retention';
@@ -40,7 +42,7 @@ async function load() {
   loading.value = true;
   error.value = '';
   try {
-    const { data } = await http.get(path);
+    const { data } = await http.get<RetentionSettings>(path);
     savedDays.value = data.days;
     days.value = data.days || '';
   } catch {
@@ -56,17 +58,17 @@ function requestSave() {
   else void save(false);
 }
 
-async function save(confirmReduction) {
+async function save(confirmReduction: boolean) {
   confirmOpen.value = false;
   saving.value = true;
   error.value = '';
   message.value = '';
   try {
-    const { data } = await http.put(path, { days: numericDays.value, previousDays: savedDays.value, confirmReduction });
+    const { data } = await http.put<RetentionSettings>(path, { days: numericDays.value, previousDays: savedDays.value, confirmReduction });
     savedDays.value = days.value = data.days;
     message.value = 'Data retention saved.';
   } catch (issue) {
-    if (issue.response?.status === 409) {
+    if (isAxiosError(issue) && issue.response?.status === 409) {
       await load();
       if (savedDays.value !== null && !error.value) error.value = 'The retention period changed. Review it and try again.';
     } else error.value = 'Could not save data retention.';

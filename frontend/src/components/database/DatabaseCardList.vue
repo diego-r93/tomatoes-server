@@ -17,7 +17,7 @@
   <v-dialog v-model="settingsOpen" max-width="480"><v-card><v-card-title>Page settings</v-card-title><v-card-text><v-switch v-model="settings.showSeconds" label="Show seconds (HH:mm:ss)" color="primary" hide-details class="mb-4"/><v-select v-model="settings.durationUnit" label="Pulse duration unit" :items="[{title:'Minutes',value:'minutes'},{title:'Milliseconds',value:'milliseconds'}]"/><v-select v-model="settings.order" label="Pump order" :items="[{title:'Original order',value:'original'},{title:'Pump name',value:'name'},{title:'Device code',value:'code'}]"/><v-select v-model="settings.pageSize" label="Rows per page" :items="[8, 12, 16]"/><p class="muted">Display preferences are saved in this browser. Stored times and pulse durations stay unchanged.</p></v-card-text><v-card-actions><v-spacer/><v-btn color="primary" @click="settingsOpen = false">Done</v-btn></v-card-actions></v-card></v-dialog>
   <v-dialog v-model="createOpen" max-width="480" persistent><v-card><v-card-title>Add pump</v-card-title><v-card-text><v-form @submit.prevent="createBoard"><v-text-field v-model="nameDraft" label="Pump name" :disabled="locked"/><v-text-field v-model="codeDraft" label="Device and channel" placeholder="esp32s3-07945C#01" hint="Use the exact device code and channel. This identifier cannot be changed later." persistent-hint :disabled="locked" class="mb-4"/><v-text-field v-model="durationDraft" label="Pulse duration (min)" type="number" min="0" step="any" :disabled="locked"/><p class="muted mb-4">The pump starts with one disabled schedule at 06:00:00.</p><v-alert v-if="createError" type="error" variant="tonal" role="alert">{{ createError }}</v-alert><div class="dialog-actions"><v-btn :disabled="locked" @click="createOpen = false">Cancel</v-btn><v-btn type="submit" color="primary" :disabled="locked" :loading="creating">Create pump</v-btn></div></v-form></v-card-text></v-card></v-dialog>
 </template>
-<script setup>
+<script setup lang="ts">
 import Authentication from '@/services/auth';
 const canManage = Boolean(Authentication.currentUser?.isAdmin);
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
@@ -26,46 +26,48 @@ import AppPageHeader from '@/components/navigation/AppPageHeader.vue';
 import DatabaseCard from './DatabaseCard.vue';
 import BoardConnectionBadge from './BoardConnectionBadge.vue';
 import { useBoardConnections } from '@/composables/useBoardConnections';
+import type { PumpSchedule } from '@/services/mongoDataService';
+import type { ScheduleOrder, ScheduleStatus } from '@/composables/boardScheduleUtils';
 import mongoDataService from '@/services/mongoDataService';
 import { boardId, boardDetails, matchingBoards, normalizeSearch, pulseLabel } from '@/composables/boardScheduleUtils';
 const { connectionFor, refreshConnections, loading: connectionsLoading, error: connectionError } = useBoardConnections();
-const boards = ref([]), loading = ref(false), creating = ref(false), mutationBusy = ref(false), error = ref('');
+const boards = ref<PumpSchedule[]>([]), loading = ref(false), creating = ref(false), mutationBusy = ref(false), error = ref('');
 const locked = computed(() => loading.value || creating.value || mutationBusy.value);
-const query = ref(''), status = ref('all'), boardFilter = ref('all'), page = ref(1), selectedKey = ref(''), dirty = ref(false), editor = ref(null);
+const query = ref(''), status = ref<ScheduleStatus>('all'), boardFilter = ref('all'), page = ref(1), selectedKey = ref(''), dirty = ref(false), editor = ref<InstanceType<typeof DatabaseCard> | null>(null);
 const safeQuery = computed(() => query.value || '');
 const selectedBoard = computed(() => boards.value.find(board => boardId(board) === selectedKey.value));
-const settings = reactive({ showSeconds: false, durationUnit: 'minutes', order: 'original', pageSize: 8 });
+const settings = reactive<{ showSeconds: boolean; durationUnit: 'minutes' | 'milliseconds'; order: ScheduleOrder; pageSize: number }>({ showSeconds: false, durationUnit: 'minutes', order: 'original', pageSize: 8 });
 const storageKey = 'tomatoes.boardSchedules.preferences.v2';
 const settingsOpen = ref(false), createOpen = ref(false), createError = ref(''), leaveOpen = ref(false);
 const codeDraft = ref(''), nameDraft = ref(''), durationDraft = ref('15');
 const statusOptions = [{ title: 'All schedules', value: 'all' }, { title: 'Enabled', value: 'enabled' }, { title: 'Disabled', value: 'disabled' }];
-const deviceOf = board => String(board.pumperCode || '').replace(/#[^#]*$/, '') || 'Unassigned';
-const channelOf = board => String(board.pumperCode || '').match(/#[^#]*$/)?.[0] || '—';
-const enabled = board => (board.driveTimes || []).filter(entry => entry.state).length;
+const deviceOf = (board: PumpSchedule) => String(board.pumperCode || '').replace(/#[^#]*$/, '') || 'Unassigned';
+const channelOf = (board: PumpSchedule) => String(board.pumperCode || '').match(/#[^#]*$/)?.[0] || '—';
+const enabled = (board: PumpSchedule) => (board.driveTimes || []).filter(entry => entry.state).length;
 const boardOptions = computed(() => [{ title: 'All boards', value: 'all' }, ...[...new Set(boards.value.map(deviceOf))].sort().map(code => ({ title: code, value: code }))]);
 const filtered = computed(() => matchingBoards(boards.value, safeQuery.value, status.value, settings.order).filter(board => boardFilter.value === 'all' || deviceOf(board) === boardFilter.value));
 // Group before paging so each physical board stays together in the directory.
-const ordered = computed(() => { const groups = new Map(); for (const board of filtered.value) { const key = deviceOf(board); if (!groups.has(key)) groups.set(key, []); groups.get(key).push(board); } return [...groups.values()].flat(); });
+const ordered = computed(() => { const groups = new Map<string, PumpSchedule[]>(); for (const board of filtered.value) { const key = deviceOf(board); const group = groups.get(key); if (group) group.push(board); else groups.set(key, [board]); } return [...groups.values()].flat(); });
 const pageCount = computed(() => Math.max(1, Math.ceil(ordered.value.length / settings.pageSize)));
-const grouped = computed(() => { const groups = []; for (const board of ordered.value.slice((page.value - 1) * settings.pageSize, page.value * settings.pageSize)) { const code = deviceOf(board); let group = groups.at(-1); if (group?.code !== code) { group = { code, items: [] }; groups.push(group); } group.items.push(board); } return groups; });
+const grouped = computed(() => { const groups: { code: string; items: PumpSchedule[] }[] = []; for (const board of ordered.value.slice((page.value - 1) * settings.pageSize, page.value * settings.pageSize)) { const code = deviceOf(board); let group = groups.at(-1); if (group?.code !== code) { group = { code, items: [] }; groups.push(group); } group.items.push(board); } return groups; });
 const rangeStart = computed(() => filtered.value.length ? (page.value - 1) * settings.pageSize + 1 : 0), rangeEnd = computed(() => Math.min(page.value * settings.pageSize, filtered.value.length));
 watch([safeQuery, status, boardFilter, () => settings.order, () => settings.pageSize], () => { page.value = 1; });
 watch(pageCount, count => { page.value = Math.min(page.value, count); });
 watch(settings, () => { try { localStorage.setItem(storageKey, JSON.stringify(settings)); } catch { /* Preferences must not block editing. */ } });
-function manage(board) { selectedKey.value = boardId(board); window.scrollTo({ top: 0 }); }
+function manage(board: PumpSchedule) { selectedKey.value = boardId(board); window.scrollTo({ top: 0 }); }
 async function loadBoards() { if (locked.value) return; loading.value = true; error.value = ''; try { const response = await mongoDataService.getAllBoards(); if (!Array.isArray(response.data)) throw new Error(); boards.value = response.data; } catch { error.value = 'The pump list could not be loaded. Check the connection and try Refresh boards.'; } finally { loading.value = false; } }
-function handleUpdated(board) { boards.value = boards.value.map(current => boardId(current) === boardId(board) ? board : current); }
-function handleDeleted(id) { boards.value = boards.value.filter(board => boardId(board) !== id); selectedKey.value = ''; dirty.value = false; }
-let resolveLeave;
-function confirmLeave() { if (locked.value) return Promise.resolve(false); if (!dirty.value) return Promise.resolve(true); leaveOpen.value = true; return new Promise(resolve => { resolveLeave = resolve; }); }
-function finishLeave(allow) { leaveOpen.value = false; resolveLeave?.(allow); resolveLeave = null; }
+function handleUpdated(board: PumpSchedule) { boards.value = boards.value.map(current => boardId(current) === boardId(board) ? board : current); }
+function handleDeleted(id: string) { boards.value = boards.value.filter(board => boardId(board) !== id); selectedKey.value = ''; dirty.value = false; }
+let resolveLeave: ((allow: boolean) => void) | null = null;
+function confirmLeave() { if (locked.value) return Promise.resolve(false); if (!dirty.value) return Promise.resolve(true); leaveOpen.value = true; return new Promise<boolean>(resolve => { resolveLeave = resolve; }); }
+function finishLeave(allow: boolean) { leaveOpen.value = false; resolveLeave?.(allow); resolveLeave = null; }
 async function saveAndLeave() { if (await editor.value?.save()) finishLeave(true); else finishLeave(false); }
 async function backToDirectory() { if (await confirmLeave()) { selectedKey.value = ''; dirty.value = false; window.scrollTo({ top: 0 }); } }
 async function requestCreate() { if (await confirmLeave()) { selectedKey.value = ''; dirty.value = false; openCreate(); } }
 function openCreate() { createError.value = ''; codeDraft.value = ''; nameDraft.value = ''; durationDraft.value = '15'; createOpen.value = true; }
 async function createBoard() {
   if (locked.value) return;
-  let details; try { details = boardDetails(nameDraft.value, Math.round(Number(durationDraft.value) * 60000)); } catch (issue) { createError.value = issue.message; return; }
+  let details; try { details = boardDetails(nameDraft.value, Math.round(Number(durationDraft.value) * 60000)); } catch (issue) { createError.value = issue instanceof Error ? issue.message : String(issue); return; }
   const pumperCode = codeDraft.value.trim();
   if (!pumperCode) { createError.value = 'Device and channel are required.'; return; }
   if (boards.value.some(board => normalizeSearch(board.pumperCode) === normalizeSearch(pumperCode))) { createError.value = 'A pump with this device and channel already exists.'; return; }
@@ -74,7 +76,7 @@ async function createBoard() {
   catch { createError.value = 'The pump could not be created. Refresh the list before trying again.'; }
   finally { creating.value = false; }
 }
-function beforeUnload(event) { if (dirty.value || mutationBusy.value) { event.preventDefault(); event.returnValue = ''; } }
+function beforeUnload(event: BeforeUnloadEvent) { if (dirty.value || mutationBusy.value) { event.preventDefault(); event.returnValue = ''; } }
 onBeforeRouteLeave(confirmLeave);
 onMounted(() => { try { const saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); if (typeof saved.showSeconds === 'boolean') settings.showSeconds = saved.showSeconds; if (['minutes', 'milliseconds'].includes(saved.durationUnit)) settings.durationUnit = saved.durationUnit; if (['original', 'name', 'code'].includes(saved.order)) settings.order = saved.order; if ([8, 12, 16].includes(saved.pageSize)) settings.pageSize = saved.pageSize; } catch { /* Ignore unavailable preferences. */ } window.addEventListener('beforeunload', beforeUnload); loadBoards(); });
 onBeforeUnmount(() => { window.removeEventListener('beforeunload', beforeUnload); resolveLeave?.(false); });

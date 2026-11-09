@@ -6,12 +6,13 @@
     <v-btn to="/resetpassword" variant="text" class="auth-link mt-3" block>Forgot your password?</v-btn><p class="text-center text-body-small mt-3">New here? Ask your administrator for an invitation.</p>
   </v-card></v-container>
 </template>
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue';
+import type { SubmitEventPromise } from 'vuetify';
 import { useRouter } from 'vue-router';
 import Authentication from '@/services/auth';
 import userService from '@/services/userService';
 import { required, userError } from '@/composables/userManagementUtils';
 const router = useRouter(), identifier = ref(''), password = ref(''), show = ref(false), loading = ref(false), error = ref('');
-async function submit(event) { if (!(await event).valid || loading.value) return; loading.value = true; error.value = ''; try { const { data } = await userService.login({ identifier: identifier.value, password: password.value }); Authentication.login(data); await router.push('/'); } catch (issue) { error.value = userError(issue); } finally { loading.value = false; } }
+async function submit(event: SubmitEventPromise) { if (!(await event).valid || loading.value) return; loading.value = true; error.value = ''; try { const { data } = await userService.login({ identifier: identifier.value, password: password.value }); Authentication.login(data); await router.push('/'); } catch (issue) { error.value = userError(issue); } finally { loading.value = false; } }
 </script>

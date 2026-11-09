@@ -35,7 +35,7 @@
   </v-container>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useLanguage } from '@/composables/useLanguage';
 import AppPageHeader from '@/components/navigation/AppPageHeader.vue';
 import { helpResources, productLabel } from './helpResources';

@@ -2,6 +2,7 @@ import userService from './userService';
 import { clearAuthorizationHeaders } from './http-common';
 
 class Authentication {
+  /** @type {import('./userTypes').UserIdentity | null} */
   currentUser = null;
   validatedAt = 0;
   pending = null;
@@ -22,6 +23,7 @@ class Authentication {
     localStorage.setItem('tomatoesUserId', String(user.id));
     localStorage.setItem('tomatoesUserData', JSON.stringify({ id: user.id, username: user.username, email: user.email, firstName: user.firstName, lastName: user.lastName, phone: user.phone, state: user.state, isAdmin: user.isAdmin }));
   }
+  /** @param {import('./userTypes').LoginResponse} user */
   login(user) {
     const expiry = Date.parse(user.expiresAt);
     if (!user.accessToken || !Number.isFinite(expiry)) throw new Error('The login response was invalid.');

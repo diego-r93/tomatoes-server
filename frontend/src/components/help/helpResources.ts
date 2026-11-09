@@ -1,6 +1,17 @@
 export const productLabel = 'Tomatoes v1.0.0';
 
-export const helpResources = [
+interface ResourceDetails {
+  id: 'documentation' | 'firmware' | 'hydroponics';
+  title: string;
+  description: string;
+  icon: string;
+}
+type HelpResource = ResourceDetails & (
+  | { external: true; link: { href: string; target: '_blank'; rel: string } }
+  | { external: false; link: { to: string } }
+);
+
+export const helpResources: HelpResource[] = [
   {
     id: 'documentation',
     title: 'Documentation',
