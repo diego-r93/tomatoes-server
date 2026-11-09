@@ -20,8 +20,6 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 | Planned | MongoDB replacement or upgrade | Choose a supported database path and data migration before moving away from MongoDB 4.4 compatibility. |
 | Planned | InfluxDB 3 and query migration | Evaluate Flux to InfluxQL migration, feature differences and data retention/migration. Current InfluxDB remains on version 2. |
 | Priority | Administrator credential | Require a unique password for the built-in administrator, support secure rotation, and verify that the factory credential no longer grants access before widening portal access. |
-| Planned | SQLite file permissions | Restrict access to the database and its WAL and SHM files to the backend identity and authorized administrators. Verify permissions after a container restart. |
-| Planned | SQLite backup and restore | Create a consistent backup while the backend is running and verify restoration on an isolated copy. Include user and alert data in the check. |
 | In progress | Broader backend refactoring | Express assembly and backend startup are separate. Dashboard library, export, schema and saved-panel reads are in production. Dashboard writes are in production. Concurrent editing and draft retention were verified. The live-observation service is in production. Verified the greenhouse connection and latest driver feedback for all four outputs through the saved dashboard API. Offline, stale and disconnected states passed isolated tests. An isolated broker outage confirmed that a saved pump schedule is published again after reconnect. |
 | Planned | Grafana retirement | Remove the temporary comparison service when the Tomatoes dashboards cover the required features. Grafana is already upgraded and isolated behind HTTPS. |
 | Planned | MQTT hostname | Plan mqtt.ceresgrow.com.br, broker certificate SAN and factory endpoint configuration. Do not expose MQTT externally as part of the local portal setup. |
@@ -34,9 +32,8 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 ## Next tasks in order
 
 1. Replace the factory administrator credential and verify secure rotation.
-2. Protect the SQLite files. Backup and restore validation remains a separate maintenance task.
-3. Translate Database into Portuguese and Spanish and verify both languages plus the English default in the portal. Continue with Users and Alerting as separate deliveries.
-4. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
+2. Translate Database into Portuguese and Spanish and verify both languages plus the English default in the portal. Continue with Users and Alerting as separate deliveries.
+3. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
 
 ### Waiting on a test or external input
 
@@ -44,6 +41,8 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 - Greenhouse and battery checks need physical validation. Historical MQTT disconnects need the original log archive. Firmware publication, pull-based OTA and the next PCB require separate coordination.
 
 ### Recently completed
+
+- **SQLite permissions and restore validated.** The active database and its WAL and SHM files use mode 0600 after backend recreation. An unprivileged UID could not read them. A protected snapshot was created while the backend was running. A network-isolated restore passed integrity, administrator login and authenticated retrieval of 32 alert rules. All 50 backend tests passed. See [SQLite backup and recovery](sqlite-backup.md).
 
 - **SQLite 3.54.1 deployed.** The backend Docker build verifies the official archive, links the SQLite driver to that version, and checks the loaded engine with SQL. All 50 backend tests passed. A fresh isolated database created one built-in administrator and passed login and authenticated alert reads. The Raspberry Pi upgrade kept the original database, administrator and all 32 alert rule definitions. The HTTPS API responded after the backend restart.
 
