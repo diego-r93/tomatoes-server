@@ -15,5 +15,4 @@ export default {
   export: (id: string) => http.get<ChartPanelDefinition[]>('/dashboards/library/' + encodeURIComponent(id) + '/export'),
   schema: (params: { bucket: string; measurement?: string; tag?: string }) =>
     http.get<{ measurements?: string[]; fields?: string[]; tags?: string[]; values?: string[] }>('/dashboards/schema', { params }),
-  getcharts: () => http.get<ChartPanelDefinition[]>('/dashboards'),
 };
