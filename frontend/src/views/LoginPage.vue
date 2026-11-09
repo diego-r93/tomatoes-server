@@ -2,6 +2,6 @@
   <SignIn />
 </template>
 
-<script setup>
+<script setup lang="ts">
   import SignIn from '@/components/auth/SignIn.vue'
 </script>

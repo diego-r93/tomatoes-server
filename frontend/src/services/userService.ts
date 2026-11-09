@@ -6,15 +6,13 @@ import type {
 } from './userTypes';
 import { http } from './http-common';
 
-// These flags are consumed by the shared HTTP interceptors.
-type UserRequestConfig = AxiosRequestConfig & { skipAuth?: boolean; skipUnauthorized?: boolean };
-const publicRequest: UserRequestConfig = { skipAuth: true };
+const publicRequest: AxiosRequestConfig = { skipAuth: true };
 class UserService {
   login(data: { identifier: string; password: string }) { return http.post<LoginResponse>('/api/users/login', data, publicRequest); }
   me() { return http.get<UserSession>('/api/users/me'); }
   refresh() { return http.post<SessionCredentials>('/api/users/refresh'); }
   logout(token: string) {
-    const config: UserRequestConfig = { headers: { Authorization: `Bearer ${token}` }, skipUnauthorized: true };
+    const config: AxiosRequestConfig = { headers: { Authorization: `Bearer ${token}` }, skipUnauthorized: true };
     return http.post<void>('/api/users/logout', {}, config);
   }
   getAll() { return http.get<UserRecord[]>('/api/users'); }

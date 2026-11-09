@@ -5,11 +5,12 @@
     <v-alert type="info" variant="tonal" class="mt-4">{{ t('TCC v2.0 has no verified per-output hardware PWM path. Peristaltic dosing and PWM need separate hardware and firmware validation.') }}</v-alert>
   </section>
 </template>
-<script setup>
+<script setup lang="ts">
+import type { SetupBoard } from '@/composables/boardSetupInventory';
 import { computed } from 'vue';
 import { useLanguage } from '@/composables/useLanguage';
-import { reportedPumpChannels } from '@/composables/boardSetupInventory.mjs';
-const props = defineProps({ board: { type: Object, required: true } });
+import { reportedPumpChannels } from '@/composables/boardSetupInventory';
+const props = defineProps<{ board: SetupBoard }>();
 const { t } = useLanguage();
 const channels = computed(() => reportedPumpChannels(props.board));
 </script>

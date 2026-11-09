@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { approvedSetupBoards, chipPresence, reportedPumpChannels } from '../src/composables/boardSetupInventory.mjs';
+import { approvedSetupBoards, chipPresence, reportedPumpChannels } from '../src/composables/boardSetupInventory.ts';
 import { boardSetupMessages } from '../src/locales/boardSetup.js';
 
 test('only approved registry boards appear, including offline boards with no discovery report', () => {

@@ -6,7 +6,7 @@ import { interfaceMessages } from '../src/locales/interface.js';
 
 const values = new Map();
 globalThis.localStorage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
-const { useLanguage } = await import('../src/composables/useLanguage.js');
+const { useLanguage } = await import('../src/composables/useLanguage.ts');
 
 test('English is the default, language changes update computed labels and preserve identifiers', () => {
   const { language, setLanguage, t } = useLanguage();

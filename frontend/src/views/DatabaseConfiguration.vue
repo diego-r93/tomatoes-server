@@ -2,6 +2,6 @@
   <DatabaseCardList/>
 </template>
 
-<script setup>
+<script setup lang="ts">
   import DatabaseCardList from '@/components/database/DatabaseCardList.vue'
 </script>

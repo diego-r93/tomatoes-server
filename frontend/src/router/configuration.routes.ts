@@ -1,3 +1,5 @@
+import type { RouteRecordRaw } from 'vue-router';
+
 export default [
   {
     path: "/configuration",
@@ -7,4 +9,4 @@ export default [
     },
     component: () => import("@/views/PageConfiguration.vue"),
   },
-]
+] satisfies RouteRecordRaw[];

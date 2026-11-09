@@ -2,6 +2,6 @@
   <ConfigurationMenu />
 </template>
 
-<script setup>
+<script setup lang="ts">
   import ConfigurationMenu from '@/components/configuration/ConfigurationMenu.vue'
 </script>

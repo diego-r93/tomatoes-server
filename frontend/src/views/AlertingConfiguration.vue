@@ -2,6 +2,6 @@
   <AlertMenu />
 </template>
 
-<script setup>
+<script setup lang="ts">
   import AlertMenu from '@/components/alert/AlertingMenu.vue'
 </script>

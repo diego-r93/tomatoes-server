@@ -1,3 +1,5 @@
+import type { RouteRecordRaw } from 'vue-router';
+
 export default [
   {
     path: "/help",
@@ -7,4 +9,4 @@ export default [
     },
     component: () => import("@/views/HelpMenu.vue"),
   },
-]
+] satisfies RouteRecordRaw[];

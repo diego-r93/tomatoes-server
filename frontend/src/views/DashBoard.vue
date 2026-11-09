@@ -2,6 +2,6 @@
   <InfoCard />
 </template>
 
-<script setup>
+<script setup lang="ts">
   import InfoCard from '@/components/dashboard/InfoCard.vue'
 </script>

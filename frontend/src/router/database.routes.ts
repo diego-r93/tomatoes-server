@@ -1,3 +1,5 @@
+import type { RouteRecordRaw } from 'vue-router';
+
 export default [
   {
     path: "/database",
@@ -7,4 +9,4 @@ export default [
     },
     component: () => import("@/views/DatabaseConfiguration.vue"),
   },
-]
+] satisfies RouteRecordRaw[];

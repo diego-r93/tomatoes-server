@@ -5,6 +5,6 @@
   </v-main>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import NavigationDrawer from '@/components/navigation/NavigationDrawer.vue'
 </script>

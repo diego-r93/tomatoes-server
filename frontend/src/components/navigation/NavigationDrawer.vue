@@ -8,9 +8,9 @@
       <v-tooltip v-for="item in items" :key="item.value">
         <template v-slot:activator="{ props }">
           <v-list-item v-bind="props" :key="item.value" :prepend-icon="item.icon" :title="item.title" :value="item.value"
-            :to="item.path" :subtitle="appearance.sidebarExpanded ? item.subtitle : undefined" @click="selectItem(item.value)"></v-list-item>
+            :to="item.path" @click="selectItem(item.value)"></v-list-item>
         </template>
-        <span>{{ item.title }}{{ item.subtitle ? ` · ${item.subtitle}` : '' }}</span>
+        <span>{{ item.title }}</span>
       </v-tooltip>
     </v-list>
 
@@ -72,7 +72,7 @@
   </v-navigation-drawer>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, mergeProps, ref } from 'vue';
 import { useLanguage } from '@/composables/useLanguage';
 import homeLogo from '@/assets/images/hydroponic.png';
@@ -98,7 +98,7 @@ const items = computed(() => [
 ]);
 
 // Define os métodos
-function selectItem(itemValue) {
+function selectItem(itemValue: string) {
   selectedItem.value = itemValue;
 }
 

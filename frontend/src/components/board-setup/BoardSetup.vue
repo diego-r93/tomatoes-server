@@ -25,7 +25,7 @@
     </template>
   </v-container>
 </template>
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useLanguage } from '@/composables/useLanguage';
@@ -45,7 +45,7 @@ const tabs = [{ id: 'sensors', title: 'Sensors' }, { id: 'calibration', title: '
 const board = computed(() => boards.value.find(item => item.host === host.value));
 const online = computed(() => {
   const report = board.value?.report;
-  return isResponding(report && { responded: report.online !== false, receivedAt: report.receivedAt });
+  return isResponding(report && { responded: report.online !== false, receivedAt: report.receivedAt ?? null });
 });
 watch(boards, list => { if (!list.some(item => item.host === host.value)) host.value = list[0]?.host || ''; });
 watch(host, value => { tab.value = 'sensors'; router.replace({ query: { ...route.query, host: value || undefined } }); });

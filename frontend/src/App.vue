@@ -8,7 +8,7 @@
   </v-app>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, watch } from "vue"
 import { useTheme } from "vuetify"
 import { useRoute } from "vue-router"
@@ -35,7 +35,7 @@ const componentDefaults = computed(() => {
 })
 const vuetifyTheme = useTheme()
 watch(theme, name => { vuetifyTheme.change(name) }, { immediate: true })
-let systemAppearance
+let systemAppearance: MediaQueryList | undefined
 const syncSystemAppearance = () => userTheme.syncSystemTheme()
 onMounted(() => {
   systemAppearance = window.matchMedia?.("(prefers-color-scheme: dark)")
@@ -53,7 +53,7 @@ const layouts = {
 
 const currentLayout = computed(() => {
   const layoutName = route.meta.layout
-  return layouts[layoutName] || DefaultLayout
+  return layoutName ? layouts[layoutName] : DefaultLayout
 })
 </script>
 

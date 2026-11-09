@@ -3,13 +3,16 @@ import { boardSetupMessages } from '../locales/boardSetup.js';
 import { dashboardMessages } from '../locales/dashboard.js';
 import { interfaceMessages } from '../locales/interface.js';
 
-export const languageOptions = [
+type Language = 'en' | 'pt-BR' | 'es';
+type MessageCatalog = Partial<Record<Language, Record<string, string>>>;
+
+export const languageOptions: { title: string; value: Language }[] = [
   { title: 'English', value: 'en' },
   { title: 'Português (Brasil)', value: 'pt-BR' },
   { title: 'Español', value: 'es' },
 ];
 
-const messages = {
+const messages: Record<Language, Record<string, string>> = {
   "en": {
     "home": "Home",
     "dashboards": "Dashboards",
@@ -159,9 +162,9 @@ const messages = {
   }
 };
 const storageKey = 'TomatoesLanguage';
-const isSupported = value => languageOptions.some(option => option.value === value);
+const isSupported = (value: unknown): value is Language => languageOptions.some(option => option.value === value);
 
-function readLanguage() {
+function readLanguage(): Language {
   try {
     const saved = localStorage.getItem(storageKey);
     if (isSupported(saved)) return saved;
@@ -171,7 +174,7 @@ function readLanguage() {
 
 const language = ref(readLanguage());
 const languageStorageUnavailable = ref(false);
-function setLanguage(value) {
+function setLanguage(value: unknown) {
   if (!isSupported(value)) return;
   language.value = value;
   try {
@@ -180,9 +183,18 @@ function setLanguage(value) {
   } catch { languageStorageUnavailable.value = true; }
 }
 
-function t(key, parameters = {}) {
-  const message = messages[language.value][key] ?? boardSetupMessages[language.value]?.[key] ?? interfaceMessages[language.value]?.[key] ?? dashboardMessages[language.value]?.[key] ?? messages.en[key] ?? key;
-  if (typeof message !== 'string') return message;
+const boardSetup: MessageCatalog = boardSetupMessages;
+const interfaceCatalog: MessageCatalog = interfaceMessages;
+const dashboard: MessageCatalog = dashboardMessages;
+
+function t(key: string, parameters: Record<string, unknown> = {}): string {
+  const locale = language.value;
+  const message = messages[locale][key]
+    ?? boardSetup[locale]?.[key]
+    ?? interfaceCatalog[locale]?.[key]
+    ?? dashboard[locale]?.[key]
+    ?? messages.en[key]
+    ?? key;
   return message.replace(/\{(\w+)\}/g, (placeholder, name) => Object.hasOwn(parameters, name) ? String(parameters[name]) : placeholder);
 }
 

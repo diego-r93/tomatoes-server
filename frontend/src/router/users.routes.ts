@@ -1,3 +1,5 @@
+import type { RouteRecordRaw } from 'vue-router';
+
 export default [{
   path: '/users', redirect: '/users/users',
   meta: { requiresAuth: true, category: 'Users', layout: 'ui' },
@@ -9,4 +11,4 @@ export default [{
     { path: 'teams', redirect: '/users/groups' },
     { path: 'invitations', component: () => import('@/components/users/InvitationsCard.vue') },
   ],
-}];
+}] satisfies RouteRecordRaw[];

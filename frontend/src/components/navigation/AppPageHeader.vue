@@ -9,7 +9,7 @@
   </v-app-bar>
 </template>
 
-<script setup>
+<script setup lang="ts">
 defineProps({ title: { type: String, default: '' }, icon: { type: String, default: '' }, height: { type: Number, default: 56 } });
 </script>
 

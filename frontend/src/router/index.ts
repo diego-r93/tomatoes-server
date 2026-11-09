@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router'
 import Authentication from '@/services/auth'
 
 import DashboardRoutes from "@/router/dashboard.routes"
@@ -11,7 +12,16 @@ import ConfigurationRoutes from "@/router/configuration.routes"
 import AuthRoutes from "@/router/auth.routes"
 import HelpRoutes from "@/router/help.routes"
 
-const routes = [
+declare module 'vue-router' {
+  interface RouteMeta {
+    layout?: 'default' | 'auth' | 'ui'
+    category?: string
+    requiresAuth?: boolean
+    requiresAdmin?: boolean
+  }
+}
+
+const routes: RouteRecordRaw[] = [
   {
     path: '/',
     redirect: "/dashboard",
@@ -36,9 +46,9 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(process.env.BASE_URL),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: routes,
-  scrollBehavior(to, from, savedPosition) {
+  scrollBehavior(to, _from, savedPosition) {
     if (savedPosition) {
       return savedPosition;
     } else if (to.hash && document.getElementById(to.hash.slice(1))) {

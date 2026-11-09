@@ -32,7 +32,7 @@
   </section>
   <p class="setup-muted mt-4">{{ t('Future PCB: switch reference and zero paths electronically, preserving isolation and accounting for switch resistance and leakage. Solution immersion remains a physical step.') }}</p>
 </template>
-<script setup>
+<script setup lang="ts">
 import { useLanguage } from '@/composables/useLanguage';
 const { t } = useLanguage();
 </script>
