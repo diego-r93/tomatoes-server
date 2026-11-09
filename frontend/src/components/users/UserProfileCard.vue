@@ -33,7 +33,7 @@ import { useRoute, useRouter } from 'vue-router';
 import userService from '@/services/userService';
 import UserActivityHistory from './UserActivityHistory.vue';
 import Authentication from '@/services/auth';
-import { dateTime, fullName, initials, required, userError, userRoleLabel, validEmail } from '@/composables/userManagementUtils';
+import { dateTime, fullName, initials, passwordRule, required, userError, userRoleLabel, validEmail } from '@/composables/userManagementUtils';
 import type { ActiveSession, PasswordFields, UserGroup, UserProfileFields, UserRecord } from '@/services/userTypes';
 import type { SubmitEventPromise } from 'vuetify';
 import { useUserManagement } from './userManagementContext';
@@ -46,7 +46,6 @@ const loading = ref(false), busy = ref(false), error = ref(''), notice = ref('')
 const builtinFields = [{ key: 'firstName', label: 'First name' }, { key: 'lastName', label: 'Last name' }, { key: 'email', label: 'Email' }, { key: 'username', label: 'Username' }, { key: 'phone', label: 'Phone' }, { key: 'state', label: 'Location' }] as const;
 const draft = reactive<UserProfileFields>({ firstName: '', lastName: '', email: '', username: '', phone: '', state: '' });
 const password = reactive<PasswordFields>({ oldPassword: '', newPassword: '' });
-const passwordRule = (value: string | null | undefined) => (typeof value === 'string' && value.length >= 8 && new TextEncoder().encode(value).length <= 72) || 'Use at least 8 characters and no more than 72 bytes.';
 const availableGroups = computed(() => groups.value.filter(group => !group.isBuiltin));
 const confirmationTitle = computed(() => confirm.value ? ({ disable: 'Disable user?', enable: 'Enable user?', delete: 'Delete user?', reset: 'Send reset email?', session: 'Force logout?', sessions: 'Force logout from all devices?' }[confirm.value]) : 'Confirm action');
 const confirmationText = computed(() => confirm.value ? ({ disable: 'The user will be signed out and cannot sign in until enabled again.', enable: 'Allow this account to sign in again.', delete: 'Permanently delete this account and its group memberships.', reset: 'Send a one-time password reset link to the account email.', session: 'End the selected session. The current session will also sign out if selected.', sessions: 'End every active session for this account, including this one when applicable.' }[confirm.value]) : '')

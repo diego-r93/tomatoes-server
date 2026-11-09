@@ -1,7 +1,7 @@
 <template>
-  <SendPasswordResetEmail/>
+  <SendEmail />
 </template>
 
-<script setup>
-  import SendPasswordResetEmail from '@/components/auth/SendEmail.vue';
+<script setup lang="ts">
+import SendEmail from '@/components/auth/SendEmail.vue';
 </script>
