@@ -52,20 +52,21 @@
   </v-dialog>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { http } from '@/services/http-common';
+import { getPulseHistory, getPulseHistoryCsv, pumpChannels, pulseResults } from '@/services/pumpHistory';
+import type { PulseHistoryFilters, PulseHistoryRecord, PumpChannel, PulseResult } from '@/services/pumpHistory';
 import { useLanguage } from '@/composables/useLanguage';
 import { formatDateTime } from '@/composables/dateTime.mjs';
 import { driverMessage, driverProblem } from '@/composables/pumpDriverFeedback.mjs';
 import { downloadFile } from '@/composables/panelInspection.mjs';
 
-const props = defineProps({ host: { type: String, required: true } });
-defineEmits(['close']);
+const props = defineProps<{ host: string }>();
+defineEmits<{ close: [] }>();
 const { t } = useLanguage();
 
-function localDay(date) {
-  const pad = value => String(value).padStart(2, '0');
+function localDay(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, '0');
   return [date.getFullYear(), pad(date.getMonth() + 1), pad(date.getDate())].join('-');
 }
 
@@ -73,14 +74,15 @@ const today = new Date();
 const weekStart = new Date(today);
 weekStart.setDate(today.getDate() - 6);
 const from = ref(localDay(weekStart)), to = ref(localDay(today));
-const pump = ref(''), result = ref('');
-const pumpOptions = computed(() => [{ title: t('All pumps'), value: '' }, ...['01', '02', '03', '04'].map(value => ({ title: '#' + value, value }))]);
-const results = ['actuated', 'not-actuated', 'missing', 'incomplete', 'supply-missing', 'supply-low', 'short', 'temperature'];
-const resultOptions = computed(() => [{ title: t('All results'), value: '' }, ...results.map(value => ({ title: t(driverMessage(value)), value }))]);
-const applied = ref(null), records = ref([]), page = ref(1), hasNext = ref(false);
+const pump = ref<PumpChannel | ''>('');
+const result = ref<PulseResult | ''>('');
+const pumpOptions = computed(() => [{ title: t('All pumps'), value: '' }, ...pumpChannels.map(value => ({ title: '#' + value, value }))]);
+const resultOptions = computed(() => [{ title: t('All results'), value: '' }, ...pulseResults.map(value => ({ title: t(driverMessage(value)), value }))]);
+const applied = ref<PulseHistoryFilters | null>(null);
+const records = ref<PulseHistoryRecord[]>([]);
+const page = ref(1), hasNext = ref(false);
 const imported = ref(true);
 const error = ref(''), loading = ref(false), downloading = ref(false);
-const path = () => '/mqtt/pump-history/' + encodeURIComponent(props.host);
 
 function applyFilters() {
   if (loading.value) return;
@@ -97,12 +99,12 @@ function applyFilters() {
   void load(1);
 }
 
-async function load(nextPage) {
-  if (loading.value) return;
+async function load(nextPage: number) {
+  if (!applied.value || loading.value) return;
   loading.value = true;
   error.value = '';
   try {
-    const { data } = await http.get(path(), { params: { ...applied.value, page: nextPage } });
+    const data = await getPulseHistory(props.host, applied.value, nextPage);
     records.value = data.records;
     imported.value = data.imported;
     hasNext.value = data.hasNext;
@@ -119,7 +121,7 @@ async function download() {
   downloading.value = true;
   error.value = '';
   try {
-    const { data } = await http.get(path(), { params: { ...applied.value, format: 'csv' }, responseType: 'blob', timeout: 120000 });
+    const data = await getPulseHistoryCsv(props.host, applied.value);
     downloadFile(data, props.host + '-pump-history.csv', 'text/csv;charset=utf-8');
   } catch {
     error.value = 'Could not download pulse history. Try again.';

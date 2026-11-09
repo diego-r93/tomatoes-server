@@ -2,6 +2,7 @@
 !package.json
 !yarn.lock
 !vite.config.js
+!tsconfig.json
 !index.html
 !src/
 !src/**

@@ -17,13 +17,18 @@ Do not edit `node_modules` or generate a second lock file with another package m
 ## Checks
 
 ```sh
-yarn build
+yarn typecheck
 yarn lint
+node --test tests/*.test.mjs
+yarn build
 ```
 
 `yarn lint` reports problems without changing files. `yarn lint:fix` applies
-automatic fixes. The dependency migration retains 11 existing lint errors in
-older source files; these are not introduced by the new ESLint configuration.
+automatic fixes.
+
+The pump history dialog and API client are the first TypeScript modules.
+Existing JavaScript can still be imported. The production Docker build runs
+`yarn typecheck` before compiling the app with Vite.
 
 ## Update dependencies
 
