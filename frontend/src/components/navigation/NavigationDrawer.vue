@@ -29,17 +29,41 @@
         </v-list>
       </v-menu>
 
-      <v-tooltip :text="t('logout')">
-        <template v-slot:activator="{ props }">
-          <v-list-item v-bind="props" prepend-icon="mdi mdi-logout" :title="t('logout')" value="logout" @click.stop="logoutUser"></v-list-item>
+      <v-dialog
+        v-model="logoutConfirmation"
+        max-width="400"
+        aria-labelledby="logout-title"
+        aria-describedby="logout-description"
+      >
+        <template #activator="{ props: dialogProps }">
+          <v-tooltip :text="t('logout')">
+            <template #activator="{ props: tooltipProps }">
+              <v-list-item
+                v-bind="mergeProps(tooltipProps, dialogProps)"
+                prepend-icon="mdi mdi-logout"
+                :title="t('logout')"
+                :aria-label="t('logout')"
+                role="button"
+              />
+            </template>
+          </v-tooltip>
         </template>
-      </v-tooltip>
+        <v-card>
+          <v-card-title id="logout-title">{{ t('logoutTitle') }}</v-card-title>
+          <v-card-text id="logout-description">{{ t('logoutDescription') }}</v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn @click="logoutConfirmation = false">{{ t('cancel') }}</v-btn>
+            <v-btn color="primary" variant="flat" @click="logoutUser">{{ t('logout') }}</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
     </template>
   </v-navigation-drawer>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, mergeProps, ref } from 'vue';
 import { useLanguage } from '@/composables/useLanguage';
 import homeLogo from '@/assets/images/hydroponic.png';
 import router from '@/router';
@@ -49,6 +73,7 @@ import { helpResources, productLabel } from '@/components/help/helpResources';
 
 // Define os estados reativos com `ref`
 const drawer = ref(true);
+const logoutConfirmation = ref(false);
 const appearance = useAppStore();
 const { language, t } = useLanguage();
 const selectedItem = ref('dashboard');
@@ -67,9 +92,9 @@ function selectItem(itemValue) {
   selectedItem.value = itemValue;
 }
 
-function logoutUser() {
-  Authentication.logout();
-  router.push('/login');
+async function logoutUser() {
+  logoutConfirmation.value = false;
+  if (!await router.replace('/login')) Authentication.logout();
 }
 </script>
 
