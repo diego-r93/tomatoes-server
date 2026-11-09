@@ -4,7 +4,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import vueParser from 'vue-eslint-parser';
 
-const typedComponents = ['src/components/device/DeviceCard.vue', 'src/components/device/DeviceDetails.vue', 'src/components/device/PumpHistoryDialog.vue'];
+const typedComponents = ['src/components/alert/*.vue', 'src/components/device/DeviceCard.vue', 'src/components/device/DeviceDetails.vue', 'src/components/device/PumpHistoryDialog.vue'];
 const typedFiles = ['src/**/*.ts', ...typedComponents];
 
 export default [

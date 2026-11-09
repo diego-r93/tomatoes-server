@@ -19,7 +19,7 @@
      <td><button type="button" class="rule-link" @click="detailId=rule.id">{{ rule.name }}</button><div class="meta">{{ rule.source.host }}<template v-if="rule.source.gpio!==undefined"> · GPIO {{ rule.source.gpio }}</template> · {{ rule.severity }}</div></td>
      <td>{{ conditionText(rule) }}<div class="meta">{{ rule.pendingSeconds?`For ${duration(rule.pendingSeconds)}`:'No extra pending period' }}</div></td>
      <td><template v-if="isSilenced(rule.id)"><v-icon icon="mdi-bell-off-outline" size="15" class="mr-1" />Silenced<div class="meta">Until {{ silenceEnd(rule.id) }}</div></template><template v-else>{{ notificationLabel(rule) }}<div v-if="notificationIssue(rule)" class="meta">{{ notificationIssue(rule) }}</div></template></td>
-     <td><div class="row-actions"><v-btn size="small" variant="text" @click="detailId=rule.id">View</v-btn><v-menu v-if="settings.canManage"><template #activator="{props}"><v-btn v-bind="props" icon="mdi-dots-horizontal" size="small" variant="text" :aria-label="`Actions for ${rule.name}`" /></template><v-list density="compact"><v-list-item title="Edit rule" prepend-icon="mdi-pencil-outline" @click="editRule(rule)" /><v-list-item :title="rule.enabled?'Pause evaluation':'Resume evaluation'" :prepend-icon="rule.enabled?'mdi-pause':'mdi-play'" @click="mutate(()=>alertService.enabled(rule.id,!rule.enabled))" /><v-list-item title="Silence notifications" prepend-icon="mdi-bell-off-outline" @click="openSilence(rule)" /><v-list-item title="Delete rule" prepend-icon="mdi-delete-outline" @click="confirmDelete('rules',rule)" /></v-list></v-menu></div></td>
+     <td><div class="row-actions"><v-btn size="small" variant="text" @click="detailId=rule.id">View</v-btn><v-menu v-if="settings.canManage"><template #activator="{props}"><v-btn v-bind="props" icon="mdi-dots-horizontal" size="small" variant="text" :aria-label="`Actions for ${rule.name}`" /></template><v-list density="compact"><v-list-item title="Edit rule" prepend-icon="mdi-pencil-outline" @click="editRule(rule)" /><v-list-item :title="rule.enabled?'Pause evaluation':'Resume evaluation'" :prepend-icon="rule.enabled?'mdi-pause':'mdi-play'" @click="toggleRule(rule)" /><v-list-item title="Silence notifications" prepend-icon="mdi-bell-off-outline" @click="openSilence(rule)" /><v-list-item title="Delete rule" prepend-icon="mdi-delete-outline" @click="confirmDelete('rules',rule)" /></v-list></v-menu></div></td>
     </tr></tbody></v-table>
     <div v-if="!filtered.length" class="rules-empty"><h2>{{ rules.length?'No matching rules':'No alert rules yet' }}</h2><p>{{ rules.length?'Try another search or clear the filters.':'Choose a template or create your first alert rule to start monitoring.' }}</p><v-btn v-if="!rules.length&&settings.canManage" variant="text" prepend-icon="mdi-book-open-outline" @click="templatesOpen=true">Browse templates</v-btn></div>
    </div><footer v-if="filtered.length>10" class="list-footer"><span>{{ (page-1)*10+1 }}–{{ Math.min(page*10,filtered.length) }} of {{ filtered.length }} rules</span><v-pagination v-model="page" :length="Math.ceil(filtered.length/10)" :total-visible="5" /></footer>
@@ -55,40 +55,49 @@
   <RuleEditor v-if="ruleEditor" :initial="selectedRule" :initial-template="initialTemplate" :contacts="contacts" :devices="settings.devices||[]" @close="ruleEditor=false" @saved="ruleEditor=false;load()" />
   <NotificationPreview v-if="messagePreview" :kind="messagePreview.kind" :contact="messagePreview.contact" :rules="rules" @close="messagePreview=null" />
   <ContactEditor v-if="contactEditor" :initial="selectedContact" :initial-kind="contactKind" :settings="settings" @close="contactEditor=false" @saved="contactEditor=false;load()" />
-  <v-dialog v-model="silenceDialog" max-width="600" persistent scrollable><v-card class="alert-dialog"><v-card-title>New silence</v-card-title><v-card-text><v-alert v-if="dialogError" type="error" variant="tonal" class="mb-4">{{ dialogError }}</v-alert><v-form id="silence-form" @submit.prevent="saveSilence"><v-select v-model="silenceForm.ruleId" label="Alert rule" :items="rules" :item-title="rule=>`${rule.name} · ${rule.source.host}`" item-value="id" variant="outlined" /><v-select v-model="silenceForm.minutes" label="Duration" :items="silenceDurations" variant="outlined" /><v-text-field v-if="silenceForm.minutes==='custom'" v-model="customMinutes" label="Duration (minutes)" min="1" max="10080" type="number" variant="outlined" /><v-text-field v-model="silenceForm.reason" label="Reason" placeholder="For example: pump maintenance" maxlength="200" variant="outlined" /><div class="callout">Only external notifications are muted. The rule keeps evaluating, and Firing alerts remain visible.</div></v-form></v-card-text><v-card-actions><v-spacer /><v-btn :disabled="saving" @click="silenceDialog=false">Cancel</v-btn><v-btn color="primary" variant="flat" form="silence-form" type="submit" :loading="saving">Create silence</v-btn></v-card-actions></v-card></v-dialog>
-  <v-dialog :model-value="!!detail" max-width="680" scrollable @update:model-value="detailId=null"><v-card v-if="detail" class="alert-dialog"><v-card-title>{{ detail.name }}</v-card-title><v-card-text><div class="detail-status"><span class="state-badge" :class="`state-${detail.state.toLowerCase().replace(' ','-')}`">{{ detail.state }}</span><span>{{ detail.severity }} · {{ detail.source.host }}<template v-if="detail.source.gpio!==undefined"> · GPIO {{ detail.source.gpio }}</template></span></div><dl class="detail-facts"><div v-for="item in detailRows" :key="item[0]"><dt>{{ item[0] }}</dt><dd>{{ item[1] }}</dd></div></dl><div class="callout">{{ detail.enabled?(detail.reason||'Waiting for evaluation.'):'Evaluation paused. The latest reading is kept for reference.' }}</div><h3 class="dialog-section-title">What to check</h3><p class="app-muted">{{ guidance(detail) }}</p></v-card-text><v-card-actions class="detail-actions"><v-btn v-if="settings.canManage" @click="editRule(detail);detailId=null">Edit rule</v-btn><v-spacer /><template v-if="settings.canManage"><v-btn @click="mutate(()=>alertService.enabled(detail.id,!detail.enabled))">{{ detail.enabled?'Pause':'Resume' }}</v-btn><v-btn variant="outlined" @click="openSilence(detail);detailId=null">Silence</v-btn></template><v-btn variant="outlined" @click="detailId=null">Close</v-btn></v-card-actions></v-card></v-dialog>
+  <v-dialog v-model="silenceDialog" max-width="600" persistent scrollable><v-card class="alert-dialog"><v-card-title>New silence</v-card-title><v-card-text><v-alert v-if="dialogError" type="error" variant="tonal" class="mb-4">{{ dialogError }}</v-alert><v-form id="silence-form" @submit.prevent="saveSilence"><v-select v-model="silenceForm.ruleId" label="Alert rule" :items="rules" :item-title="silenceRuleLabel" item-value="id" variant="outlined" /><v-select v-model="silenceForm.minutes" label="Duration" :items="silenceDurations" variant="outlined" /><v-text-field v-if="silenceForm.minutes==='custom'" v-model="customMinutes" label="Duration (minutes)" min="1" max="10080" type="number" variant="outlined" /><v-text-field v-model="silenceForm.reason" label="Reason" placeholder="For example: pump maintenance" maxlength="200" variant="outlined" /><div class="callout">Only external notifications are muted. The rule keeps evaluating, and Firing alerts remain visible.</div></v-form></v-card-text><v-card-actions><v-spacer /><v-btn :disabled="saving" @click="silenceDialog=false">Cancel</v-btn><v-btn color="primary" variant="flat" form="silence-form" type="submit" :loading="saving">Create silence</v-btn></v-card-actions></v-card></v-dialog>
+  <v-dialog :model-value="!!detail" max-width="680" scrollable @update:model-value="detailId=null"><v-card v-if="detail" class="alert-dialog"><v-card-title>{{ detail.name }}</v-card-title><v-card-text><div class="detail-status"><span class="state-badge" :class="`state-${detail.state.toLowerCase().replace(' ','-')}`">{{ detail.state }}</span><span>{{ detail.severity }} · {{ detail.source.host }}<template v-if="detail.source.gpio!==undefined"> · GPIO {{ detail.source.gpio }}</template></span></div><dl class="detail-facts"><div v-for="item in detailRows" :key="item[0]"><dt>{{ item[0] }}</dt><dd>{{ item[1] }}</dd></div></dl><div class="callout">{{ detail.enabled?(detail.reason||'Waiting for evaluation.'):'Evaluation paused. The latest reading is kept for reference.' }}</div><h3 class="dialog-section-title">What to check</h3><p class="app-muted">{{ guidance(detail) }}</p></v-card-text><v-card-actions class="detail-actions"><v-btn v-if="settings.canManage" @click="editRule(detail);detailId=null">Edit rule</v-btn><v-spacer /><template v-if="settings.canManage"><v-btn @click="toggleRule(detail)">{{ detail.enabled?'Pause':'Resume' }}</v-btn><v-btn variant="outlined" @click="openSilence(detail);detailId=null">Silence</v-btn></template><v-btn variant="outlined" @click="detailId=null">Close</v-btn></v-card-actions></v-card></v-dialog>
   <v-dialog :model-value="!!deletion" max-width="440" persistent><v-card><v-card-title>Delete {{ deletion?.path==='rules'?'alert rule':'contact point' }}?</v-card-title><v-card-text>{{ deletion?.item.name }} will be removed. This cannot be undone.<v-alert v-if="dialogError" type="error" variant="tonal" class="mt-3">{{ dialogError }}</v-alert></v-card-text><v-card-actions><v-spacer /><v-btn :disabled="saving" @click="deletion=null">Cancel</v-btn><v-btn color="error" :loading="saving" @click="remove">Delete</v-btn></v-card-actions></v-card></v-dialog>
  </v-container>
 </template>
-<script setup>
+<script setup lang="ts">
 import { formatTime, formatDate } from '@/composables/dateTime.mjs';
 import AppPageHeader from '@/components/navigation/AppPageHeader.vue';
 import { computed,onMounted,onUnmounted,ref,watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { alertService,alertError,dateLabel,sourceLabel,ruleUnit } from '@/services/alertService';
+import type { AlertEvent, AlertSettings, AlertState, Contact, ContactKind, Delivery, NotificationKind, Rule, Severity, Silence, SourceKind } from '@/services/alertService';
 import RuleEditor from './RuleEditor.vue';
 import ContactEditor from './ContactEditor.vue';
 import NotificationPreview from './NotificationPreview.vue';
-const route=useRoute(),section=computed(()=>route.path.split('/').at(-1));
-const settings=ref({}),rules=ref([]),contacts=ref([]),silences=ref([]),history=ref([]),deliveries=ref([]),loading=ref(false),error=ref('');
-const search=ref(''),state=ref('All'),severity=ref('All'),page=ref(1),historyOffset=ref(0);
-const ruleEditor=ref(false),selectedRule=ref(null),contactEditor=ref(false),selectedContact=ref(null),detailId=ref(null);
-const silenceDialog=ref(false),silenceForm=ref({}),dialogError=ref(''),saving=ref(false),deletion=ref(null);
-let timer,disposed=false;
-const clone=value=>value?JSON.parse(JSON.stringify(value)):null;
+const route=useRoute(),section=computed(()=>route.path.split('/').at(-1) ?? '');
+const sectionLabels: Record<string, string> = { rules: 'Alert rules', contacts: 'Contact points', silences: 'Silences', history: 'History' };
+const silenceRuleLabel = (rule: Rule) => `${rule.name} · ${rule.source.host}`;
+const settings=ref<Partial<AlertSettings>>({}),rules=ref<Rule[]>([]),contacts=ref<Contact[]>([]),silences=ref<Silence[]>([]);
+const history=ref<AlertEvent[]>([]),deliveries=ref<Delivery[]>([]),loading=ref(false),error=ref('');
+const search=ref(''),state=ref<AlertState | 'All'>('All'),severity=ref<Severity | 'All'>('All'),page=ref(1),historyOffset=ref(0);
+const ruleEditor=ref(false),selectedRule=ref<Rule | null>(null),contactEditor=ref(false),selectedContact=ref<Contact | null>(null),detailId=ref<number | null>(null);
+const silenceDialog=ref(false),silenceForm=ref<{ruleId: number | null; minutes: number | 'custom'; reason: string}>({ruleId:null,minutes:60,reason:''});
+type Deletion = {path: 'rules' | 'contacts'; item: Pick<Rule | Contact, 'id' | 'name'>};
+const dialogError=ref(''),saving=ref(false),deletion=ref<Deletion | null>(null);
+let timer: ReturnType<typeof setInterval> | undefined;
+let disposed=false;
 const detail=computed(()=>rules.value.find(rule=>rule.id===detailId.value));
 const detailRows=computed(()=>{const r=detail.value;if(!r)return [];return [['Condition',`${r.operator} ${r.threshold} ${ruleUnit(r.source)} for ${duration(r.pendingSeconds)}`],['Recovery threshold',`${r.operator==='>'?'≤':'≥'} ${r.recovery} ${ruleUnit(r.source)}`],['Evaluation interval',`Every ${duration(r.intervalSeconds)}`],['Current sample',reading(r)],['Source',sourceLabel(r.source)],['Notification',isSilenced(r.id)?'Silenced; evaluation continues':notificationLabel(r)],['Sample timestamp',dateLabel(r.sampleAt)],['Last evaluation',dateLabel(r.evaluatedAt)]];});
-const guidance=rule=>({pump_driver:'Inspect the driver report and pump supply. The last pulse result persists until the next pulse. ACTIVE does not prove water flow.',device_age:'Check the device power supply, Wi-Fi and MQTT connection before changing schedules.',wifi:'Check antenna placement, obstructions and access-point coverage.',output_on:'Inspect the output and pump locally. A GPIO state does not prove water is flowing.',cpu_temperature:'Inspect cooling and workload. Confirm that Telegraf is collecting recent samples.',disk_usage:'Review filesystem usage, logs, backups and database retention.',metric_age:'Check the sensor topic, firmware publishing, MQTT connection and Telegraf collection. Age is based on the latest InfluxDB timestamp.',metric:'Check the sensor feed, hostname, measurement, numeric field and sample timestamps.'}[rule.source.kind]);
-const messagePreview=ref(null),contactKind=ref('email'),customMinutes=ref(60);
+const guidance=(rule: Rule)=>({pump_driver:'Inspect the driver report and pump supply. The last pulse result persists until the next pulse. ACTIVE does not prove water flow.',device_age:'Check the device power supply, Wi-Fi and MQTT connection before changing schedules.',wifi:'Check antenna placement, obstructions and access-point coverage.',output_on:'Inspect the output and pump locally. A GPIO state does not prove water is flowing.',cpu_temperature:'Inspect cooling and workload. Confirm that Telegraf is collecting recent samples.',disk_usage:'Review filesystem usage, logs, backups and database retention.',metric_age:'Check the sensor topic, firmware publishing, MQTT connection and Telegraf collection. Age is based on the latest InfluxDB timestamp.',metric:'Check the sensor feed, hostname, measurement, numeric field and sample timestamps.'}[rule.source.kind]);
+const messagePreview=ref<{kind: NotificationKind; contact: Contact | null} | null>(null);
+const contactKind=ref<ContactKind>('email'),customMinutes=ref<number | string>(60);
 const silenceDurations=[{title:'15 minutes',value:15},{title:'30 minutes',value:30},{title:'1 hour',value:60},{title:'4 hours',value:240},{title:'Custom duration',value:'custom'}];
-const timeLabel=value=>formatTime(value);
-const dayLabel=value=>formatDate(value);
-const channelContacts=kind=>contacts.value.filter(contact=>contact.kind===kind);
-function configureChannel(kind){contactKind.value=kind;selectedContact.value=null;contactEditor.value=true;}
-function openPreview(kind,contact=null){messagePreview.value={kind,contact:clone(contact||channelContacts(kind)[0]||null)};}
-const helpOpen=ref(false),templatesOpen=ref(false),initialTemplate=ref('device_age');
-const sectionLabel=computed(()=>({rules:'Alert rules',contacts:'Contact points',silences:'Silences',history:'History'}[section.value]||'Alert rules'));
-const ruleTemplates=[
+const timeLabel=(value: number)=>formatTime(value);
+const dayLabel=(value: number)=>formatDate(value);
+const channelContacts=(kind: NotificationKind)=>contacts.value.filter(contact=>contact.kind===kind);
+function configureChannel(kind: ContactKind){contactKind.value=kind;selectedContact.value=null;contactEditor.value=true;}
+function openPreview(kind: NotificationKind, contact: Contact | null = null) {
+  messagePreview.value = { kind, contact: contact ?? channelContacts(kind)[0] ?? null };
+}
+const helpOpen=ref(false),templatesOpen=ref(false),initialTemplate=ref<SourceKind>('device_age');
+const sectionLabel=computed(()=>(sectionLabels[section.value]||'Alert rules'));
+const ruleTemplates: {kind: SourceKind; title: string; description: string}[] = [
  {kind:'pump_driver',title:'Pump driver feedback',description:'Detect failed actuation, missing feedback, short circuit, overtemperature or absent pump supply.'},
  {kind:'device_age',title:'Device not responding',description:'Track the time since an ESP32 last replied to MQTT discovery.'},
  {kind:'wifi',title:'Weak Wi-Fi signal',description:'Watch the RSSI reported by a connected device.'},
@@ -98,30 +107,38 @@ const ruleTemplates=[
  {kind:'metric_age',title:'Telemetry missing',description:'Watch the age of the latest sample for an exact MQTT sensor topic.'},
  {kind:'metric',title:'Growing environment / sensor metric',description:'Use an existing pH, EC, water temperature or level feed. Requires a matching numeric measurement.'},
 ];
-const category=rule=>['device_age','wifi'].includes(rule.source.kind)?'ESP32 & network':['output_on','pump_driver'].includes(rule.source.kind)?'Pump outputs':['cpu_temperature','disk_usage'].includes(rule.source.kind)?'Server health':'Growing environment';
-const stateFilters=computed(()=>['All','Firing','Pending','No data','Error','Normal','Paused'].map(label=>({label,count:label==='All'?rules.value.length:rules.value.filter(rule=>rule.state===label).length})));
+const category=(rule: Rule)=>['device_age','wifi'].includes(rule.source.kind)?'ESP32 & network':['output_on','pump_driver'].includes(rule.source.kind)?'Pump outputs':['cpu_temperature','disk_usage'].includes(rule.source.kind)?'Server health':'Growing environment';
+const stateFilters=computed(()=>(['All','Firing','Pending','No data','Error','Normal','Paused'] as const).map(label=>({label,count:label==='All'?rules.value.length:rules.value.filter(rule=>rule.state===label).length})));
 const filtered=computed(()=>rules.value.filter(rule=>(state.value==='All'||rule.state===state.value)&&(severity.value==='All'||rule.severity===severity.value)&&`${rule.name} ${rule.source.host} ${sourceLabel(rule.source)} ${category(rule)}`.toLowerCase().includes((search.value||'').toLowerCase())).sort((a,b)=>['ESP32 & network','Pump outputs','Server health','Growing environment'].indexOf(category(a))-['ESP32 & network','Pump outputs','Server health','Growing environment'].indexOf(category(b))||a.id-b.id));
-const groups=computed(()=>{const result=[];for(const rule of pageRules.value){let group=result.find(item=>item.name===category(rule));if(!group){group={name:category(rule),rules:[]};result.push(group);}group.rules.push(rule);}return result;});
-const duration=seconds=>seconds>=3600?`${Number((seconds/3600).toFixed(1))} hr`:seconds>=60?`${Number((seconds/60).toFixed(1))} min`:`${seconds} sec`;
-const silenceEnd=id=>dateLabel(Math.max(...silences.value.filter(item=>item.rule_id===id).map(item=>item.ends_at)));
-const ruleContacts=rule=>contacts.value.filter(contact=>rule.contactIds.includes(contact.id));
-function notificationLabel(rule){const kinds=[...new Set(ruleContacts(rule).map(contact=>contact.kind))];return 'In-app'+(kinds.length?' + '+kinds.map(kind=>kind==='email'?'email':'WhatsApp').join(' + '):!settings.value.canManage&&rule.contactIds.length?' + external':'');}
-function notificationIssue(rule){const selected=ruleContacts(rule);if(selected.some(contact=>!contact.enabled))return 'Contact point disabled';if(selected.some(contact=>contact.kind==='email')&&!settings.value.email)return 'Email needs setup';if(selected.some(contact=>contact.kind==='whatsapp')&&!settings.value.whatsapp?.configured)return 'WhatsApp needs setup';return '';}
-function useRuleTemplate(kind){templatesOpen.value=false;initialTemplate.value=kind;selectedRule.value=null;ruleEditor.value=true;}
+const groups=computed(()=>{const result: {name: string; rules: Rule[]}[]=[];for(const rule of pageRules.value){let group=result.find(item=>item.name===category(rule));if(!group){group={name:category(rule),rules:[]};result.push(group);}group.rules.push(rule);}return result;});
+const duration=(seconds: number)=>seconds>=3600?`${Number((seconds/3600).toFixed(1))} hr`:seconds>=60?`${Number((seconds/60).toFixed(1))} min`:`${seconds} sec`;
+const silenceEnd=(id: number)=>dateLabel(Math.max(...silences.value.filter(item=>item.rule_id===id).map(item=>item.ends_at)));
+const ruleContacts=(rule: Rule)=>contacts.value.filter(contact=>rule.contactIds.includes(contact.id));
+function notificationLabel(rule: Rule){const kinds=[...new Set(ruleContacts(rule).map(contact=>contact.kind))];return 'In-app'+(kinds.length?' + '+kinds.map(kind=>kind==='email'?'email':'WhatsApp').join(' + '):!settings.value.canManage&&rule.contactIds.length?' + external':'');}
+function notificationIssue(rule: Rule){const selected=ruleContacts(rule);if(selected.some(contact=>!contact.enabled))return 'Contact point disabled';if(selected.some(contact=>contact.kind==='email')&&!settings.value.email)return 'Email needs setup';if(selected.some(contact=>contact.kind==='whatsapp')&&!settings.value.whatsapp?.configured)return 'WhatsApp needs setup';return '';}
+function useRuleTemplate(kind: SourceKind){templatesOpen.value=false;initialTemplate.value=kind;selectedRule.value=null;ruleEditor.value=true;}
 const pageRules=computed(()=>filtered.value.slice((page.value-1)*10,page.value*10));
-const providers=computed(()=>[{kind:'email',name:'Email / Outlook',icon:'mdi-email-outline',ready:settings.value.email},{kind:'whatsapp',name:'WhatsApp',icon:'mdi-whatsapp',ready:settings.value.whatsapp?.configured}]);
-const conditionText=rule=>rule.source.kind==='pump_driver' && rule.operator==='>' && rule.threshold===0.5 ? ({failure:'Failed actuation',missing:'No driver feedback',short:'Driver short circuit',temperature:'Driver overtemperature',supply:'Pump supply absent / low'}[rule.source.condition]||'Driver condition detected') : `${rule.operator} ${rule.threshold} ${ruleUnit(rule.source)}`;
-const reading=rule=>rule.value===null?'—':`${Number(rule.value.toFixed(2))} ${ruleUnit(rule.source)}`;
-const isSilenced=id=>silences.value.some(item=>item.rule_id===id&&item.ends_at>Date.now());
+const providers=computed<{kind: ContactKind; name: string; icon: string; ready?: boolean}[]>(()=>[{kind:'email',name:'Email / Outlook',icon:'mdi-email-outline',ready:settings.value.email},{kind:'whatsapp',name:'WhatsApp',icon:'mdi-whatsapp',ready:settings.value.whatsapp?.configured}]);
+const driverConditions = { failure: 'Failed actuation', missing: 'No driver feedback', short: 'Driver short circuit',
+  temperature: 'Driver overtemperature', supply: 'Pump supply absent / low' };
+function conditionText(rule: Rule) {
+  if (rule.source.kind === 'pump_driver' && rule.operator === '>' && rule.threshold === 0.5) {
+    return rule.source.condition ? driverConditions[rule.source.condition] : 'Driver condition detected';
+  }
+  return `${rule.operator} ${rule.threshold} ${ruleUnit(rule.source)}`;
+}
+const reading=(rule: Rule)=>rule.value===null?'—':`${Number(rule.value.toFixed(2))} ${ruleUnit(rule.source)}`;
+const isSilenced=(id: number)=>silences.value.some(item=>item.rule_id===id&&item.ends_at>Date.now());
 watch([search,state,severity],()=>{page.value=1;});watch(filtered,()=>{page.value=Math.min(page.value,Math.max(1,Math.ceil(filtered.value.length/10)));});
 async function load(){if(loading.value||disposed)return;loading.value=true;try{const config=await alertService.get('settings');const result=await Promise.all([alertService.get('rules'),alertService.get('silences'),alertService.get('history',{offset:historyOffset.value}),config.canManage?alertService.get('contacts'):[],config.canManage?alertService.get('deliveries'):[]]);if(disposed)return;settings.value=config;[rules.value,silences.value,history.value,contacts.value,deliveries.value]=result;error.value='';}catch(issue){error.value=alertError(issue);}finally{loading.value=false;}}
-function editRule(rule){initialTemplate.value='device_age';selectedRule.value=clone(rule);ruleEditor.value=true;}
-function editContact(contact){contactKind.value=contact?.kind||'email';selectedContact.value=clone(contact);contactEditor.value=true;}
-function openSilence(rule){dialogError.value='';customMinutes.value=60;silenceForm.value={ruleId:rule?.id||null,minutes:60,reason:''};silenceDialog.value=true;}
-async function saveSilence(){saving.value=true;dialogError.value='';try{await alertService.save('silences',{...silenceForm.value,minutes:silenceForm.value.minutes==='custom'?customMinutes.value:silenceForm.value.minutes});silenceDialog.value=false;await load();}catch(issue){dialogError.value=alertError(issue);}finally{saving.value=false;}}
-async function mutate(action){try{await action();await load();}catch(issue){error.value=alertError(issue);}}
-function confirmDelete(path,item){dialogError.value='';deletion.value={path,item};}
-async function remove(){saving.value=true;dialogError.value='';try{await alertService.remove(deletion.value.path,deletion.value.item.id);deletion.value=null;await load();}catch(issue){dialogError.value=alertError(issue);}finally{saving.value=false;}}
+function editRule(rule: Rule | null){initialTemplate.value='device_age';selectedRule.value=rule;ruleEditor.value=true;}
+function editContact(contact: Contact | null){contactKind.value=contact?.kind||'email';selectedContact.value=contact;contactEditor.value=true;}
+function openSilence(rule: Rule | null){dialogError.value='';customMinutes.value=60;silenceForm.value={ruleId:rule?.id||null,minutes:60,reason:''};silenceDialog.value=true;}
+async function saveSilence(){saving.value=true;dialogError.value='';try{await alertService.saveSilence({...silenceForm.value,minutes:silenceForm.value.minutes==='custom'?customMinutes.value:silenceForm.value.minutes});silenceDialog.value=false;await load();}catch(issue){dialogError.value=alertError(issue);}finally{saving.value=false;}}
+function toggleRule(rule: Rule) { return mutate(() => alertService.enabled(rule.id, !rule.enabled)); }
+async function mutate(action: () => Promise<unknown>){try{await action();await load();}catch(issue){error.value=alertError(issue);}}
+function confirmDelete(path: Deletion['path'], item: Deletion['item']){dialogError.value='';deletion.value={path,item};}
+async function remove(){if(!deletion.value)return;saving.value=true;dialogError.value='';try{await alertService.remove(deletion.value.path,deletion.value.item.id);deletion.value=null;await load();}catch(issue){dialogError.value=alertError(issue);}finally{saving.value=false;}}
 onMounted(()=>{load();timer=setInterval(load,15000);});onUnmounted(()=>{disposed=true;clearInterval(timer);});
 </script>
 <style scoped lang="scss">

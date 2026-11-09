@@ -9,13 +9,18 @@
   <p class="preview-note">Recovery notifications identify the incident as Resolved. External delivery requires an enabled contact point and a configured sender.</p>
  </v-card-text><v-card-actions><v-spacer /><v-btn variant="outlined" @click="$emit('close')">Close</v-btn></v-card-actions></v-card></v-dialog>
 </template>
-<script setup>
+<script setup lang="ts">
 import { computed,ref } from 'vue';
 import { ruleUnit } from '@/services/alertService';
-const props=defineProps({kind:{type:String,default:'inapp'},contact:Object,rules:{type:Array,default:()=>[]}});
-defineEmits(['close']);
-const ruleId=ref(props.rules[0]?.id??null),phase=ref('Firing');
-const rule=computed(()=>props.rules.find(item=>item.id===ruleId.value)||{name:'Example temperature alert',severity:'Warning',source:{kind:'cpu_temperature',host:'example-host'},value:80,operator:'>',threshold:75,recovery:68,pendingSeconds:120});
+import type { Contact, NotificationKind, Rule } from '@/services/alertService';
+const props = withDefaults(defineProps<{ kind?: NotificationKind; contact?: Contact | null; rules?: Rule[] }>(),
+  { kind: 'inapp', rules: () => [] });
+defineEmits<{ close: [] }>();
+const ruleId=ref(props.rules[0]?.id??null),phase=ref<'Firing' | 'No data' | 'Error' | 'Resolved'>('Firing');
+type PreviewRule = Pick<Rule, 'name' | 'severity' | 'value' | 'operator' | 'threshold' | 'recovery' | 'pendingSeconds'> & {
+  source: Pick<Rule['source'], 'kind' | 'host' | 'gpio' | 'pump' | 'condition' | 'measurement' | 'unit'>;
+};
+const rule=computed<PreviewRule>(()=>props.rules.find(item=>item.id===ruleId.value)||{name:'Example temperature alert',severity:'Warning',source:{kind:'cpu_temperature',host:'example-host'},value:80,operator:'>',threshold:75,recovery:68,pendingSeconds:120});
 const target=computed(()=>`${rule.value.source.host}${rule.value.source.gpio!==undefined?` / GPIO ${rule.value.source.gpio}`:''}`);
 const reading=computed(()=>rule.value.value===null?'Not available':`${Number(rule.value.value.toFixed(2))} ${ruleUnit(rule.value.source)}`);
 const condition=computed(()=>`${rule.value.operator} ${rule.value.threshold} ${ruleUnit(rule.value.source)} for ${rule.value.pendingSeconds} sec; recovery ${rule.value.recovery} ${ruleUnit(rule.value.source)}`);

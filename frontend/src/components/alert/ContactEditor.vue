@@ -10,13 +10,15 @@
   </v-form>
  </v-card-text><v-card-actions><v-spacer /><v-btn :disabled="busy" @click="$emit('close')">Cancel</v-btn><v-btn form="contact-form" type="submit" color="primary" variant="flat" :loading="busy">Save contact point</v-btn></v-card-actions></v-card></v-dialog>
 </template>
-<script setup>
+<script setup lang="ts">
 import { computed,ref } from 'vue';
 import { alertService,alertError } from '@/services/alertService';
-const props=defineProps({initial:Object,initialKind:{type:String,default:'email'},settings:Object}),emit=defineEmits(['close','saved']);
-const form=ref(props.initial?JSON.parse(JSON.stringify(props.initial)):{name:'',kind:props.initialKind,enabled:false,consent:false,recipients:[],template:'tomatoes_alert_status',language:'en_US'}),recipients=ref(form.value.recipients.join('\n')),busy=ref(false),error=ref('');
+import type { AlertSettings, Contact, ContactDraft, ContactKind } from '@/services/alertService';
+const props = withDefaults(defineProps<{ initial?: Contact | null; initialKind?: ContactKind; settings?: Partial<AlertSettings> }>(), { initialKind: 'email' });
+const emit = defineEmits<{ close: []; saved: [] }>();
+const form=ref<ContactDraft>(props.initial?{...props.initial}:{name:'',kind:props.initialKind,enabled:false,consent:false,recipients:[],template:'tomatoes_alert_status',language:'en_US'}),recipients=ref(form.value.recipients.join('\n')),busy=ref(false),error=ref('');
 const ready=computed(()=>form.value.kind==='email'?props.settings?.email:props.settings?.whatsapp?.configured);
-async function save(){busy.value=true;error.value='';try{await alertService.save('contacts',{...form.value,recipients:recipients.value.split(/[\n,;]/).map(item=>item.trim()).filter(Boolean)});emit('saved');}catch(issue){error.value=alertError(issue);}finally{busy.value=false;}}
+async function save(){busy.value=true;error.value='';try{await alertService.saveContact({...form.value,recipients:recipients.value.split(/[\n,;]/).map(item=>item.trim()).filter(Boolean)});emit('saved');}catch(issue){error.value=alertError(issue);}finally{busy.value=false;}}
 </script>
 
 <style scoped lang="scss">

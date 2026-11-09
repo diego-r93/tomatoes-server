@@ -26,8 +26,8 @@ yarn build
 `yarn lint` reports problems without changing files. `yarn lint:fix` applies
 automatic fixes.
 
-Pump history and the read-only Devices discovery, inventory normalization and
-compact card use TypeScript. Existing JavaScript can still be imported. The
+Pump history, the Devices inventory and output command flow, and the Alerting
+workspace use TypeScript. Existing JavaScript can still be imported. The
 production Docker build runs `yarn typecheck` before compiling the app with Vite.
 
 ## Update dependencies

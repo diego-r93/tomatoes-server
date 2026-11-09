@@ -10,5 +10,5 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "src/components/device/DeviceCard.vue", "src/components/device/DeviceDetails.vue", "src/components/device/PumpHistoryDialog.vue"]
+  "include": ["src/**/*.ts", "src/components/alert/*.vue", "src/components/device/DeviceCard.vue", "src/components/device/DeviceDetails.vue", "src/components/device/PumpHistoryDialog.vue"]
 }

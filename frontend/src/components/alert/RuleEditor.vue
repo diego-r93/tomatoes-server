@@ -23,18 +23,26 @@
   </v-card>
  </v-dialog>
 </template>
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue';
 import { alertService, alertError, ruleUnit } from '@/services/alertService';
-const props=defineProps({initial:Object,initialTemplate:{type:String,default:'device_age'},contacts:{type:Array,default:()=>[]},devices:{type:Array,default:()=>[]}});
-const emit=defineEmits(['close','saved']);
-const templates=[{title:'Pump driver feedback',kind:'pump_driver'},{title:'Device not responding',kind:'device_age'},{title:'Weak Wi-Fi signal',kind:'wifi'},{title:'GPIO ON longer than expected',kind:'output_on'},{title:'Raspberry Pi CPU temperature',kind:'cpu_temperature'},{title:'Disk space usage',kind:'disk_usage'},{title:'Telemetry missing',kind:'metric_age'},{title:'Custom sensor metric',kind:'metric'}];
-const defaults={name:'Device not responding',source:{kind:'device_age',host:'',gpio:0,pump:1,condition:'failure',device:'',path:'/',measurement:'',field:'value',topic:'',unit:'',scale:1,freshnessSeconds:180},operator:'>',threshold:120,recovery:60,pendingSeconds:60,intervalSeconds:30,repeatSeconds:3600,severity:'Warning',contactIds:[],enabled:false};
-const form=ref(props.initial?{...structuredClone(defaults),...JSON.parse(JSON.stringify(props.initial)),source:{...defaults.source,...props.initial.source}}:structuredClone(defaults));
+import type { AlertDevice, Contact, Rule, RuleDraft, SourceKind } from '@/services/alertService';
+const props = withDefaults(defineProps<{
+  initial?: Rule | null;
+  initialTemplate?: SourceKind;
+  contacts?: Contact[];
+  devices?: AlertDevice[];
+}>(), { initialTemplate: 'device_age', contacts: () => [], devices: () => [] });
+const emit = defineEmits<{ close: []; saved: [] }>();
+const templates: { title: string; kind: SourceKind }[] = [{title:'Pump driver feedback',kind:'pump_driver'},{title:'Device not responding',kind:'device_age'},{title:'Weak Wi-Fi signal',kind:'wifi'},{title:'GPIO ON longer than expected',kind:'output_on'},{title:'Raspberry Pi CPU temperature',kind:'cpu_temperature'},{title:'Disk space usage',kind:'disk_usage'},{title:'Telemetry missing',kind:'metric_age'},{title:'Custom sensor metric',kind:'metric'}];
+const defaults: RuleDraft = {name:'Device not responding',source:{kind:'device_age',host:'',gpio:0,pump:1,condition:'failure',device:'',path:'/',measurement:'',field:'value',topic:'',unit:'',scale:1,freshnessSeconds:180},operator:'>',threshold:120,recovery:60,pendingSeconds:60,intervalSeconds:30,repeatSeconds:3600,severity:'Warning',contactIds:[],enabled:false};
+const form = ref<RuleDraft>(props.initial
+  ? { ...structuredClone(defaults), ...props.initial, contactIds: [...props.initial.contactIds], source: { ...defaults.source, ...props.initial.source } }
+  : structuredClone(defaults));
 const template=ref(form.value.source.kind),error=ref(''),busy=ref(false);
-function useTemplate(kind){template.value=kind;const limits={pump_driver:[0.5,0,0],device_age:[120,60,60],wifi:[-80,-72,120],output_on:[900,0,60],cpu_temperature:[75,68,120],disk_usage:[85,80,300],metric:[100,95,120],metric_age:[180,60,0]}[kind];Object.assign(form.value,{name:templates.find(item=>item.kind===kind).title,operator:kind==='wifi'?'<':'>',threshold:limits[0],recovery:limits[1],pendingSeconds:limits[2]});form.value.source.kind=kind;if(kind==='metric_age'){form.value.source.measurement='mqtt_consumer';form.value.source.field='value';if(!form.value.source.host)form.value.source.host='raspberrypi';}}
+function useTemplate(kind: SourceKind){const selected = templates.find(item=>item.kind===kind);if(!selected)return;template.value=kind;const limits={pump_driver:[0.5,0,0],device_age:[120,60,60],wifi:[-80,-72,120],output_on:[900,0,60],cpu_temperature:[75,68,120],disk_usage:[85,80,300],metric:[100,95,120],metric_age:[180,60,0]}[kind];Object.assign(form.value,{name:selected.title,operator:kind==='wifi'?'<':'>',threshold:limits[0],recovery:limits[1],pendingSeconds:limits[2]});form.value.source.kind=kind;if(kind==='metric_age'){form.value.source.measurement='mqtt_consumer';form.value.source.field='value';if(!form.value.source.host)form.value.source.host='raspberrypi';}}
 if(!props.initial?.id)useTemplate(props.initialTemplate);
-async function save(){busy.value=true;error.value='';try{await alertService.save('rules',form.value);emit('saved');}catch(issue){error.value=alertError(issue);}finally{busy.value=false;}}
+async function save(){busy.value=true;error.value='';try{await alertService.saveRule(form.value);emit('saved');}catch(issue){error.value=alertError(issue);}finally{busy.value=false;}}
 </script>
 
 <style scoped lang="scss">
