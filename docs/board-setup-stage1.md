@@ -32,3 +32,46 @@ Internal electronic self-tests cannot replace physical immersion in pH/EC soluti
 No calibration, output command, firmware flash, broker/ACL change or backend restart was performed in this stage.
 
 Validation: 49 frontend tests passed; ESLint passed; production image built with Vite 8.3.6 and deployed by recreating nginx only. Browser: both real boards Online, all four bench channels, disabled calibration actions, history-unavailable state, /mdd redirect and 390px one-column layout verified. Unauthenticated HTTPS GET /server/mqtt/registry returned 401. No real calibration or firmware validation performed.
+
+## Next integration milestone
+
+Claude reported E1 and the floating-point pH fix on firmware local main
+(`f9c4cb3`, merge `3e9bb1b`). The bench board `esp32s3-07945C` runs the
+pre-commit build with those changes. The second board remains on `16a5c1c`.
+With the same solution, Claude measured 267.9 and 268.1 uS/cm in the three
+minutes before and after the change. The comparison supports continuity of
+the previous EC readings under that setup. Absolute accuracy still needs
+verification against the Akso 1413 uS/cm standard. Auto-ranging and the
+assumed 7-ohm front-end offset remain separate issues.
+
+The first proposed setting is an **EC probe label**. It identifies the probe
+for the operator and leaves the calculation path untouched. The setting is
+offered only when firmware explicitly advertises support. Probe validity
+is a separate observation and is required for capturing calibration points.
+
+- Proposed label format for this pilot is 0 to 32 printable ASCII characters.
+  An empty value clears the label. Reject invalid characters, leading or
+  trailing spaces, and oversized values with an explicit reason.
+- A write carries a unique request ID and the expected current configuration
+  revision. Firmware checks the revision and persists the label, incremented
+  revision, and last applied request ID as one record. Retry of the same
+  request and payload returns the recorded result. Reusing an ID with a
+  different payload is rejected.
+- An authenticated read returns the capability, stored label and revision.
+  After a successful write acknowledgement, the server verifies a separate
+  readback. Report the change as applied only once it sees the matching
+  revision and value. An acknowledgement loss leaves an unknown outcome
+  until readback reconciles it.
+- Server access is restricted to administrators and approved boards. Audit
+  actor, board, request ID, revisions and outcome. Executable commands are
+  non-retained. MQTT topic ownership, expiry and reconnect behavior must be
+  agreed with firmware before integration.
+- Bench acceptance covers saving and clearing, readback after reboot,
+  duplicate delivery, stale revision, invalid input, failed persistence,
+  loss of reply, and a board without the capability. Compare the reported
+  label and revision with the expected state in each case.
+
+This proposal is under review in bridge message 29. Wire format and
+implementation await firmware alignment. The operational calibration
+milestone still requires validated probe checks and raw samples, persistent
+coefficients, and user-present trials with the reference solutions.
