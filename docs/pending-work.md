@@ -30,14 +30,17 @@ Updated 2026-11-08. Completed features are documented in the commit report and t
 | Planned | Next PCB driver feedback | Evaluate ADC sampling of IPROPI and ESP32 connections for nFAULT/DRVOFF. Current TCC v2.0 does not measure pump current; a driver ON result does not confirm water flow. Include EN and IO0 in the programming connector for automatic flashing, as noted by Claude after read-only UART0 validation. Coordinate with Claude. |
 | Planned | Cloud migration | Preserve factory-certificate admission and registration while planning tenant isolation, backups and deployment. |
 
-## Independent tasks in suggested order
+## Next tasks in order
 
-1. Finish Devices resume validation with a confirmed Windows suspension and wake, then return to the open Devices tab and check for a fresh discovery without reloading.
-2. Translate Database into Portuguese and Spanish, then continue with Users and Alerting. Keep English as the default and verify all three language choices.
-3. Audit the MQTT service identities and sudo grants. Document the current scope and propose changes that preserve SSH and VS Code access.
-4. Review SQLite usage and the backup/restore path before proposing a library or migration change.
+1. Translate Database into Portuguese and Spanish and verify both languages plus the English default in the portal. Continue with Users and Alerting as separate deliveries.
+2. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
+3. Map SQLite usage and verify the existing backup and restore procedure on a disposable copy. Use the results to decide whether a migration is worthwhile.
 
-Keep the calibration pilot paused until Wednesday. Firmware publication, pull-based OTA and the next PCB require separate coordination. The greenhouse and battery checks need physical validation, and historical MQTT disconnects need the original log archive.
+### Waiting on a test or external input
+
+- Devices validation remains partial. Repeat with a confirmed Windows suspension and wake, then return to the open Devices tab and check for fresh discovery without reloading. Isolate the resume trigger from the 30-second polling cycle.
+- Calibration is paused until Wednesday, 2026-11-11. Start by reviewing the probe-label persistence and readback proposal with Claude.
+- Greenhouse and battery checks need physical validation. Historical MQTT disconnects need the original log archive. Firmware publication, pull-based OTA and the next PCB require separate coordination.
 
 Recently completed: top-center floating Devices confirmation below the header (181c504); stable Devices command feedback and fixed refresh progress layout; 14 additional bench diagnostic panels (20 to 34), preserving original charts.  Stats/Gauges in existing dashboards and driver/battery alert support (c30aa83, aa95d41); the sensor-free second-board dashboard (54665e2). Claude previously confirmed the R9 fixes and the T2 supervisor recovery test. Temporary pump-supply tests passed on esp32s3-1C1250; greenhouse installation remains pending.
 
