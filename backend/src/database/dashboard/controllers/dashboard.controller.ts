@@ -1,10 +1,9 @@
 import { Request, Response } from 'express';
-import { randomUUID } from 'crypto';
-import Dashboard from '../models/dashboard.model';
-import { validateCharts, validateDashboard } from '../validation';
+import { validateCharts } from '../validation';
 import { HttpError } from '../../../users/types';
 import { listDashboardSummaries } from '../readRepository';
 import { readDashboard, readDashboardSchema, readLegacyCharts } from '../readService';
+import { createDashboard, deleteDashboard, updateDashboard } from '../writeService';
 
 export async function list(_req: Request, res: Response) {
   res.json(await listDashboardSummaries());
@@ -13,20 +12,13 @@ export async function get(req: Request, res: Response) {
   res.json(await readDashboard(String(req.params.id)));
 }
 export async function create(req: Request, res: Response) {
-  res.status(201).json(await Dashboard.create({ _id: randomUUID(), ...validateDashboard(req.body), revision: 1 }));
+  res.status(201).json(await createDashboard(req.body));
 }
 export async function update(req: Request, res: Response) {
-  if (!Number.isInteger(req.body.revision)) throw new HttpError(400, 'The dashboard revision is required.');
-  const fields = validateDashboard(req.body);
-  const item = await Dashboard.findOneAndUpdate({ _id: req.params.id, revision: req.body.revision }, { $set: fields, $inc: { revision: 1 } }, { new: true }).lean();
-  if (!item) throw new HttpError(409, 'This dashboard changed in another session. Export your draft, then reload before saving.');
-  res.json(item);
+  res.json(await updateDashboard(String(req.params.id), req.body));
 }
 export async function remove(req: Request, res: Response) {
-  const revision = Number(req.query.revision);
-  if (!Number.isInteger(revision)) throw new HttpError(400, 'The dashboard revision is required.');
-  const result = await Dashboard.deleteOne({ _id: req.params.id, revision });
-  if (!result.deletedCount) throw new HttpError(409, 'Dashboard changed or no longer exists. Refresh the library.');
+  await deleteDashboard(String(req.params.id), Number(req.query.revision));
   res.status(204).end();
 }
 export async function exportCharts(req: Request, res: Response) {

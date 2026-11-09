@@ -142,6 +142,20 @@ test('user management integration with a legacy SQLite database and local SMTP',
         subtest.mock.restoreAll();
       }
     });
+    await t.test('dashboard writes require administrator access', async () => {
+      const library = '/dashboards/library';
+      for (const [method, url, body] of [
+        ['POST', library, { name: 'Example', charts: [] }],
+        ['PUT', library + '/example', { name: 'Updated', charts: [], revision: 1 }],
+        ['DELETE', library + '/example?revision=1', undefined],
+      ]) {
+        expect(await request(method, url, body), 401);
+        expect(await request(method, url, body, oldUser.accessToken), 403);
+      }
+      expect(await request('POST', library, { name: '', charts: [] }, admin.accessToken), 400);
+      expect(await request('PUT', library + '/example', undefined, admin.accessToken), 400);
+      expect(await request('DELETE', library + '/example', undefined, admin.accessToken), 400);
+    });
     await t.test('profiles sanitize private fields; groups preserve account data and reject privilege changes', async () => {
       const list = expect(await request('GET', '/api/users', undefined, admin.accessToken), 200);
       assert(list.every(user => !('password' in user) && !('token_hash' in user)));
