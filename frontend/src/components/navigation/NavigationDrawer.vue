@@ -31,7 +31,14 @@
 
       <v-dialog
         v-model="logoutConfirmation"
-        max-width="400"
+        width="300"
+        :scrim="false"
+        location-strategy="connected"
+        location="end bottom"
+        origin="auto"
+        scroll-strategy="reposition"
+        :offset="10"
+        content-class="logout-popover"
         aria-labelledby="logout-title"
         aria-describedby="logout-description"
       >
@@ -48,13 +55,16 @@
             </template>
           </v-tooltip>
         </template>
-        <v-card>
-          <v-card-title id="logout-title">{{ t('logoutTitle') }}</v-card-title>
+        <v-card class="logout-card" variant="outlined">
+          <v-card-title id="logout-title">
+            <v-icon icon="mdi-logout" size="18" aria-hidden="true" />
+            {{ t('logoutTitle') }}
+          </v-card-title>
           <v-card-text id="logout-description">{{ t('logoutDescription') }}</v-card-text>
           <v-card-actions>
             <v-spacer />
-            <v-btn @click="logoutConfirmation = false">{{ t('cancel') }}</v-btn>
-            <v-btn color="primary" variant="flat" @click="logoutUser">{{ t('logout') }}</v-btn>
+            <v-btn size="small" @click="logoutConfirmation = false">{{ t('cancel') }}</v-btn>
+            <v-btn color="primary" variant="flat" size="small" @click="logoutUser">{{ t('logout') }}</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -105,4 +115,10 @@ async function logoutUser() {
 .help-resource { margin: 2px 4px; border-radius: 4px; }
 .help-resource :deep(.v-list-item__prepend > .v-icon) { margin-inline-end: 12px; opacity: .85; }
 .help-resource :deep(.v-list-item-title) { font-size: 14px; }
+
+:global(.v-dialog > .logout-popover) { margin: 0; }
+.logout-card { border-color: rgb(var(--v-theme-border)); }
+.logout-card #logout-title { display: flex; gap: 8px; align-items: center; padding: 12px 14px 4px; font-size: 15px; }
+.logout-card #logout-description { padding: 4px 14px 10px; color: rgb(var(--v-theme-muted)); font-size: 13px; }
+.logout-card .v-card-actions { min-height: 0; padding: 4px 14px 12px; }
 </style>

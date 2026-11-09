@@ -34,7 +34,7 @@
 
           <template v-else>
 
-            <v-card v-if="settings.layout === 'details'" variant="outlined" class="device-table-card" :style="{ minHeight: `${42 + capacity * 64}px` }"><v-table class="device-table"><thead><tr><th>{{ t('Device') }}</th><th>{{ t('Connection') }}</th><th class="network-column">{{ t('Network') }}</th><th class="outputs-column">{{ t('Outputs') }}</th><th>{{ t('Details') }}</th></tr></thead><tbody><tr v-for="device in paged" :key="device.key" :class="{ 'selected-row': selectedKey === device.key }"><td class="device-identity"><button type="button" class="device-name" @click="selectDevice(device.key)">{{ device.host }}</button><small v-if="settings.showMac">{{ device.mac || t('No MAC reported') }}</small></td><td><span class="connection-status" :class="{ 'connection-status--online': responding(device) }">{{ responding(device) ? t('Online') : t('Not seen') }}</span><small>{{ lastSeenLabel(device.receivedAt, clock, t) }}</small></td><td class="network-column"><span class="signal-reading" :class="{ 'text-warning': responding(device) && weakSignal(device) }"><v-icon icon="mdi-wifi" size="15" /> {{ responding(device) ? t(signalText(device)) : '—' }}</span><small>{{ device.ip || t('No IP reported') }}</small></td><td class="outputs-column">{{ responding(device) ? `${device.outputs.filter(output => output.state === true).length} / ${device.outputs.length} ON` : t('Last state') }}</td><td><v-btn variant="text" size="small" @click="selectDevice(device.key)">{{ t('View') }}</v-btn></td></tr></tbody></v-table></v-card>
+            <v-card v-if="settings.layout === 'details'" variant="outlined" class="device-table-card" :style="{ minHeight: `${42 + capacity * 64}px` }"><v-table class="device-table"><thead><tr><th>{{ t('Device') }}</th><th>{{ t('Connection') }}</th><th class="network-column">{{ t('Network') }}</th><th class="outputs-column">{{ t('Outputs') }}</th><th>{{ t('Details') }}</th></tr></thead><tbody><tr v-for="device in paged" :key="device.key" :class="{ 'selected-row': selectedKey === device.key }"><td class="device-identity"><button type="button" class="device-name" @click="selectDevice(device.key, $event)">{{ device.host }}</button><small v-if="settings.showMac">{{ device.mac || t('No MAC reported') }}</small></td><td><span class="connection-status" :class="{ 'connection-status--online': responding(device) }">{{ responding(device) ? t('Online') : t('Not seen') }}</span><small>{{ lastSeenLabel(device.receivedAt, clock, t) }}</small></td><td class="network-column"><span class="signal-reading" :class="{ 'text-warning': responding(device) && weakSignal(device) }"><v-icon icon="mdi-wifi" size="15" /> {{ responding(device) ? t(signalText(device)) : '—' }}</span><small>{{ device.ip || t('No IP reported') }}</small></td><td class="outputs-column">{{ responding(device) ? `${device.outputs.filter(output => output.state === true).length} / ${device.outputs.length} ON` : t('Last state') }}</td><td><v-btn variant="text" size="small" @click="selectDevice(device.key, $event)">{{ t('View') }}</v-btn></td></tr></tbody></v-table></v-card>
 
             <div v-else class="device-cards"><DeviceCard v-for="device in paged" :key="device.key" :device="device" :online="responding(device)" :selected="selectedKey === device.key" :clock="clock" :show-mac="settings.showMac" @select="selectDevice" /><div v-for="slot in capacity - paged.length" :key="`slot-${slot}`" class="device-card-placeholder" aria-hidden="true" /></div>
 
@@ -44,14 +44,14 @@
 
         </div>
 
-        <DeviceDetails v-if="selectedDevice" ref="detailsPanel" :device="selectedDevice" :online="responding(selectedDevice)" :clock="clock" :pending="pending" :sending="sending" :all-off-pending="Boolean(pendingAll[selectedDevice.key])" @all-off="openCommand" :can-update-firmware="canManage" @close="selectedKey = ''" @change="openCommand" @information="openInformation" @firmware="openFirmware" />
+        <DeviceDetails v-if="selectedDevice" ref="detailsPanel" :device="selectedDevice" :online="responding(selectedDevice)" :clock="clock" :pending="pending" :sending="sending" :all-off-pending="Boolean(pendingAll[selectedDevice.key])" @all-off="openCommand" :can-update-firmware="canManage" @close="closeDeviceDetails" @change="openCommand" @information="openInformation" @firmware="openFirmware" />
 
       </div>
 
     <v-alert v-if="feedbackError" type="warning" variant="tonal" class="mt-4">{{ t('Driver feedback updates are unavailable. Last observations are shown.') }}</v-alert>
     <v-alert v-if="pumpIssues.length" type="warning" variant="tonal" class="mt-4" role="status">
       <strong>{{ t('Pump driver needs attention') }}</strong>
-      <div v-for="issue in pumpIssues" :key="issue.code"><v-btn variant="text" size="small" @click="selectDevice(issue.deviceKey, true)">{{ issue.host }} #{{ issue.pump }}</v-btn> {{ t(driverMessage(issue.result)) }}</div>
+      <div v-for="issue in pumpIssues" :key="issue.code"><v-btn variant="text" size="small" @click="selectDevice(issue.deviceKey, $event)">{{ issue.host }} #{{ issue.pump }}</v-btn> {{ t(driverMessage(issue.result)) }}</div>
     </v-alert>
       <footer class="devices-footer"><span>Tomatoes v1.0.0</span><span>{{ t('Online: replied within 90 seconds · Not seen: no recent reply') }}</span></footer>
 
@@ -143,12 +143,19 @@ const capacity = computed(() => Math.min(settings.pageSize, filtered.value.lengt
 const selectedDevice = computed(() => devices.value.find(device => device.key === selectedKey.value));
 const detailsPanel = ref(null);
 
-async function selectDevice(key, fromWarning = false) {
+let detailsActivator = null;
+
+async function selectDevice(key, event) {
+  detailsActivator = event?.currentTarget;
   selectedKey.value = key;
-  if (fromWarning || window.matchMedia('(max-width: 1100px)').matches) {
-    await nextTick();
-    detailsPanel.value?.focusHeading();
-  }
+  await nextTick();
+  detailsPanel.value?.focusHeading();
+}
+
+function closeDeviceDetails() {
+  selectedKey.value = '';
+  detailsActivator?.focus();
+  detailsActivator = null;
 }
 
 
