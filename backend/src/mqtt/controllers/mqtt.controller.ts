@@ -10,7 +10,9 @@ const messageCallback = (topic: string, message: Buffer) => {
 };
 
 const mqttClient = new MQTTService(MQTT_HOST_NAME!, MQTT_USER_NAME!, MQTT_PASSWORD!, messageCallback);
-mqttClient.connect();
+export function startMqttPublisher(): void {
+    mqttClient.connect();
+}
 
 export const publishMQTTMessage = async (req: Request, res: Response): Promise<void> => {
     try {

@@ -7,7 +7,6 @@ const net = require('node:net');
 const crypto = require('node:crypto');
 const sqlite3 = require('sqlite3');
 const bcrypt = require('bcryptjs');
-const express = require('express');
 
 test('user management integration with a legacy SQLite database and local SMTP', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'tomatoes-users-'));
@@ -57,16 +56,15 @@ test('user management integration with a legacy SQLite database and local SMTP',
     assert(path.resolve(directory).startsWith(expectedPrefix), 'Cleanup must stay in the test directory');
     fs.rmSync(directory, { recursive: true, force: true });
   });
-  const usersRoutes = require('../src/routes/users-routes').default;
-  const groupsRoutes = require('../src/routes/groups-routes').default;
-  const invitationsRoutes = require('../src/routes/invitations-routes').default;
+  process.env.DOCKER_INFLUXDB_INIT_HOST = 'localhost';
+  process.env.DOCKER_INFLUXDB_INIT_PORT = '8086';
+  const { createApp } = require('../src/app');
+  const { mountRoutes } = require('../src/routes');
   const { usersReady, run, get } = require('../src/users/database');
-  const { validatePresentedSession, userError } = require('../src/users/http');
+  const { userError } = require('../src/users/http');
   db = require('../src/database/sqlite/config/db.config').default;
   await usersReady;
-  const app = express(); app.set('trust proxy', 1); app.use(express.json());
-  usersRoutes(app); groupsRoutes(app); invitationsRoutes(app);
-  app.use('/boards', validatePresentedSession); app.get('/boards', (_req, res) => res.json([])); app.use(userError);
+  const app = createApp({ origin: process.env.APP_PUBLIC_URL, mountRoutes, errorHandler: userError });
   server = await new Promise(resolve => { const listener = app.listen(0, '127.0.0.1', () => resolve(listener)); });
   const origin = `http://127.0.0.1:${server.address().port}`;
   async function request(method, url, body, token) {
@@ -80,6 +78,13 @@ test('user management integration with a legacy SQLite database and local SMTP',
   };
   let admin, oldUser, group, invitation, inviteToken, member;
   try {
+    await t.test('production HTTP app mounts protected routes and applies portal CORS', async () => {
+      const response = await fetch(origin + '/dashboards/library', { headers: { origin: process.env.APP_PUBLIC_URL } });
+      assert.equal(response.status, 401);
+      assert.equal(response.headers.get('access-control-allow-origin'), process.env.APP_PUBLIC_URL);
+      assert.equal((await response.json()).message, 'Please sign in to continue.');
+      expect(await request('GET', '/boards'), 401);
+    });
     await t.test('migration preserves legacy account and passwords and adds one protected administrator', async () => {
       assert.equal((await get('SELECT password FROM users WHERE email=?', ['legacy@example.com'])).password, legacyHash);
       assert.equal((await get('SELECT COUNT(*) AS count FROM users WHERE is_builtin=1')).count, 1);
