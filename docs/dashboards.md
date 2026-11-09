@@ -97,3 +97,11 @@ The explicit script backend/scripts/add-bench-diagnostics.cjs appends 14 diagnos
 Panels cover uptime, heap/PSRAM, MQTT disconnect/drop counters, driver SPI errors, CPU 0/1 Gauges, CPU peaks, heap history, CPU other tasks and per-task CPU. Debug telemetry is required; per-task data is emitted only for reported active tasks and absence is not zero. Counters reset at boot. No startup migration, pump command or OTA is involved.
 
 DeviceCardList.vue now shows command feedback in a top-center snackbar below the header (8 seconds, dismissible) outside document flow. The refresh progress slot has a fixed height; driver warnings are below the control panel. This prevents these notices from shifting manual-output controls. The confirmation flow and reported-state-only switches are unchanged.
+
+### Long ranges on the battery and pump dashboards
+
+Dashboard presets already increase the aggregation window for longer ranges (1 minute for 12 hours, 2 minutes for 24 hours and 5 minutes for 3 days). The battery queries now select the last sample per series or window before converting values and adding the metric tag. They filter by explicit field names. Pump diagnostic overview queries select the last value before converting it to a number. Historical peak queries convert first so that their maxima use numeric ordering.
+
+Run `docker compose exec -T backend node /backend/scripts/optimize-dashboard-queries.cjs` to preview the migration of the existing definitions. Use `DASHBOARD_BENCH_HOURS` inside the container to select the benchmark range (24 hours by default). Add `--apply` to save after validation. The script checks result equivalence, backs up the definitions under `/tmp` in the container and checks the MongoDB revisions. Copy the backup outside the container before replacing it.
+
+On November 8, 2026, the 24-hour comparison matched the data values, timestamps and series for all 28 changed queries. Sequential battery query time fell from 34.8 seconds to 0.68 seconds across 21 queries. The seven adjusted pump queries fell from 0.28 seconds to 0.20 seconds. Both dashboards were checked in the production browser at 12 hours, 24 hours and 3 days. The battery and pump dashboard auto-refresh defaults are 10 and 30 seconds, respectively.

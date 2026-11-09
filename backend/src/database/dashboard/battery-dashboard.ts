@@ -15,10 +15,10 @@ export function batteryDashboardDefinition(bucket: string, device: string, cells
     const query = `from(bucket: ${JSON.stringify(bucket)})
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
   |> filter(fn: (r) => r._measurement == ${JSON.stringify(measurement)} and r.device == ${JSON.stringify(device)})
-  |> filter(fn: (r) => contains(value: r._field, set: ${JSON.stringify(fields)}))
+  |> filter(fn: (r) => ${fields.map(field => `r._field == ${JSON.stringify(field)}`).join(" or ")})
+  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)
   |> toFloat()
-  |> map(fn: (r) => ({r with metric: r._field}))
-  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)`;
+  |> map(fn: (r) => ({r with metric: r._field}))`;
     const chart: any = { id, query, data: [], options: { chartTitle: title, unit: options.unit ?? '', series: [{ label: 'Date' }, { label: title, stroke: color, fill: color + '1a', points: { show: false } }], axes: [{}, {}] },
       layout: { x, y, w: width, h: height, i: id }, processing: { multiplier: 1, offset: 0, minimum: '', maximum: '', decimals: options.decimals ?? 2, gaps: 'Gaps', lineWidth: 1.5, showPoints: false, showLegend: true } };
     if (options.type !== 'time-series') chart.visualization = { type: 'gauge', reducer: 'last', series: null, min: options.min ?? 0, max: options.max ?? 100, color, showThresholds: true, thresholds: options.thresholds ?? [] };

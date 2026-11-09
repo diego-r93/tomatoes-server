@@ -13,7 +13,7 @@ function panel(key,title,query,type,x,w,h,extra={}) {
 }
 function metric(names,last=true){
  const topics=names.map(n=>'sensors/'+host+'/diag/'+n);
- return `from(bucket:${bucket})\n |> range(start:v.timeRangeStart,stop:v.timeRangeStop)\n |> filter(fn:(r)=>r._measurement=="mqtt_consumer" and r._field=="value")\n |> filter(fn:(r)=>${topics.map(t=>'r.topic=='+JSON.stringify(t)).join(' or ')})\n |> toFloat()\n ${last?'|> last()':'|> aggregateWindow(every:v.windowPeriod,fn:max,createEmpty:false)'}`;
+ return `from(bucket:${bucket})\n |> range(start:v.timeRangeStart,stop:v.timeRangeStop)\n |> filter(fn:(r)=>r._measurement=="mqtt_consumer" and r._field=="value")\n |> filter(fn:(r)=>${topics.map(t=>'r.topic=='+JSON.stringify(t)).join(' or ')})\n ${last?'|> last()\n |> toFloat()':'|> toFloat()\n |> aggregateWindow(every:v.windowPeriod,fn:max,createEmpty:false)'}`;
 }
 (async()=>{
  await db.mongoose.connect(db.url);const collection=db.mongoose.connection.collection('dashboards');
