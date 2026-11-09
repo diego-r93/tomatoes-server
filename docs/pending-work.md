@@ -5,7 +5,7 @@ Updated 2026-11-08. Completed features are documented in the commit report and t
 | Status | Item | Next step |
 | --- | --- | --- |
 | Paused until Wednesday, 2026-11-11 | Board setup: sensors and calibration | The admin preparation page is deployed. Claude bench-tested synchronized EC excitation and the pH precision fix (firmware local main 3e9bb1b). Resume by agreeing the probe-label persistence and readback pilot (bridge message 29), then validate probe status, raw samples and calibration on the bench. See board-setup-stage1.md. |
-| To confirm | Devices long-open validation | Resume correction is deployed: visibility, focus, pageshow and online events refresh discovery with request coalescing. New preferences default to 30 seconds; saved Off is preserved and displayed. All 39 frontend tests, lint and builds passed; both boards were Online in the browser. A prolonged real background-tab / computer-suspension test remains to be repeated because computer use was interrupted. |
+| Partial validation | Devices long-open validation | Chrome test left Devices in the background for 110 seconds. Both ESP32 boards were Online on return. One return refreshed in about 2.2 seconds with a 27-second-old result. In another trial with an 11-second-old result, no fresh result appeared in the first 3 seconds, so the browser run did not consistently isolate the resume trigger from polling. Five automated resume tests passed. Server logs also showed HTTP 200 discovery after a gap of about 12 minutes. A confirmed Windows suspend/resume test remains open. |
 | Pending | Greenhouse battery validation | esp32s3-1C1250 had pump supply temporarily connected only for testing; it will remain without supply until greenhouse installation. active=0/fault=104 is expected without supply. New rules for this board remain paused until that installation. After installation with battery power, check remote access, schedules, physical pump operation, driver start/end and recovery. Bench start/end was confirmed in the portal by Claude from 17:00 to 17:15 on 2026-11-08. |
 | Waiting for user | Firmware repository and publication | Claude reports local main 3e9bb1b. The bench board runs the pre-commit E1/pH build and the second board remains on 16a5c1c. VMUV retry, pulse telemetry, R9 fixes and the T2 supervisor test were previously completed. Publication waits for the intended GitHub repository and explicit user authorization; do not push firmware meanwhile. |
 | Pending | Battery Bluetooth stability | Repeat a prolonged read-only test with better signal. The collector and Energy dashboard work, but timeouts occurred near -83 dBm. |
@@ -32,7 +32,7 @@ Updated 2026-11-08. Completed features are documented in the commit report and t
 
 ## Independent tasks in suggested order
 
-1. Finish Devices resume validation by leaving the portal in a background tab, returning to it, and checking that discovery and connection status refresh. Repeat the real computer suspension case when practical.
+1. Finish Devices resume validation with a confirmed Windows suspension and wake, then return to the open Devices tab and check for a fresh discovery without reloading.
 2. Translate Database into Portuguese and Spanish, then continue with Users and Alerting. Keep English as the default and verify all three language choices.
 3. Audit the MQTT service identities and sudo grants. Document the current scope and propose changes that preserve SSH and VS Code access.
 4. Review SQLite usage and the backup/restore path before proposing a library or migration change.
