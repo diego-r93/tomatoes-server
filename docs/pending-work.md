@@ -42,7 +42,7 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 
 ### Recently completed
 
-- **SQLite permissions and restore validated.** The active database and its WAL and SHM files use mode 0600 after backend recreation. An unprivileged UID could not read them. A protected snapshot was created while the backend was running. A network-isolated restore passed integrity, administrator login and authenticated retrieval of 32 alert rules. All 50 backend tests passed. See [SQLite backup and recovery](sqlite-backup.md).
+- **SQLite permissions and restore validated.** The active database and its WAL and SHM files use mode 0600 after backend recreation. An unprivileged UID could not read them. A protected snapshot was created while the backend was running. A network-isolated restore passed integrity, administrator login and authenticated retrieval of 32 alert rules. All 50 backend tests passed. The one-off SQLite test snapshot and the old pre-2.9.1 InfluxDB metadata copy were removed at the owner’s request. No Tomatoes backup job was found running or scheduled on the Pi. See [SQLite backup and recovery](sqlite-backup.md).
 
 - **SQLite 3.54.1 deployed.** The backend Docker build verifies the official archive, links the SQLite driver to that version, and checks the loaded engine with SQL. All 50 backend tests passed. A fresh isolated database created one built-in administrator and passed login and authenticated alert reads. The Raspberry Pi upgrade kept the original database, administrator and all 32 alert rule definitions. The HTTPS API responded after the backend restart.
 
