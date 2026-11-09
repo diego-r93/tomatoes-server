@@ -37,7 +37,7 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 
 1. Replace the factory administrator credential and verify secure rotation.
 2. Protect the SQLite files, test a consistent backup and restore, and validate the library update on the restored copy.
-3. Validate the new frontend image in the portal. Continue the TypeScript migration with the Dashboard editor and inspector, then the remaining Users screens.
+3. Continue the TypeScript migration with the Dashboard editor and inspector, then the remaining Users screens.
 4. Translate Database into Portuguese and Spanish and verify both languages plus the English default in the portal. Continue with Users and Alerting as separate deliveries.
 5. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
 
@@ -47,6 +47,8 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 - Greenhouse and battery checks need physical validation. Historical MQTT disconnects need the original log archive. Firmware publication, pull-based OTA and the next PCB require separate coordination.
 
 ### Recently completed
+
+- **Frontend TypeScript rollout** (`99559b1`). Deployed by recreating only Nginx. In the portal, verified Time series, Gauge and Stat on the Raspberry Pi dashboard, opened a pump schedule, confirmed the retention setting and Help links, and tested user activity pagination and search with the existing session.
 
 - **Pump pulse history and CSV** (`21a9421`). Devices offers history by board, date, pump and result, with complete filtered CSV export. The production import completed and the CSV returned 19 and 14 records for the two boards at validation. Older attempts without recorded feedback can only be recovered if another record exists.
 - **Shared data retention** (`21a9421`). Administrators have a single setting for readings and pulse history in Configuration. Production remains at 180 days. Shorter retention requires confirmation and was tested separately with an isolated instance.
