@@ -3,7 +3,12 @@ export { alignRows, processValue } from './dashboardSeries.ts';
 /** @template T @param {T} value @returns {T} */
 export const clone = value => JSON.parse(JSON.stringify(value));
 export const refreshIntervals = ['Off', '2s', '5s', '10s', '30s', '1m', '5m', '15m', '30m', '1h', '2h', '6h'];
+/** @type {[label: string, range: string, window: string][]} */
 export const timeRanges = [ ['Last 5 minutes', '-5m', '1s'], ['Last 15 minutes', '-15m', '2s'], ['Last 30 minutes', '-30m', '5s'], ['Last 1 hour', '-1h', '10s'], ['Last 3 hours', '-3h', '20s'], ['Last 6 hours', '-6h', '30s'], ['Last 12 hours', '-12h', '1m'], ['Last 24 hours', '-24h', '2m'], ['Last 3 days', '-3d', '5m'], ['Last 1 week', '-1w', '15m'], ['Last 1 month', '-4w', '1h'], ['Last 3 months', '-12w', '2h'], ['Last 6 months', '-24w', '6h'] ];
+/**
+ * @param {{ settings?: Partial<import('./dashboardStateTypes').DashboardSettings> } | null} dashboard
+ * @returns {import('./dashboardStateTypes').DashboardSettings}
+ */
 export const settingsFor = dashboard => ({ range: '-1h', refresh: 'Off', timezone: 'Browser', intervals: refreshIntervals.slice(1), hideTimePicker: false, pauseHidden: true, bucket: 'tomatoes', ...dashboard?.settings });
 /** @param {{ processing?: Partial<import('./dashboardSeries').Processing> }} chart
  * @returns {import('./dashboardSeries').Processing} */
@@ -34,6 +39,10 @@ export function buildQuery(source) {
 }
 /** @template T @param {T} chart */
 export function chartDefinition(chart) { return { ...clone(chart), data: [] }; }
+/**
+ * @param {import('./dashboardPanelTypes').ChartPanelDefinition[]} charts
+ * @returns {import('./dashboardPanelTypes').ChartPanelDefinition}
+ */
 export function newChart(charts) {
   const id = globalThis.crypto.randomUUID?.() || Array.from(globalThis.crypto.getRandomValues(new Uint8Array(16)), n => n.toString(16).padStart(2, '0')).join('');
   return { id, data: [], options: { chartTitle: 'New panel', series: [{ label: 'Date' }, { label: 'Value', stroke: '#80cbc4', fill: '#80cbc41a', points: { show: false } }], axes: [{}, {}] }, layout: { x: 0, y: Math.max(0, ...charts.map(c => c.layout.y + c.layout.h)), w: 6, h: 10, i: id }, query: '', processing: processingFor({}) };

@@ -47,11 +47,19 @@ export interface PanelQuerySource {
   convertText: boolean;
 }
 
+export interface PanelLayout {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  i?: string | number;
+}
+
 export interface ChartPanelDefinition extends DashboardPanelModel {
   id: number | string;
   query: string;
   options: ChartOptions & { chartTitle: string };
-  layout: { x: number; y: number; w: number; h: number; i?: string | number };
+  layout: PanelLayout;
   source?: Partial<PanelQuerySource>;
   data?: unknown[];
 }

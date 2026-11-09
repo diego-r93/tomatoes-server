@@ -27,6 +27,7 @@ export function parseTime(value, zone = 'Browser', now = Date.now()) {
   if ([p.year, p.month, p.day, p.hour, p.minute, p.second].some((value, i) => value !== values[i])) throw new Error('This local time does not exist in the dashboard timezone. Enter an ISO date with a UTC offset.');
   return result;
 }
+/** @param {import('./dashboardStateTypes').DashboardRange} range */
 export function rangeBounds(range, zone = 'Browser', now = Date.now()) {
   const preset = typeof range === 'string';
   if (preset && !/^-\d+(s|m|h|d|w)$/.test(range)) throw new Error('Invalid time range.');
@@ -36,8 +37,10 @@ export function rangeBounds(range, zone = 'Browser', now = Date.now()) {
   const startISO = new Date(startMs).toISOString(), stopISO = new Date(stopMs).toISOString();
   return { from, to, startMs, stopMs, startISO, stopISO, label: `${from} → ${to}`, start: preset ? range : `time(v: "${startISO}")`, stop: preset ? 'now()' : `time(v: "${stopISO}")` };
 }
+/** @param {import('./dashboardStateTypes').DashboardRange} range */
 export function rangeWindow(range, zone = 'Browser') {
   const bounds = rangeBounds(range, zone), seconds = (bounds.stopMs - bounds.startMs) / 600000;
+  /** @type {[seconds: number, window: string][]} */
   const choices = [[1,'1s'],[2,'2s'],[5,'5s'],[10,'10s'],[15,'15s'],[30,'30s'],[60,'1m'],[120,'2m'],[300,'5m'],[600,'10m'],[900,'15m'],[1800,'30m'],[3600,'1h'],[7200,'2h'],[21600,'6h'],[86400,'24h']];
   return choices.find(([step]) => step >= seconds)?.[1] || `${Math.ceil(seconds / 3600)}h`;
 }

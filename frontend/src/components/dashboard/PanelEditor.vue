@@ -83,6 +83,7 @@ const {t} = useLanguage();
 import { ref, computed, onBeforeUnmount } from 'vue';
 import { isAxiosError, isCancel } from 'axios';
 import type { ChartPanelDefinition, PanelQuerySource, VisualizationSettings } from '@/composables/dashboardPanelTypes';
+import type { DashboardRange } from '@/composables/dashboardStateTypes';
 import type { AlignedSeries, Processing, QueryRow } from '@/composables/dashboardSeries';
 import PanelVisualization from './PanelVisualization.vue';
 import { visualizationFor, visualizationError, visualizationTypes, reducers } from '@/composables/panelVisualization.mjs';
@@ -95,7 +96,7 @@ const props = withDefaults(defineProps<{
   chart: ChartPanelDefinition;
   isNew?: boolean;
   bucket?: string;
-  range?: string | { from: string; to: string };
+  range?: DashboardRange;
   window?: string;
   timezone?: string;
 }>(), { bucket: 'tomatoes', range: '-1h', window: '10s', timezone: 'Browser' });
