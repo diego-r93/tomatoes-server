@@ -1,5 +1,5 @@
 import { isAxiosError } from 'axios';
-import { formatDateTime } from '@/composables/dateTime.mjs';
+import { formatDateTime } from '@/composables/dateTime.ts';
 import { http } from './http-common';
 
 export type AlertState = 'Normal' | 'Pending' | 'Firing' | 'No data' | 'Error' | 'Paused';

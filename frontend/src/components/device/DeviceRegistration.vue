@@ -89,7 +89,7 @@ const { t } = useLanguage();
 
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AppPageHeader from '@/components/navigation/AppPageHeader.vue';
-import { formatDateTime } from '@/composables/dateTime.mjs';
+import { formatDateTime } from '@/composables/dateTime.ts';
 import { isAxiosError, isCancel } from 'axios';
 import type { RegisteredBoard } from '@/composables/deviceReportTypes';
 import { http } from '@/services/http-common';

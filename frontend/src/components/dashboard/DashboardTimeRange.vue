@@ -22,8 +22,8 @@ import { useLanguage } from '@/composables/useLanguage';
 const {t} = useLanguage();
 import { computed, ref, watch } from 'vue';
 import { useTheme } from 'vuetify';
-import { timeRanges } from '@/composables/dashboardUtils.mjs';
-import { parseTime, rangeBounds, timeInput, timezoneName } from '@/composables/dashboardTimeRange.mjs';
+import { timeRanges } from '@/composables/dashboardUtils.ts';
+import { parseTime, rangeBounds, timeInput, timezoneName } from '@/composables/dashboardTimeRange.ts';
 import type { DashboardRange } from '@/composables/dashboardStateTypes';
 
 const props = withDefaults(defineProps<{ modelValue: DashboardRange; timezone?: string }>(), { timezone: 'Browser' });

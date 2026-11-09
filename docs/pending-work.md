@@ -23,7 +23,6 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 | Planned | SQLite file permissions | Restrict access to the database and its WAL and SHM files to the backend identity and authorized administrators. Verify permissions after a container restart. |
 | Planned | SQLite backup and restore | Create a consistent backup while the backend is running and verify restoration on an isolated copy. Include user and alert data in the check. |
 | Planned | SQLite library update | Keep SQLite and update the backend driver to a build with the WAL reset fix. Confirm the SQLite version loaded by the container and validate login and alert behavior on a restored copy before deployment. |
-| In progress | Gradual frontend migration to TypeScript | All Devices components, including registration, information, driver feedback and the firmware upload form, are included in strict TypeScript checks. The obsolete Dashboard view/editor files were retired after confirming no active callers. Existing panel URLs still redirect to the active dashboard. Alerting is validated in production. Dashboard library and draft state, refresh orchestration, time picker, query client, series, Time series/Gauge/Stat renderers, editor and inspector, Database schedules, Configuration, Help, sign-in, the authenticated Users area, public invitation acceptance and password recovery use typed contracts. The Vue entry point, layouts, navigation, router, session and HTTP client, language selection and Board setup use TypeScript. The production build runs `vue-tsc` for all Vue components and TypeScript source files. Twenty JavaScript modules remain under `frontend/src`, including shared helpers, stores, HTTP services, locale catalogs and theme definitions. |
 | In progress | Broader backend refactoring | Express assembly and backend startup are separate. Dashboard library, export, schema and saved-panel reads are in production. Dashboard writes are in production. Concurrent editing and draft retention were verified. The live-observation service is in production. Verified the greenhouse connection and latest driver feedback for all four outputs through the saved dashboard API. Offline, stale and disconnected states passed isolated tests. An isolated broker outage confirmed that a saved pump schedule is published again after reconnect. |
 | Planned | Grafana retirement | Remove the temporary comparison service when the Tomatoes dashboards cover the required features. Grafana is already upgraded and isolated behind HTTPS. |
 | Planned | MQTT hostname | Plan mqtt.ceresgrow.com.br, broker certificate SAN and factory endpoint configuration. Do not expose MQTT externally as part of the local portal setup. |
@@ -37,9 +36,8 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 
 1. Replace the factory administrator credential and verify secure rotation.
 2. Protect the SQLite files, test a consistent backup and restore, and validate the library update on the restored copy.
-3. Migrate the remaining JavaScript modules. Start with active stores, device connections and MQTT requests, then migrate dashboard and telemetry helpers, locale catalogs and themes. Audit unused service and store modules before removing them. Keep JavaScript tests and tooling separate from application source coverage.
-4. Translate Database into Portuguese and Spanish and verify both languages plus the English default in the portal. Continue with Users and Alerting as separate deliveries.
-5. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
+3. Translate Database into Portuguese and Spanish and verify both languages plus the English default in the portal. Continue with Users and Alerting as separate deliveries.
+4. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
 
 ### Waiting on a test or external input
 
@@ -47,6 +45,8 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 - Greenhouse and battery checks need physical validation. Historical MQTT disconnects need the original log archive. Firmware publication, pull-based OTA and the next PCB require separate coordination.
 
 ### Recently completed
+
+- **Frontend TypeScript migration complete.** All Vue scripts and application modules in `frontend/src` use TypeScript. Migrated the remaining 16 modules and removed four with no callers. The build runs strict `vue-tsc` with JavaScript source support disabled. The Node test harness and tooling configuration keep their existing JavaScript formats. All 51 tests, lint, typecheck and the production build passed. In Chrome, verified the six-hour Raspberry Pi dashboard, panel inspector, board status in Database and Devices, and the Configuration theme catalog.
 
 - **Dashboard state and refresh in TypeScript.** Typed the library, draft, layout, time range, panel results and dashboard API. Refresh runs with a stable dashboard and range snapshot and drops superseded responses. In Chrome, verified the selected range in executed Flux, manual and automatic refresh, live greenhouse panels, and draft cancellation. Typecheck, lint, build and all 51 frontend tests passed.
 

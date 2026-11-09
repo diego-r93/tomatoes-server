@@ -11,8 +11,8 @@ import { computed } from 'vue';
 import Chart from './Chart.vue';
 import GaugeChart from './GaugeChart.vue';
 import StatChart from './StatChart.vue';
-import { processingFor, processingError } from '@/composables/dashboardUtils.mjs';
-import { visualizationFor, visualizationError } from '@/composables/panelVisualization.mjs';
+import { processingFor, processingError } from '@/composables/dashboardUtils.ts';
+import { visualizationFor, visualizationError } from '@/composables/panelVisualization.ts';
 import type { PlotData } from '@/composables/dashboardSeries';
 import type { DashboardPanelModel, VisualizationSettings } from '@/composables/dashboardPanelTypes';
 const props = withDefaults(defineProps<{

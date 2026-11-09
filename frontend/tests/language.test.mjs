@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { computed } from 'vue';
-import { dashboardMessages } from '../src/locales/dashboard.js';
-import { interfaceMessages } from '../src/locales/interface.js';
+import { dashboardMessages } from '../src/locales/dashboard.ts';
+import { interfaceMessages } from '../src/locales/interface.ts';
 
 const values = new Map();
 globalThis.localStorage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };

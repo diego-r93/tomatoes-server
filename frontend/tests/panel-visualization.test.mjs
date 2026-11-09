@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { visualizationFor, visualizationError, gaugeReading, gaugeColor, gaugeFraction, gaugeSegments, gaugeArc } from '../src/composables/panelVisualization.mjs';
-import { chartDefinition, alignRows, processingFor } from '../src/composables/dashboardUtils.mjs';
+import { visualizationFor, visualizationError, gaugeReading, gaugeColor, gaugeFraction, gaugeSegments, gaugeArc } from '../src/composables/panelVisualization.ts';
+import { chartDefinition, alignRows, processingFor } from '../src/composables/dashboardUtils.ts';
 const config = changes => visualizationFor({ visualization: { type: 'gauge', ...changes } });
 
 test('legacy panels remain time series and JSON exports preserve gauge settings without live samples', () => {

@@ -73,7 +73,7 @@
 import { isAxiosError } from 'axios';
 import type { DiscoveredDevice } from '@/composables/deviceInventoryUtils';
 import type { OutputCommandDraft } from '@/composables/deviceOutputCommands';
-import { driverIssues, driverMessage } from '@/composables/pumpDriverFeedback.mjs';
+import { driverIssues, driverMessage } from '@/composables/pumpDriverFeedback.ts';
 import { useLanguage } from '@/composables/useLanguage';
 const { t } = useLanguage();
 

@@ -1,7 +1,7 @@
 import { readonly, ref } from 'vue';
-import { boardSetupMessages } from '../locales/boardSetup.js';
-import { dashboardMessages } from '../locales/dashboard.js';
-import { interfaceMessages } from '../locales/interface.js';
+import { boardSetupMessages } from '../locales/boardSetup.ts';
+import { dashboardMessages } from '../locales/dashboard.ts';
+import { interfaceMessages } from '../locales/interface.ts';
 
 type Language = 'en' | 'pt-BR' | 'es';
 type MessageCatalog = Partial<Record<Language, Record<string, string>>>;

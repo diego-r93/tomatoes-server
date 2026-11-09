@@ -57,9 +57,9 @@ import { computed, onMounted, ref } from 'vue';
 import { getPulseHistory, getPulseHistoryCsv, pumpChannels, pulseResults } from '@/services/pumpHistory';
 import type { PulseHistoryFilters, PulseHistoryRecord, PumpChannel, PulseResult } from '@/services/pumpHistory';
 import { useLanguage } from '@/composables/useLanguage';
-import { formatDateTime } from '@/composables/dateTime.mjs';
-import { driverMessage, driverProblem } from '@/composables/pumpDriverFeedback.mjs';
-import { downloadFile } from '@/composables/panelInspection.mjs';
+import { formatDateTime } from '@/composables/dateTime.ts';
+import { driverMessage, driverProblem } from '@/composables/pumpDriverFeedback.ts';
+import { downloadFile } from '@/composables/panelInspection.ts';
 
 const props = defineProps<{ host: string }>();
 defineEmits<{ close: [] }>();

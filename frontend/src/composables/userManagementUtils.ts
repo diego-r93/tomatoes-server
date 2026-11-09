@@ -1,6 +1,6 @@
 import { isAxiosError } from 'axios';
 import type { UserIdentity } from '@/services/userTypes';
-import { formatDateTime } from './dateTime.mjs';
+import { formatDateTime } from './dateTime.ts';
 export function userError(error: unknown) {
   const message = isAxiosError<{ message?: string }>(error) ? error.response?.data?.message : undefined;
   return message || (error instanceof Error && error.message) || 'The operation could not be completed.';

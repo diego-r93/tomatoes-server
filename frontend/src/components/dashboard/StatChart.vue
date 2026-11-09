@@ -12,10 +12,10 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { useLanguage } from '@/composables/useLanguage';
-import { formatDateTime } from '@/composables/dateTime.mjs';
-import { processingFor } from '@/composables/dashboardUtils.mjs';
-import { gaugeColor, reducers } from '@/composables/panelVisualization.mjs';
-import { statReading, statUnit, statFreshness, statSparkline } from '@/composables/statVisualization.mjs';
+import { formatDateTime } from '@/composables/dateTime.ts';
+import { processingFor } from '@/composables/dashboardUtils.ts';
+import { gaugeColor, reducers } from '@/composables/panelVisualization.ts';
+import { statReading, statUnit, statFreshness, statSparkline } from '@/composables/statVisualization.ts';
 import type { PlotData } from '@/composables/dashboardSeries';
 import type { DashboardPanelModel, ReducedReading, VisualizationSettings } from '@/composables/dashboardPanelTypes';
 const props = withDefaults(defineProps<{

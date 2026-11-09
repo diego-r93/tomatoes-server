@@ -72,10 +72,10 @@ import Authentication from '@/services/auth';
 import api from '@/services/dashboardDataService';
 import { runDashboardQuery } from '@/services/dashboardQuery';
 import AppPageHeader from '@/components/navigation/AppPageHeader.vue';
-import { formatDateTime } from '@/composables/dateTime.mjs';
+import { formatDateTime } from '@/composables/dateTime.ts';
 import { useLanguage } from '@/composables/useLanguage';
-import { rangeBounds, rangeWindow } from '@/composables/dashboardTimeRange.mjs';
-import { alignRows, chartDefinition, clone, downloadJson, newChart, processingFor, refreshIntervals, resolveQuery, settingsFor, timeRanges } from '@/composables/dashboardUtils.mjs';
+import { rangeBounds, rangeWindow } from '@/composables/dashboardTimeRange.ts';
+import { alignRows, chartDefinition, clone, downloadJson, newChart, processingFor, refreshIntervals, resolveQuery, settingsFor, timeRanges } from '@/composables/dashboardUtils.ts';
 import type { ChartPanelDefinition, PanelInspectionResult, PanelInspectionSnapshot, PanelLayout } from '@/composables/dashboardPanelTypes';
 import type { DashboardDocument, DashboardRange, DashboardSettings, DashboardSummary } from '@/composables/dashboardStateTypes';
 import DashboardPanel from './DashboardPanel.vue';
@@ -580,10 +580,15 @@ function applySettings() {
 
 async function importValue(charts: unknown, name: string) {
   if (!Array.isArray(charts)) throw new Error('Expected the original chart JSON array.');
-  const definitions: unknown[] = charts;
+  const definitions = (charts as unknown[]).map(chart => {
+    if (!chart || typeof chart !== 'object' || Array.isArray(chart)) {
+      throw new Error('Expected the original chart JSON array.');
+    }
+    return chartDefinition(chart);
+  });
   const { data } = await api.save({
     name, folder: 'General', description: 'Imported chart definitions.', tags: ['imported'],
-    settings: settingsFor(null), charts: definitions.map(chartDefinition),
+    settings: settingsFor(null), charts: definitions,
   });
   await router.push('/dashboard/' + data._id);
 }

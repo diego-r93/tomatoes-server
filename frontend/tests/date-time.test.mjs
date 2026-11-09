@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatDateTime, formatDate, formatTime, formatDeviceTime, chartTimeLabel } from '../src/composables/dateTime.mjs';
+import { formatDateTime, formatDate, formatTime, formatDeviceTime, chartTimeLabel } from '../src/composables/dateTime.ts';
 test('display timestamps use a stable 24-hour format and dashboard timezone', () => {
  assert.equal(formatDateTime('2026-11-03T02:04:05Z','UTC'),'2026-11-03 02:04:05');
  assert.equal(formatDateTime('2026-11-03T02:04:05Z','America/Sao_Paulo'),'2026-11-02 23:04:05');

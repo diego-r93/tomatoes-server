@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {driverIssues, driverMessage, mergeDriverFeedback} from '../src/composables/pumpDriverFeedback.mjs';
+import {driverIssues, driverMessage, mergeDriverFeedback} from '../src/composables/pumpDriverFeedback.ts';
 test('merges feedback by immutable hostname without changing GPIO state or connection freshness',()=>{
  const devices=[{host:'esp32s3-A',key:'mac',receivedAt:10,outputs:[{gpio:0,state:false}]}];
  const updated=mergeDriverFeedback(devices,[{host:'esp32s3-A',pumps:[{code:'esp32s3-A#01',pump:'01',result:'supply-missing'}]}]);

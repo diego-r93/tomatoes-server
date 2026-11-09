@@ -14,7 +14,7 @@ const canManage = Boolean(Authentication.currentUser?.isAdmin);
 import { useLanguage } from '@/composables/useLanguage';
 const { t } = useLanguage();
 
-import { formatDateTime, formatDeviceTime } from '@/composables/dateTime.mjs';
+import { formatDateTime, formatDeviceTime } from '@/composables/dateTime.ts';
 import { computed } from 'vue';
 import { lastSeenLabel, signalText } from '@/composables/deviceInventoryUtils';
 import type { DiscoveredDevice } from '@/composables/deviceInventoryUtils';

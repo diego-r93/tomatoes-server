@@ -16,8 +16,8 @@
 import { useLanguage } from '@/composables/useLanguage';
 const {t} = useLanguage();
 import { computed } from 'vue';
-import { gaugeReading, gaugeColor, gaugeFraction, gaugeSegments, gaugeArc, reducers } from '@/composables/panelVisualization.mjs';
-import { processingFor } from '@/composables/dashboardUtils.mjs';
+import { gaugeReading, gaugeColor, gaugeFraction, gaugeSegments, gaugeArc, reducers } from '@/composables/panelVisualization.ts';
+import { processingFor } from '@/composables/dashboardUtils.ts';
 import type { PlotData } from '@/composables/dashboardSeries';
 import type { DashboardPanelModel, ReducedReading, VisualizationSettings } from '@/composables/dashboardPanelTypes';
 const props = withDefaults(defineProps<{

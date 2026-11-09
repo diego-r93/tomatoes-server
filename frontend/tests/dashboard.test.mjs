@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveQuery, alignRows, processingFor, processingError, buildQuery, chartDefinition } from '../src/composables/dashboardUtils.mjs';
+import { resolveQuery, alignRows, processingFor, processingError, buildQuery, chartDefinition } from '../src/composables/dashboardUtils.ts';
 test('time macros are resolved without changing the saved query or parentheses', () => {
   const query='from(bucket: "tomatoes") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> aggregateWindow(every: v.windowPeriod, fn: mean)';
   assert.equal(resolveQuery(query,'-1h','10s'),'from(bucket: "tomatoes") |> range(start: -1h, stop: now()) |> aggregateWindow(every: 10s, fn: mean)');

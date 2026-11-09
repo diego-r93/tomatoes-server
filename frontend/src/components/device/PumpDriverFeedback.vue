@@ -26,8 +26,8 @@
 import { ref } from 'vue';
 import PumpHistoryDialog from './PumpHistoryDialog.vue';
 import { useLanguage } from '@/composables/useLanguage';
-import { formatTime, formatDateTime } from '@/composables/dateTime.mjs';
-import { driverMessage, driverProblem } from '@/composables/pumpDriverFeedback.mjs';
+import { formatTime, formatDateTime } from '@/composables/dateTime.ts';
+import { driverMessage, driverProblem } from '@/composables/pumpDriverFeedback.ts';
 import type { DiscoveredDevice } from '@/composables/deviceInventoryUtils';
 
 const props = defineProps<{ device: DiscoveredDevice; clock?: number }>();

@@ -61,7 +61,7 @@
  </v-container>
 </template>
 <script setup lang="ts">
-import { formatTime, formatDate } from '@/composables/dateTime.mjs';
+import { formatTime, formatDate } from '@/composables/dateTime.ts';
 import AppPageHeader from '@/components/navigation/AppPageHeader.vue';
 import { computed,onMounted,onUnmounted,ref,watch } from 'vue';
 import { useRoute } from 'vue-router';

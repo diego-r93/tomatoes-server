@@ -1,13 +1,13 @@
 <template><div ref="container" class="dashboard-plot" role="img" :aria-label="chartOptions.chartTitle || 'Time series chart'"><div ref="plotHost" class="plot-canvas"/><div v-if="processingFor({processing}).showLegend" class="plot-legend"><span v-for="(item,index) in legend" :key="index" class="legend-series" :title="item.label"><i :style="{background:item.color}"/><span class="legend-label">{{ item.label }}</span><span v-if="hoverValues[index]!==undefined">{{ hoverValues[index] }}</span></span></div><div v-if="tooltip.visible" class="plot-tooltip" role="tooltip" :style="{left:tooltip.x+'px',top:tooltip.y+'px'}"><strong>{{ tooltip.time }}</strong><div v-for="(item,index) in tooltip.items" :key="index" class="tooltip-row"><i :style="{background:item.color}"/><span class="tooltip-label" :title="item.label">{{ item.label }}</span><span class="tooltip-value">{{ item.value }}</span></div></div></div></template>
 <script setup lang="ts">
-import { chartTimeLabel } from '@/composables/dateTime.mjs';
+import { chartTimeLabel } from '@/composables/dateTime.ts';
 import 'uplot/dist/uPlot.min.css';
 import uPlot from 'uplot';
 import { ref,computed,watch,onMounted,onBeforeUnmount } from 'vue';
 import { useTheme } from 'vuetify';
 import type { PlotData, Processing } from '@/composables/dashboardSeries';
 import type { ChartOptions, SeriesStyle } from '@/composables/dashboardPanelTypes';
-import { processingFor } from '@/composables/dashboardUtils.mjs';
+import { processingFor } from '@/composables/dashboardUtils.ts';
 defineOptions({name:'DashboardChart'});
 const props = withDefaults(defineProps<{
  chartOptions: ChartOptions;

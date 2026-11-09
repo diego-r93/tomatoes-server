@@ -37,7 +37,7 @@ import PumpDriverFeedback from './PumpDriverFeedback.vue';
 import { useLanguage } from '@/composables/useLanguage';
 const { t } = useLanguage();
 
-import { formatDeviceTime } from '@/composables/dateTime.mjs';
+import { formatDeviceTime } from '@/composables/dateTime.ts';
 import { ref } from 'vue';
 import { lastSeenLabel, signalText, weakSignal } from '@/composables/deviceInventoryUtils';
 import type { DeviceOutput, DiscoveredDevice } from '@/composables/deviceInventoryUtils';

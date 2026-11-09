@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseTime, rangeBounds, rangeWindow, timeInput } from '../src/composables/dashboardTimeRange.mjs';
-import { resolveQuery } from '../src/composables/dashboardUtils.mjs';
+import { parseTime, rangeBounds, rangeWindow, timeInput } from '../src/composables/dashboardTimeRange.ts';
+import { resolveQuery } from '../src/composables/dashboardUtils.ts';
 const now = Date.parse('2026-11-02T15:00:00Z');
 test('relative bounds share an anchor and preserve existing quick Flux ranges', () => {
   assert.equal(parseTime('now-90m', 'UTC', now), now - 5400000);

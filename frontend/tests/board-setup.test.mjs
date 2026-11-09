@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { approvedSetupBoards, chipPresence, reportedPumpChannels } from '../src/composables/boardSetupInventory.ts';
-import { boardSetupMessages } from '../src/locales/boardSetup.js';
+import { boardSetupMessages } from '../src/locales/boardSetup.ts';
 
 test('only approved registry boards appear, including offline boards with no discovery report', () => {
  const rows = [{ host:'esp32s3-A00001',status:'approved' },{ host:'esp32s3-A00002',status:'pending' },{ host:'esp32s3-A00003',status:'removed' },{host:'esp32s3-A00004',status:'approved'}];

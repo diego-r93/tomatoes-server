@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { statReading, statUnit, statFreshness, statSparkline } from '../src/composables/statVisualization.mjs';
-import { visualizationFor, visualizationError, gaugeColor } from '../src/composables/panelVisualization.mjs';
-import { chartDefinition, alignRows, processingFor } from '../src/composables/dashboardUtils.mjs';
+import { statReading, statUnit, statFreshness, statSparkline } from '../src/composables/statVisualization.ts';
+import { visualizationFor, visualizationError, gaugeColor } from '../src/composables/panelVisualization.ts';
+import { chartDefinition, alignRows, processingFor } from '../src/composables/dashboardUtils.ts';
 const config = changes => visualizationFor({visualization:{type:'stat',...changes}});
 test('Stat reducers use valid samples, preserve zero and never substitute a selected series', () => {
  const data=[[1,2,3,4,5,6],[10,null,20,NaN,0,Infinity]];

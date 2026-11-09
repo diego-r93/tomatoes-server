@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { watchDevicePageResume } from '../src/composables/devicePageResume.mjs';
+import { watchDevicePageResume } from '../src/composables/devicePageResume.ts';
 const { EventTarget, Event } = globalThis;
 
 function fixture(refresh = () => Promise.resolve()) {

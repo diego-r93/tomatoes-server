@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TextDecoder } from 'node:util';
-import { inspectionTable, seriesStats, valueText, csvText, xlsxBytes } from '../src/composables/panelInspection.mjs';
+import { inspectionTable, seriesStats, valueText, csvText, xlsxBytes } from '../src/composables/panelInspection.ts';
 
 const chart = { options: { chartTitle: 'Temperature', axes: [{}, { scale: 'C' }], series: [{}, { label: 'Temperature' }] }, processing: { decimals: 2 } };
 const snapshot = { chart, timezone: 'UTC', result: { data: [[1700000000, 1700000010], [25.123456, null], [null, -2]], labels: ['host=one', 'host=two'], rawRows: [{ _time: '2023-11-14T22:13:20Z', _value: 20, topic: 'a,b"c' }] } };

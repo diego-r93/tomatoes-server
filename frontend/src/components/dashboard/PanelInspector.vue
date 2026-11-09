@@ -33,10 +33,10 @@
 <script setup lang="ts">
 import { useLanguage } from '@/composables/useLanguage';
 const {t} = useLanguage();
-import { formatDateTime } from '@/composables/dateTime.mjs';
+import { formatDateTime } from '@/composables/dateTime.ts';
 import { computed, ref, watch, nextTick } from 'vue';
-import { chartDefinition } from '@/composables/dashboardUtils.mjs';
-import { inspectionTable, seriesNames, seriesStats, timeText, valueText, csvText, xlsxBytes, fileStem, downloadFile } from '@/composables/panelInspection.mjs';
+import { chartDefinition } from '@/composables/dashboardUtils.ts';
+import { inspectionTable, seriesNames, seriesStats, timeText, valueText, csvText, xlsxBytes, fileStem, downloadFile } from '@/composables/panelInspection.ts';
 import type { InspectionMetadata, InspectionSource, PanelInspectionSnapshot } from '@/composables/dashboardPanelTypes';
 
 const inspectorTabs = ['Data', 'Stats', 'JSON', 'Query'] as const;

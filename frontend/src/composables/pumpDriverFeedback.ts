@@ -1,3 +1,6 @@
+import type { DiscoveredDevice } from './deviceInventoryUtils';
+import type { DeviceDriverReport, DriverResult } from './deviceReportTypes';
+
 const messages = {
   actuated: 'Actuated', 'supply-missing': 'Not actuated: pump power supply absent',
   short: 'Driver fault: short circuit', temperature: 'Driver fault: overtemperature',
@@ -5,20 +8,12 @@ const messages = {
   missing: 'No driver feedback', incomplete: 'Incomplete driver feedback',
   waiting: 'Waiting for driver feedback', unobserved: 'No pulse observed',
 };
-/** @param {import("./deviceReportTypes").DriverResult} result */
-export const driverMessage = result => messages[result] || messages.unobserved;
-/** @param {import("./deviceReportTypes").DriverResult} result */
-export const driverProblem = result => ['supply-missing','short','temperature','supply-low','not-actuated','missing','incomplete'].includes(result);
-/** @param {import("./deviceInventoryUtils").DiscoveredDevice[]} devices */
-export function driverIssues(devices) {
+export const driverMessage = (result: DriverResult) => messages[result] || messages.unobserved;
+export const driverProblem = (result: DriverResult) => ['supply-missing','short','temperature','supply-low','not-actuated','missing','incomplete'].includes(result);
+export function driverIssues(devices: DiscoveredDevice[]) {
   return devices.flatMap(device => (device.driverPulses || []).filter(pulse => driverProblem(pulse.result)).map(pulse => ({...pulse, host:device.host, deviceKey:device.key})));
 }
-/**
- * @param {import("./deviceInventoryUtils").DiscoveredDevice[]} devices
- * @param {import("./deviceReportTypes").DeviceDriverReport[]} feedback
- * @returns {import("./deviceInventoryUtils").DiscoveredDevice[]}
- */
-export function mergeDriverFeedback(devices, feedback) {
+export function mergeDriverFeedback(devices: DiscoveredDevice[], feedback: DeviceDriverReport[]): DiscoveredDevice[] {
   if (!Array.isArray(feedback)) throw new Error('Invalid driver feedback response');
   const byHost = new Map(feedback.filter(entry => typeof entry?.host === 'string' && Array.isArray(entry.pumps)).map(entry => [entry.host, entry.pumps]));
   return devices.map(device => byHost.has(device.host) ? {...device, driverPulses:byHost.get(device.host)} : device);

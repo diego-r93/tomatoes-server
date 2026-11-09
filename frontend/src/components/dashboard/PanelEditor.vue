@@ -86,10 +86,10 @@ import type { ChartPanelDefinition, PanelQuerySource, VisualizationSettings } fr
 import type { DashboardRange } from '@/composables/dashboardStateTypes';
 import type { AlignedSeries, Processing, QueryRow } from '@/composables/dashboardSeries';
 import PanelVisualization from './PanelVisualization.vue';
-import { visualizationFor, visualizationError, visualizationTypes, reducers } from '@/composables/panelVisualization.mjs';
+import { visualizationFor, visualizationError, visualizationTypes, reducers } from '@/composables/panelVisualization.ts';
 import api from '@/services/dashboardDataService';
 import { runDashboardQuery } from '@/services/dashboardQuery';
-import { clone,processingFor,processingError,chartDefinition,buildQuery,resolveQuery,alignRows,processValue } from '@/composables/dashboardUtils.mjs';
+import { clone,processingFor,processingError,chartDefinition,buildQuery,resolveQuery,alignRows,processValue } from '@/composables/dashboardUtils.ts';
 type PanelDraft = ChartPanelDefinition & { processing: Processing; visualization: VisualizationSettings };
 const editorTabs = ['Builder', 'Flux', 'Processing', 'Data preview'] as const;
 const props = withDefaults(defineProps<{

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { boardHost, boardConnection } from '../src/composables/boardConnectionUtils.mjs';
+import { boardHost, boardConnection } from '../src/composables/boardConnectionUtils.ts';
 const now = 1793674800000;
 const snapshot = (changes = {}) => ({ devices: [{host:'esp32s3-07945C',received_at:now-30000}], monitorRunning:true, mqttConnected:true, lastDiscovery:now-30000, checkedAt:now, ...changes });
 test('all pump channels share their exact board connection, without confusing similar IDs', () => {
