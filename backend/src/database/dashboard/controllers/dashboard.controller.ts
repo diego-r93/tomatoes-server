@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { validateCharts } from '../validation';
+import { context } from '../../../users/http';
+import { readLivePanel } from '../live';
 import { HttpError } from '../../../users/types';
 import { listDashboardSummaries } from '../readRepository';
 import { readDashboard, readDashboardSchema, readLegacyCharts } from '../readService';
@@ -39,4 +41,8 @@ export async function schema(req: Request, res: Response) {
   const measurement = String(req.query.measurement || '');
   const tag = String(req.query.tag || '');
   res.json(await readDashboardSchema(bucket, measurement, tag));
+}
+
+export async function livePanel(req: Request, res: Response) {
+  res.json(await readLivePanel(req.body || {}, Boolean(context(res).user.is_admin)));
 }

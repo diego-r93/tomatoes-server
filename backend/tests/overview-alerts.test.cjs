@@ -39,19 +39,33 @@ test('overview preserves original histories/queries, is idempotent, and validate
 });
 
 
-test('live panels use a saved source, reject member draft overrides and unapproved boards',async()=>{
- const Dashboard=require('../src/database/dashboard/models/dashboard.model').default;
- const sources=require('../src/alerts/sources');
- const {livePanel}=require('../src/database/dashboard/live');
- const oldFind=Dashboard.findById,connected=sources.sourceHealth.mqttConnected;
- let result;const res={locals:{auth:{user:{is_admin:0}}},json(value){result=value;}};
- Dashboard.findById=()=>({lean:async()=>({charts:[{id:'live',liveSource:{kind:'connection',host:'esp32s3-07945C'}}]})});
- sources.sourceHealth.mqttConnected=true;
- let inventory=[{host:'esp32s3-07945C',online:true,receivedAt:1000}];const dependencies={inventory:async()=>inventory,snapshots:async()=>[]};
- try{
-  await assert.rejects(livePanel({body:{source:{kind:'connection',host:'esp32s3-07945C'}}},res,dependencies),e=>e.status===403);
-  await livePanel({body:{dashboardId:'saved',panelId:'live'}},res,dependencies);assert.equal(result[0]._value,1);assert.equal(result[0]._time,'1970-01-01T00:00:01.000Z');
-  inventory=[];await assert.rejects(livePanel({body:{dashboardId:'saved',panelId:'live'}},res,dependencies),e=>e.status===403);
-  sources.sourceHealth.mqttConnected=false;await assert.rejects(livePanel({body:{dashboardId:'saved',panelId:'live'}},res,dependencies),e=>e.status===503);
- }finally{Dashboard.findById=oldFind;sources.sourceHealth.mqttConnected=connected;}
+test('live panels preserve offline and stale observations and reject unavailable sources', async t => {
+ const Dashboard = require('../src/database/dashboard/models/dashboard.model').default;
+ const { sourceHealth } = require('../src/alerts/sources');
+ const { readLivePanel } = require('../src/database/dashboard/live');
+ const host = 'esp32s3-07945C';
+ const source = { kind: 'connection', host };
+ const saved = { dashboardId: 'saved', panelId: 'live' };
+ t.mock.method(Dashboard, 'findById', () => ({ lean: async () => ({ charts: [{ id: 'live', liveSource: source }] }) }));
+ const connected = sourceHealth.mqttConnected;
+ let inventory = [{ host, online: true, receivedAt: Date.now() }];
+ const dependencies = { inventory: async () => inventory, snapshots: async () => [] };
+ try {
+  sourceHealth.mqttConnected = true;
+  await assert.rejects(readLivePanel({ source }, false, dependencies), error => error.status === 403);
+  assert.equal((await readLivePanel(saved, false, dependencies))[0]._value, 1);
+  const stale = Date.now() - 120000;
+  inventory = [{ host, online: false, receivedAt: stale }];
+  const offline = await readLivePanel(saved, false, dependencies);
+  assert.equal(offline[0]._value, 0);
+  assert.equal(offline[0]._time, new Date(stale).toISOString());
+  inventory = [{ host, online: false, receivedAt: null }];
+  assert.deepEqual(await readLivePanel(saved, false, dependencies), []);
+  inventory = [];
+  await assert.rejects(readLivePanel(saved, false, dependencies), error => error.status === 403);
+  sourceHealth.mqttConnected = false;
+  await assert.rejects(readLivePanel(saved, false, dependencies), error => error.status === 503);
+ } finally {
+  sourceHealth.mqttConnected = connected;
+ }
 });
