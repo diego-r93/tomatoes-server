@@ -6,6 +6,7 @@ import { changeRegistration, deviceAdmission, listRegisteredDevices } from '../m
 import { queueScheduleSync } from "../mqtt/schedules";
 import { authenticate, context, endpoint, requireAdmin } from '../users/http';
 import { Express, Router } from 'express';
+import { getDevices } from '../mqtt/controllers/deviceDiscovery.controller';
 import * as publisherController from '../mqtt/controllers/mqtt.controller';
 
 const mqttRoutes = (app: Express) => {
@@ -46,7 +47,7 @@ const mqttRoutes = (app: Express) => {
         const { days, previousDays, confirmReduction } = req.body ?? {};
         res.set('Cache-Control', 'no-store').json(await updateHistoryRetention(days, previousDays, confirmReduction));
     }));
-    router.get("/getdevices", authenticate, publisherController.getDevices);
+    router.get("/getdevices", authenticate, getDevices);
 
     router.get("/registry", authenticate, requireAdmin, endpoint(async (_req, res) => { res.json(await listRegisteredDevices()); }));
     router.patch("/registry/:host", authenticate, requireAdmin, endpoint(async (req, res) => {

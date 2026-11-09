@@ -20,7 +20,6 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 | Planned | MongoDB replacement or upgrade | Choose a supported database path and data migration before moving away from MongoDB 4.4 compatibility. |
 | Planned | InfluxDB 3 and query migration | Evaluate Flux to InfluxQL migration, feature differences and data retention/migration. Current InfluxDB remains on version 2. |
 | Priority | Administrator credential | Require a unique password for the built-in administrator, support secure rotation, and verify that the factory credential no longer grants access before widening portal access. |
-| In progress | Broader backend refactoring | Express assembly and backend startup are separate. Dashboard library, export, schema and saved-panel reads are in production. Dashboard writes are in production. Concurrent editing and draft retention were verified. The live-observation service is in production. Verified the greenhouse connection and latest driver feedback for all four outputs through the saved dashboard API. Offline, stale and disconnected states passed isolated tests. An isolated broker outage confirmed that a saved pump schedule is published again after reconnect. The board schedule service and MongoDB repository are separated from HTTP. The MQTT schedule payload builder is separated from publication and retry. Next, scope any Users, Alerting or Devices changes individually. |
 | Planned | Grafana retirement | Remove the temporary comparison service when the Tomatoes dashboards cover the required features. Grafana is already upgraded and isolated behind HTTPS. |
 | Planned | MQTT hostname | Plan mqtt.ceresgrow.com.br, broker certificate SAN and factory endpoint configuration. Do not expose MQTT externally as part of the local portal setup. |
 | Planned | Pull-based OTA | Store signed firmware by model, notify boards through MQTT and let boards download through HTTPS for cloud deployment. Requires coordinated firmware work. |
@@ -41,6 +40,8 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 - Greenhouse and battery checks need physical validation. Historical MQTT disconnects need the original log archive. Firmware publication, pull-based OTA and the next PCB require separate coordination.
 
 ### Recently completed
+
+- **Backend refactor, stage 3.** Device discovery and manual output commands are separate. The Users store delegates JWT signing and active-session validation to a session module. Alert evaluation delegates notification queueing and delivery to a separate worker module. HTTP contracts, permissions and stored data were preserved. The production image built successfully and all 60 backend tests passed in a network-isolated container. After backend-only deployment, the protected Devices, Users and Alerting endpoints returned HTTP 401 without a session. The Mosquitto start time remained unchanged.
 
 - **MQTT schedule synchronization separated.** The payload builder preserves the topic, document and version used by firmware. The coordinator tracks pending work, publication and retries separately. All 57 backend tests passed. An isolated Mosquitto 2.1.2 verified retained QoS 1 publication, delivery of an offline edit after a broker stop and restart, and removal of a retained schedule. Applied to the Pi by recreating only the backend.
 

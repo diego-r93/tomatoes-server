@@ -1,5 +1,5 @@
 import * as bcrypt from 'bcryptjs';
-import * as jwt from 'jsonwebtoken';
+import { authenticateSession, sessionSeconds, sessionToken } from './sessionAuth';
 import { createHash, randomBytes, randomUUID } from 'crypto';
 import { access, all, get, run } from './database';
 import { ClientInfo, GroupRow, HttpError, InvitationRow, SessionRow, UserRow, browserDetails, emailAddress, idList, passwordValue, text } from './types';
@@ -7,7 +7,6 @@ import { ClientInfo, GroupRow, HttpError, InvitationRow, SessionRow, UserRow, br
 const now = () => new Date().toISOString();
 const hashToken = (value: string) => createHash('sha256').update(value).digest('hex');
 const token = () => randomBytes(32).toString('hex');
-const sessionSeconds = () => Math.min(168, Math.max(1, Number(process.env.AUTH_SESSION_HOURS) || 12)) * 3600;
 const dummyHash = bcrypt.hashSync('invalid-account-password', 10);
 const userRow = async (id: number) => {
   const user = await get<UserRow>('SELECT * FROM users WHERE id = ?', [id]);
@@ -49,9 +48,6 @@ async function uniqueUsername(username: string, except = 0) {
   if (!/^[a-zA-Z0-9._-]{3,40}$/.test(username)) throw new HttpError(400, 'Use 3–40 letters, numbers, dots, hyphens or underscores for the username.');
   if (await get('SELECT id FROM users WHERE username = ? COLLATE NOCASE AND id != ?', [username, except])) throw new HttpError(409, 'This username is already in use.');
 }
-function sessionToken(user: UserRow, sessionId: string) {
-  return jwt.sign({ userId: user.id, sid: sessionId }, process.env.JWT_SECRET!, { algorithm: 'HS256', expiresIn: sessionSeconds() });
-}
 async function invitationRow(id: number) {
   const invite = await get<InvitationRow>('SELECT * FROM user_invitations WHERE id = ?', [id]);
   if (!invite) throw new HttpError(404, 'Invitation not found.'); return invite;
@@ -88,19 +84,7 @@ export const userStore = {
       return { ...(await publicUser(await userRow(user.id))), accessToken: sessionToken(user, id), expiresAt, sessionId: id };
     }, true);
   },
-  authenticate(rawToken: string, client: ClientInfo) {
-    return access(async () => {
-      let claims: jwt.JwtPayload;
-      try { claims = jwt.verify(rawToken, process.env.JWT_SECRET!, { algorithms: ['HS256'] }) as jwt.JwtPayload; }
-      catch { throw new HttpError(401, 'Your session has expired. Please sign in again.'); }
-      if (!Number.isSafeInteger(claims.userId) || typeof claims.sid !== 'string') throw new HttpError(401, 'Please sign in again.');
-      const session = await get<SessionRow>('SELECT * FROM user_sessions WHERE id = ? AND user_id = ?', [claims.sid, claims.userId]);
-      const user = await get<UserRow>('SELECT * FROM users WHERE id = ?', [claims.userId]);
-      if (!session || session.revoked_at || Date.parse(session.expires_at) <= Date.now() || !user?.enabled) throw new HttpError(401, 'Your session is no longer active. Please sign in again.');
-      if (Date.now() - Date.parse(session.last_seen_at) > 60000) await run('UPDATE user_sessions SET last_seen_at = ?, last_ip = ? WHERE id = ?', [now(), client.ip, session.id]);
-      return { user, session };
-    });
-  },
+  authenticate: authenticateSession,
   me(id: number, sessionId: string) { return access(async () => ({ ...(await publicUser(await userRow(id))), sessionId })); },
   refresh(id: number, sessionId: string) {
     return access(async () => {
