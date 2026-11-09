@@ -23,6 +23,7 @@ Updated 2026-11-08. Completed features are documented in the commit report and t
 | Planned | SQLite file permissions | Restrict access to the database and its WAL and SHM files to the backend identity and authorized administrators. Verify permissions after a container restart. |
 | Planned | SQLite backup and restore | Create a consistent backup while the backend is running and verify restoration on an isolated copy. Include user and alert data in the check. |
 | Planned | SQLite library update | Keep SQLite and update the backend driver to a build with the WAL reset fix. Confirm the SQLite version loaded by the container and validate login and alert behavior on a restored copy before deployment. |
+| Planned | Gradual frontend migration to TypeScript | Pilot the pump history flow by typing filters, API responses and the Vue component. Add `vue-tsc` alongside lint and tests. Keep JavaScript and TypeScript side by side during the transition. Use TypeScript for new features and migrate existing modules as they change, prioritizing Devices, Alerting and Dashboards after reviewing the pilot. |
 | Planned | Broader backend refactoring | TypeScript tooling migration is complete; architectural refactoring of remaining modules is separate. |
 | Planned | Grafana retirement | Remove the temporary comparison service when the Tomatoes dashboards cover the required features. Grafana is already upgraded and isolated behind HTTPS. |
 | Planned | MQTT hostname | Plan mqtt.ceresgrow.com.br, broker certificate SAN and factory endpoint configuration. Do not expose MQTT externally as part of the local portal setup. |
@@ -36,8 +37,9 @@ Updated 2026-11-08. Completed features are documented in the commit report and t
 
 1. Replace the factory administrator credential and verify secure rotation.
 2. Protect the SQLite files, test a consistent backup and restore, and validate the library update on the restored copy.
-3. Translate Database into Portuguese and Spanish and verify both languages plus the English default in the portal. Continue with Users and Alerting as separate deliveries.
-4. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
+3. Pilot the frontend TypeScript migration in pump history after the administrator credential and SQLite backup and restore work. Measure the effort before expanding.
+4. Translate Database into Portuguese and Spanish and verify both languages plus the English default in the portal. Continue with Users and Alerting as separate deliveries.
+5. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
 
 ### Waiting on a test or external input
 
