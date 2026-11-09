@@ -19,7 +19,10 @@ Updated 2026-11-08. Completed features are documented in the commit report and t
 | Planned | User/group board permissions | Define board-level access policies beyond the existing Admin/User roles. |
 | Planned | MongoDB replacement or upgrade | Choose a supported database path and data migration before moving away from MongoDB 4.4 compatibility. |
 | Planned | InfluxDB 3 and query migration | Evaluate Flux to InfluxQL migration, feature differences and data retention/migration. Current InfluxDB remains on version 2. |
-| Planned | SQLite maintenance | Review the backend SQLite library and migration strategy separately from the completed dependency updates. |
+| Priority | Administrator credential | Require a unique password for the built-in administrator, support secure rotation, and verify that the factory credential no longer grants access before widening portal access. |
+| Planned | SQLite file permissions | Restrict access to the database and its WAL and SHM files to the backend identity and authorized administrators. Verify permissions after a container restart. |
+| Planned | SQLite backup and restore | Create a consistent backup while the backend is running and verify restoration on an isolated copy. Include user and alert data in the check. |
+| Planned | SQLite library update | Keep SQLite and update the backend driver to a build with the WAL reset fix. Confirm the SQLite version loaded by the container and validate login and alert behavior on a restored copy before deployment. |
 | Planned | Broader backend refactoring | TypeScript tooling migration is complete; architectural refactoring of remaining modules is separate. |
 | Planned | Grafana retirement | Remove the temporary comparison service when the Tomatoes dashboards cover the required features. Grafana is already upgraded and isolated behind HTTPS. |
 | Planned | MQTT hostname | Plan mqtt.ceresgrow.com.br, broker certificate SAN and factory endpoint configuration. Do not expose MQTT externally as part of the local portal setup. |
@@ -31,9 +34,10 @@ Updated 2026-11-08. Completed features are documented in the commit report and t
 
 ## Next tasks in order
 
-1. Translate Database into Portuguese and Spanish and verify both languages plus the English default in the portal. Continue with Users and Alerting as separate deliveries.
-2. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
-3. Map SQLite usage and verify the existing backup and restore procedure on a disposable copy. Use the results to decide whether a migration is worthwhile.
+1. Replace the factory administrator credential and verify secure rotation.
+2. Protect the SQLite files, test a consistent backup and restore, and validate the library update on the restored copy.
+3. Translate Database into Portuguese and Spanish and verify both languages plus the English default in the portal. Continue with Users and Alerting as separate deliveries.
+4. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
 
 ### Waiting on a test or external input
 
