@@ -28,6 +28,7 @@
         </div>
         <p v-if="languageStorageUnavailable" role="status">{{ t('storageUnavailable') }}</p>
       </v-card>
+      <HistoryRetention v-if="Authentication.currentUser?.isAdmin" />
       <footer class="preferences-footer"><p aria-live="polite">{{ currentTheme.title }} {{ t('applied') }} · {{ t(appearance.storageUnavailable ? 'storageUnavailable' : 'saved') }}</p><v-btn variant="outlined" @click="resetOpen = true">{{ t('reset') }}</v-btn></footer>
     </div>
     <v-dialog v-model="resetOpen" max-width="440">
@@ -38,6 +39,8 @@
 
 <script setup>
 import AppPageHeader from '@/components/navigation/AppPageHeader.vue';
+import HistoryRetention from './HistoryRetention.vue';
+import Authentication from '@/services/auth';
 import { computed, ref } from 'vue';
 import { useAppStore } from '@/store/appConfiguration';
 import { themeCatalog } from '@/styles/themes';

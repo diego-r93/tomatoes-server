@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { savePumpHistory, startPumpHistory } from './pumpHistory';
 import Board from '../database/mongodb/models/board.model';
 import { approvedDeviceHosts, deviceAdmission } from './deviceRegistry';
 import { PumpDriverTracker, PumpState, parseDriverEvent, recentlyDue } from './pumpDriverState';
@@ -26,14 +27,21 @@ async function persist(code: string) {
 }
 export function expectPumpPulse(code: string, at: number, source: string) {
   if (!/^esp32[A-Za-z0-9]*-[A-Za-z0-9][A-Za-z0-9._-]{0,100}#0[1-4]$/.test(code)) return Promise.resolve();
-  return enqueue(code, async () => { if (tracker.expect(code, at, source)) await persist(code); });
+  return enqueue(code, async () => { if (tracker.expect(code, at, source)) {
+    await persist(code);
+    await savePumpHistory(code, tracker.states.get(code)!.latest);
+  } });
 }
 export async function observePumpDriver(topic: string, payload: Buffer, retained: boolean, at = Date.now()) {
   const event = parseDriverEvent(topic, payload, retained, at);
   if (!event || mongoose.connection.readyState !== 1) return;
   return enqueue(event.host + '#' + event.pump, async () => {
     if (await deviceAdmission(event.host) !== 'approved') return;
-    if (tracker.ingest(event)) await persist(event.host + '#' + event.pump);
+    const code = event.host + '#' + event.pump;
+    if (tracker.ingest(event)) {
+      await persist(code);
+      await savePumpHistory(code, tracker.states.get(code)!.latest);
+    }
   });
 }
 export async function observePumpOutputs(host: string, ports: unknown, at: number) {
@@ -60,6 +68,7 @@ export async function pumpDriverSnapshots(hosts?: string[]) {
 }
 async function initialize() {
   for (const row of await collection().find().toArray()) tracker.states.set(row.code, row);
+  startPumpHistory(structuredClone(tracker.states));
   // Replay actual arrival timestamps from the existing sensor history, not fake test messages.
   const cutoff = new Map([...tracker.states].map(([code, state]) => [code, state.lastObservedAt]));
   try {
@@ -67,16 +76,25 @@ async function initialize() {
     const allowed = await approvedDeviceHosts();
     const bucket = JSON.stringify(process.env.DOCKER_INFLUXDB_INIT_BUCKET || 'tomatoes');
     const rows = await client.getQueryApi(org).collectRows<{topic:string;_time:string;_value:unknown}>(
-      `from(bucket:${bucket}) |> range(start:-24h) |> filter(fn:(r)=>r._measurement=="mqtt_consumer" and r.topic =~ /pump/) |> group() |> sort(columns:["_time"],desc:true) |> limit(n:20000) |> sort(columns:["_time"])`);
+      `from(bucket:${bucket}) |> range(start:-24h) |> filter(fn:(r)=>r._measurement=="pump_driver") |> group() |> sort(columns:["_time"],desc:true) |> limit(n:20000) |> sort(columns:["_time"])`);
     const changed = new Set<string>();
     for (const row of rows) {
       const event = parseDriverEvent(row.topic, Buffer.from(String(row._value)), false, Date.parse(row._time));
       if (!event || !allowed.has(event.host)) continue;
       const code = event.host + '#' + event.pump;
       if (event.at <= (cutoff.get(code) ?? -Infinity)) continue;
-      if (tracker.ingest(event)) changed.add(code);
+      const previous = tracker.states.get(code)?.latest;
+      if (tracker.ingest(event)) {
+        changed.add(code);
+        if (previous && previous !== tracker.states.get(code)?.latest) {
+          await savePumpHistory(code, previous, 'reconstructed');
+        }
+      }
     }
-    for (const code of changed) await persist(code);
+    for (const code of changed) {
+      await persist(code);
+      await savePumpHistory(code, tracker.states.get(code)!.latest, 'reconstructed');
+    }
   } catch (error) { console.warn('Pump driver history replay unavailable:', error instanceof Error ? error.name : 'Unknown error'); }
 }
 export async function startPumpDriverTracking() {

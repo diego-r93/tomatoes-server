@@ -1,6 +1,11 @@
 <template>
   <section class="driver-feedback">
-    <h3>{{ t('Last pump pulses') }}</h3>
+    <div class="feedback-header">
+      <h3>{{ t('Last pump pulses') }}</h3>
+      <v-btn size="small" variant="outlined" prepend-icon="mdi-history" @click="historyOpen = true">
+        {{ t('Pulse history') }}
+      </v-btn>
+    </div>
     <p class="driver-note">{{ t('Driver feedback confirms the electrical output, not water flow. Each driver is shared by two pumps.') }}</p>
     <div v-if="device.driverPulses?.length" class="driver-pulses">
       <div v-for="pump in device.driverPulses || []" :key="pump.code" class="driver-pump">
@@ -14,14 +19,18 @@
       </div>
     </div>
     <p v-else class="driver-note">{{ t('No pulse observed') }}</p>
+    <PumpHistoryDialog v-if="historyOpen" :key="device.host" :host="device.host" @close="historyOpen = false" />
   </section>
 </template>
 <script setup>
+import { ref } from 'vue';
+import PumpHistoryDialog from './PumpHistoryDialog.vue';
 import { useLanguage } from '@/composables/useLanguage';
 import { formatTime, formatDateTime } from '@/composables/dateTime.mjs';
 import { driverMessage, driverProblem } from '@/composables/pumpDriverFeedback.mjs';
 const props = defineProps({device:{type:Object,required:true},clock:Number});
 const {t} = useLanguage();
+const historyOpen = ref(false);
 function pulseTime(value) { return value ? (Math.abs((props.clock || Date.now()) - value) >= 86400000 ? formatDateTime(value) : formatTime(value)) : '—'; }
 </script>
 <style scoped lang="scss">
@@ -34,4 +43,5 @@ function pulseTime(value) { return value ? (Math.abs((props.clock || Date.now())
 @container (min-width: 420px) {
   .driver-pulses { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+.feedback-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
 </style>
