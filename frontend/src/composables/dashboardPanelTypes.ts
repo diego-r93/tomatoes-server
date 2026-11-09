@@ -1,5 +1,5 @@
 import type uPlot from 'uplot';
-import type { Processing } from './dashboardSeries';
+import type { PlotData, Processing, QueryRow } from './dashboardSeries';
 import type { LiveSource } from '@/services/dashboardQuery';
 
 export type SeriesStyle = Omit<uPlot.Series, 'stroke' | 'fill' | 'label'> & { label?: string; stroke?: string; fill?: string };
@@ -36,3 +36,51 @@ export interface ReducedReading {
   timestamp: number | null;
   label: string;
 }
+
+export interface PanelQuerySource {
+  bucket: string;
+  measurement: string;
+  field: string;
+  tag: string;
+  tagValue: string;
+  aggregation: 'mean' | 'min' | 'max' | 'sum' | 'last' | 'none';
+  convertText: boolean;
+}
+
+export interface ChartPanelDefinition extends DashboardPanelModel {
+  id: number | string;
+  query: string;
+  options: ChartOptions & { chartTitle: string };
+  layout: { x: number; y: number; w: number; h: number; i?: string | number };
+  source?: Partial<PanelQuerySource>;
+  data?: unknown[];
+}
+
+export interface PanelInspectionResult {
+  data?: PlotData | [];
+  labels?: string[];
+  rawRows?: QueryRow[];
+  durationMs?: number;
+  responseBytes?: number;
+  updated?: number;
+  queryRange?: string;
+  rangeStart?: string;
+  rangeStop?: string;
+  queryWindow?: string;
+  resolvedQuery?: string;
+  error?: string;
+  loading?: boolean;
+  lastAttempt?: { query?: string; range: string; window: string; durationMs: number; at: string };
+}
+
+export interface PanelInspectionSnapshot {
+  chart: ChartPanelDefinition;
+  result: PanelInspectionResult;
+  dashboardName: string;
+  timezone: string;
+  range: string;
+  capturedAt: number;
+}
+
+export type InspectionSource = 'chart' | 'response';
+export type InspectionMetadata = [key: string, value: string | number | null | undefined];

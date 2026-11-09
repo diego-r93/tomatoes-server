@@ -1,7 +1,7 @@
 <template>
   <v-dialog :model-value="true" max-width="1120" scrollable @update:model-value="!$event && emit('close')">
     <v-card class="panel-editor">
-      <v-card-title class="editor-heading">{{ t(isNew ? 'Add panel' : 'Edit panel') }}<v-btn icon="mdi-close" variant="text" :aria-label="t(&quot;Close panel editor&quot;)" @click="emit('close')" /></v-card-title>
+      <v-card-title class="editor-heading">{{ t(isNew ? 'Add panel' : 'Edit panel') }}<v-btn icon="mdi-close" variant="text" :aria-label="t('Close panel editor')" @click="emit('close')" /></v-card-title>
       <v-card-text>
         <div class="editor-top">
           <div><p class="muted mb-2">{{ t("Panel preview ·") }} {{ panel.visualization.type === 'time-series' ? 'uPlot' : panel.visualization.type === 'stat' ? 'Stat' : 'Gauge' }} {{ t("· live InfluxDB data") }}</p><div class="editor-preview app-panel"><PanelVisualization :chart="panel" :data="preview.data" :labels="preview.labels" :timezone="timezone" /></div></div>
@@ -39,7 +39,7 @@
           </div>
           <p v-if="!panel.visualization.thresholds.length" class="muted">{{ t("One color for the entire scale.") }}</p>
         </section>
-        <v-alert v-if="panel.liveSource" variant="tonal" class="mt-4">Live board status uses backend observations, not Flux, and ignores the selected time range.</v-alert><div v-if="!panel.liveSource" class="editor-tabs app-action-row"><v-btn v-for="name in ['Builder','Flux','Processing','Data preview']" :key="name" :variant="tab===name?'tonal':'text'" :color="tab===name?'primary':undefined" @click="tab=name">{{ t(name) }}</v-btn><v-spacer/><v-btn prepend-icon="mdi-database-search" variant="outlined" @click="tab='Builder';loadMeasurements()">{{ t("Browse data") }}</v-btn><v-btn prepend-icon="mdi-play-outline" variant="outlined" :loading="running" :disabled="!!validation || !panel.query.trim()" @click="run">{{ t("Run query") }}</v-btn></div>
+        <v-alert v-if="panel.liveSource" variant="tonal" class="mt-4">Live board status uses backend observations, not Flux, and ignores the selected time range.</v-alert><div v-if="!panel.liveSource" class="editor-tabs app-action-row"><v-btn v-for="name in editorTabs" :key="name" :variant="tab===name?'tonal':'text'" :color="tab===name?'primary':undefined" @click="tab=name">{{ t(name) }}</v-btn><v-spacer/><v-btn prepend-icon="mdi-database-search" variant="outlined" @click="tab='Builder';loadMeasurements()">{{ t("Browse data") }}</v-btn><v-btn prepend-icon="mdi-play-outline" variant="outlined" :loading="running" :disabled="!!validation || !panel.query.trim()" @click="run">{{ t("Run query") }}</v-btn></div>
         <div v-if="!panel.liveSource && tab==='Builder'">
           <p class="muted mb-4">{{ t("Build a query from available InfluxDB fields. Generating replaces the Flux text only when you click Generate query.") }}</p>
           <div class="editor-fields builder-fields">
@@ -61,8 +61,8 @@
           <div class="editor-fields builder-fields">
             <label>{{ t("Multiplier") }}<input v-model.number="panel.processing.multiplier" type="number" step="any"></label>
             <label>{{ t("Offset") }}<input v-model.number="panel.processing.offset" type="number" step="any"></label>
-            <label>{{ t("Clamp minimum") }}<input v-model.number="panel.processing.minimum" type="number" step="any" :placeholder="t(&quot;No limit&quot;)"></label>
-            <label>{{ t("Clamp maximum") }}<input v-model.number="panel.processing.maximum" type="number" step="any" :placeholder="t(&quot;No limit&quot;)"></label>
+            <label>{{ t("Clamp minimum") }}<input v-model.number="panel.processing.minimum" type="number" step="any" :placeholder="t('No limit')"></label>
+            <label>{{ t("Clamp maximum") }}<input v-model.number="panel.processing.maximum" type="number" step="any" :placeholder="t('No limit')"></label>
             <label>{{ t("Decimal places") }}<input v-model.number="panel.processing.decimals" type="number" min="0" max="6"></label>
             <label>{{ t("Line width") }}<input v-model.number="panel.processing.lineWidth" type="number" min="0.5" max="5" step="0.5"></label>
             <label>{{ t("Missing values") }}<select v-model="panel.processing.gaps"><option value="Gaps">{{ t("Gaps") }}</option><option value="Connect gaps">{{ t("Connect gaps") }}</option></select></label>
@@ -77,37 +77,90 @@
     </v-card>
   </v-dialog>
 </template>
-<script setup>
+<script setup lang="ts">
 import { useLanguage } from '@/composables/useLanguage';
 const {t} = useLanguage();
-import { ref,computed,onBeforeUnmount } from 'vue';
+import { ref, computed, onBeforeUnmount } from 'vue';
+import { isAxiosError, isCancel } from 'axios';
+import type { ChartPanelDefinition, PanelQuerySource, VisualizationSettings } from '@/composables/dashboardPanelTypes';
+import type { AlignedSeries, Processing, QueryRow } from '@/composables/dashboardSeries';
 import PanelVisualization from './PanelVisualization.vue';
 import { visualizationFor, visualizationError, visualizationTypes, reducers } from '@/composables/panelVisualization.mjs';
 import api from '@/services/dashboardDataService';
 import { runDashboardQuery } from '@/services/dashboardQuery';
 import { clone,processingFor,processingError,chartDefinition,buildQuery,resolveQuery,alignRows,processValue } from '@/composables/dashboardUtils.mjs';
-const props=defineProps({chart:{type:Object,required:true},isNew:Boolean,bucket:{type:String,default:'tomatoes'},range:{type:[String,Object],default:'-1h'},window:{type:String,default:'10s'},timezone:{type:String,default:'Browser'}}),emit=defineEmits(['close','apply']);
-const panel=ref(clone(props.chart));panel.value.processing=processingFor(panel.value);panel.value.visualization=visualizationFor(panel.value);
-const tab=ref(panel.value.query?'Flux':'Builder'),rows=ref([]),error=ref(''),result=ref(''),running=ref(false),loadingSchema=ref(false),measurements=ref([]),fields=ref([]),tags=ref([]),tagValues=ref([]);
-const source=ref({bucket:props.bucket,measurement:'',field:'',tag:'',tagValue:'',aggregation:'mean',convertText:false,...panel.value.source});
+type PanelDraft = ChartPanelDefinition & { processing: Processing; visualization: VisualizationSettings };
+const editorTabs = ['Builder', 'Flux', 'Processing', 'Data preview'] as const;
+const props = withDefaults(defineProps<{
+  chart: ChartPanelDefinition;
+  isNew?: boolean;
+  bucket?: string;
+  range?: string | { from: string; to: string };
+  window?: string;
+  timezone?: string;
+}>(), { bucket: 'tomatoes', range: '-1h', window: '10s', timezone: 'Browser' });
+const emit = defineEmits<{ close: []; apply: [chart: ChartPanelDefinition] }>();
+const original = clone(props.chart);
+const panel = ref<PanelDraft>({
+  ...original,
+  processing: processingFor(original),
+  visualization: visualizationFor(original),
+});
+const tab = ref<(typeof editorTabs)[number]>(panel.value.query ? 'Flux' : 'Builder');
+const rows = ref<QueryRow[]>([]);
+const error = ref('');
+const result = ref('');
+const running = ref(false);
+const loadingSchema = ref(false);
+const measurements = ref<string[]>([]);
+const fields = ref<string[]>([]);
+const tags = ref<string[]>([]);
+const tagValues = ref<string[]>([]);
+const source = ref<PanelQuerySource>({bucket:props.bucket,measurement:'',field:'',tag:'',tagValue:'',aggregation:'mean',convertText:false,...panel.value.source});
 const color=ref('#80cbc4'),opacity=ref(.1);const oldColor=panel.value.options.series?.[1]?.stroke;
-if(/^#[0-9a-f]{6}$/i.test(oldColor||''))color.value=oldColor;else{const numbers=oldColor?.match(/\d+/g);if(numbers?.length>=3)color.value='#'+numbers.slice(0,3).map(n=>Number(n).toString(16).padStart(2,'0')).join('');}
-const oldFill=panel.value.options.series?.[1]?.fill;if(oldFill?.startsWith('rgba'))opacity.value=Number(oldFill.match(/[\d.]+/g)?.[3]??.1);else if(/^#[0-9a-f]{8}$/i.test(oldFill||''))opacity.value=Math.round(parseInt(oldFill.slice(7),16)/255*100)/100;
+if(oldColor && /^#[0-9a-f]{6}$/i.test(oldColor))color.value=oldColor;else{const numbers=oldColor?.match(/\d+/g);if(numbers && numbers.length>=3)color.value='#'+numbers.slice(0,3).map(n=>Number(n).toString(16).padStart(2,'0')).join('');}
+const oldFill=panel.value.options.series?.[1]?.fill;if(oldFill?.startsWith('rgba'))opacity.value=Number(oldFill.match(/[\d.]+/g)?.[3]??.1);else if(oldFill && /^#[0-9a-f]{8}$/i.test(oldFill))opacity.value=Math.round(parseInt(oldFill.slice(7),16)/255*100)/100;
 const validation=computed(()=>!panel.value.options.chartTitle.trim()?'Enter a panel title.':processingError(panel.value)||visualizationError(panel.value));
-const preview=computed(()=>{try{return alignRows(rows.value,panel.value.processing);}catch{return {data:[[],[]],labels:[]};}});
-let queryController,schemaSerial=0;
+const preview=computed<AlignedSeries>(()=>{try{return alignRows(rows.value,panel.value.processing);}catch{return {data:[[],[]],labels:[]};}});
+let queryController: AbortController | undefined;
+let schemaSerial = 0;
 function addThreshold(){const config=panel.value.visualization;const last=config.thresholds.at(-1)?.value ?? config.min;config.thresholds.push({value:Number.isFinite(last)?Number((last+(config.max-config.min)/10).toPrecision(12)):0,color:'#f2495c'});}
 function setColor(){panel.value.options.series ||= [{label:'Date'},{}];panel.value.options.series[1] ||= {};Object.assign(panel.value.options.series[1],{stroke:color.value,fill:color.value+Math.round(opacity.value*255).toString(16).padStart(2,'0')});}
-function processed(value){const v=processValue(value,panel.value.processing);return v===null?'Not numeric / missing':v.toFixed(panel.value.processing.decimals);}
-async function loadMeasurements(){const serial=++schemaSerial;error.value='';loadingSchema.value=true;try{const {data}=await api.schema({bucket:source.value.bucket});if(serial===schemaSerial)measurements.value=data.measurements;}catch(e){if(serial===schemaSerial)error.value=e.response?.data?.message||'Could not load InfluxDB measurements.';}finally{if(serial===schemaSerial)loadingSchema.value=false;}}
-async function loadFields(){const serial=++schemaSerial;source.value.field='';source.value.tag='';source.value.tagValue='';fields.value=[];tags.value=[];tagValues.value=[];try{const {data}=await api.schema({bucket:source.value.bucket,measurement:source.value.measurement});if(serial===schemaSerial){fields.value=data.fields;tags.value=data.tags;}}catch{if(serial===schemaSerial)error.value='Could not load fields.';}}
-async function loadTagValues(){const serial=++schemaSerial;source.value.tagValue='';tagValues.value=[];if(!source.value.tag)return;try{const {data}=await api.schema({bucket:source.value.bucket,measurement:source.value.measurement,tag:source.value.tag});if(serial===schemaSerial)tagValues.value=data.values;}catch{if(serial===schemaSerial)error.value='Could not load tag values.';}}
+function processed(value: unknown){const v=processValue(value,panel.value.processing);return v===null?'Not numeric / missing':v.toFixed(panel.value.processing.decimals);}
+async function loadMeasurements(){const serial=++schemaSerial;error.value='';loadingSchema.value=true;try{const {data}=await api.schema({bucket:source.value.bucket});if(serial===schemaSerial)measurements.value=data.measurements ?? [];}catch(e){if(serial===schemaSerial)error.value=(isAxiosError<{ message?: string }>(e) ? e.response?.data?.message : '') || 'Could not load InfluxDB measurements.';}finally{if(serial===schemaSerial)loadingSchema.value=false;}}
+async function loadFields(){const serial=++schemaSerial;source.value.field='';source.value.tag='';source.value.tagValue='';fields.value=[];tags.value=[];tagValues.value=[];try{const {data}=await api.schema({bucket:source.value.bucket,measurement:source.value.measurement});if(serial===schemaSerial){fields.value=data.fields ?? [];tags.value=data.tags ?? [];}}catch{if(serial===schemaSerial)error.value='Could not load fields.';}}
+async function loadTagValues(){const serial=++schemaSerial;source.value.tagValue='';tagValues.value=[];if(!source.value.tag)return;try{const {data}=await api.schema({bucket:source.value.bucket,measurement:source.value.measurement,tag:source.value.tag});if(serial===schemaSerial)tagValues.value=data.values ?? [];}catch{if(serial===schemaSerial)error.value='Could not load tag values.';}}
 function generate(){panel.value.query=buildQuery(source.value);panel.value.source=clone(source.value);tab.value='Flux';rows.value=[];result.value='Query generated. Run query to preview live data.';}
-async function run(){queryController?.abort();queryController=new AbortController();running.value=true;error.value='';result.value='';try{const {data}=await runDashboardQuery(
-  panel.value.liveSource ? {path:'/dashboards/live',body:{source:panel.value.liveSource}}
-    : {path:'/influx',body:{query:resolveQuery(panel.value.query,props.range,props.window,props.timezone)}},
-  queryController.signal,
- );alignRows(data,panel.value.processing);rows.value=data;result.value='Query complete · {count} samples';}catch(e){if(e.code!=='ERR_CANCELED')error.value=e.message?.includes('30 series')?e.message:'Query failed. Check Flux, field types, time range and InfluxDB availability.';}finally{running.value=false;}}
+async function run() {
+  queryController?.abort();
+  const controller = new AbortController();
+  queryController = controller;
+  running.value = true;
+  error.value = '';
+  result.value = '';
+  try {
+    const { data } = await runDashboardQuery(
+      panel.value.liveSource
+        ? { path: '/dashboards/live', body: { source: panel.value.liveSource } }
+        : { path: '/influx', body: { query: resolveQuery(panel.value.query, props.range, props.window, props.timezone) } },
+      controller.signal,
+    );
+    if (controller.signal.aborted) return;
+    alignRows(data, panel.value.processing);
+    rows.value = data;
+    result.value = 'Query complete · {count} samples';
+  } catch (issue) {
+    if (controller.signal.aborted || isCancel(issue)) return;
+    error.value = issue instanceof Error && issue.message.includes('30 series')
+      ? issue.message
+      : 'Query failed. Check Flux, field types, time range and InfluxDB availability.';
+  } finally {
+    if (queryController === controller) {
+      queryController = undefined;
+      running.value = false;
+    }
+  }
+}
 if(panel.value.liveSource)void run();
 onBeforeUnmount(()=>{queryController?.abort();schemaSerial++;});
 </script>

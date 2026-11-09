@@ -1,9 +1,12 @@
 import { rangeBounds } from './dashboardTimeRange.mjs';
 export { alignRows, processValue } from './dashboardSeries.ts';
+/** @template T @param {T} value @returns {T} */
 export const clone = value => JSON.parse(JSON.stringify(value));
 export const refreshIntervals = ['Off', '2s', '5s', '10s', '30s', '1m', '5m', '15m', '30m', '1h', '2h', '6h'];
 export const timeRanges = [ ['Last 5 minutes', '-5m', '1s'], ['Last 15 minutes', '-15m', '2s'], ['Last 30 minutes', '-30m', '5s'], ['Last 1 hour', '-1h', '10s'], ['Last 3 hours', '-3h', '20s'], ['Last 6 hours', '-6h', '30s'], ['Last 12 hours', '-12h', '1m'], ['Last 24 hours', '-24h', '2m'], ['Last 3 days', '-3d', '5m'], ['Last 1 week', '-1w', '15m'], ['Last 1 month', '-4w', '1h'], ['Last 3 months', '-12w', '2h'], ['Last 6 months', '-24w', '6h'] ];
 export const settingsFor = dashboard => ({ range: '-1h', refresh: 'Off', timezone: 'Browser', intervals: refreshIntervals.slice(1), hideTimePicker: false, pauseHidden: true, bucket: 'tomatoes', ...dashboard?.settings });
+/** @param {{ processing?: Partial<import('./dashboardSeries').Processing> }} chart
+ * @returns {import('./dashboardSeries').Processing} */
 export const processingFor = chart => ({ multiplier: 1, offset: 0, minimum: '', maximum: '', decimals: 2, gaps: 'Gaps', lineWidth: 1.5, showPoints: false, showLegend: true, ...chart.processing });
 export function processingError(chart) {
   const p = processingFor(chart);
@@ -29,6 +32,7 @@ export function buildQuery(source) {
   if (source.aggregation !== 'none') query += `\n  |> aggregateWindow(every: v.windowPeriod, fn: ${['mean', 'min', 'max', 'sum', 'last'].includes(source.aggregation) ? source.aggregation : 'mean'}, createEmpty: false)`;
   return query;
 }
+/** @template T @param {T} chart */
 export function chartDefinition(chart) { return { ...clone(chart), data: [] }; }
 export function newChart(charts) {
   const id = globalThis.crypto.randomUUID?.() || Array.from(globalThis.crypto.getRandomValues(new Uint8Array(16)), n => n.toString(16).padStart(2, '0')).join('');

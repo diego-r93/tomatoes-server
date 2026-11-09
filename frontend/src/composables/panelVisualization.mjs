@@ -5,6 +5,8 @@ export const visualizationTypes = [
   { value: 'gauge', title: 'Gauge', description: 'A reduced value with a scale and color thresholds', icon: 'mdi-gauge' },
 ];
 export const reducers = [{ value: 'last', title: 'Last non-null' }, { value: 'mean', title: 'Mean' }, { value: 'min', title: 'Minimum' }, { value: 'max', title: 'Maximum' }];
+/** @param {{ visualization?: Partial<import('./dashboardPanelTypes').VisualizationSettings> }} chart
+ * @returns {import('./dashboardPanelTypes').VisualizationSettings} */
 export function visualizationFor(chart) {
   return { mappings: [], sparkline: true, staleAfterSeconds: 120, type: 'time-series', reducer: 'last', series: null, min: 0, max: 100, color: '#73bf69', showThresholds: true, thresholds: [{ value: 80, color: '#f2cc0c' }, { value: 90, color: '#f2495c' }], ...chart?.visualization };
 }

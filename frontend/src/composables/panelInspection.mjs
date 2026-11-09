@@ -15,6 +15,9 @@ export function seriesNames(chart, result) {
   const count = Math.max(0, (result.data?.length || 1) - 1), base = chart.options.series?.[1]?.label || chart.options.chartTitle || 'Value';
   return Array.from({ length: count }, (_, i) => `${base}${result.labels?.[i] ? ' {' + result.labels[i] + '}' : ''} [${i + 1}]`);
 }
+/** @param {import('./dashboardPanelTypes').PanelInspectionSnapshot} snapshot
+ * @param {import('./dashboardPanelTypes').InspectionSource} source
+ * @returns {{ headers: string[], rows: unknown[][] }} */
 export function inspectionTable(snapshot, source = 'chart', formatted = false) {
   const { chart, result, timezone } = snapshot;
   if (source === 'response') {
@@ -25,6 +28,10 @@ export function inspectionTable(snapshot, source = 'chart', formatted = false) {
   const data = result.data || [[]], names = seriesNames(chart, result);
   return { headers: ['Time (UTC)', `Time (${timezone === 'Browser' ? Intl.DateTimeFormat().resolvedOptions().timeZone : timezone})`, ...names], rows: (data[0] || []).map((time, i) => [new Date(time * 1000).toISOString(), timeText(time * 1000, timezone), ...names.map((_, j) => { const value = data[j + 1]?.[i] ?? null; return formatted ? valueText(value, chart) : value; })]) };
 }
+/**
+ * @param {import('./dashboardPanelTypes').PanelInspectionResult} result
+ * @returns {{ count: number, missing: number, min: number | null, max: number | null, mean: number | null, first: number | null, last: number | null }[]}
+ */
 export function seriesStats(result) {
   return (result.data || []).slice(1).map(values => {
     let count = 0, mean = 0, min = Infinity, max = -Infinity, first = null, last = null;
@@ -69,6 +76,8 @@ function zip(files) {
 }
 // Minimal Open XML workbook. Text cells are inline strings, never formulas.
 // https://learn.microsoft.com/office/open-xml/spreadsheet/structure-of-a-spreadsheetml-document
+/** @param {{ headers: string[], rows: unknown[][] }} table
+ * @param {import('./dashboardPanelTypes').InspectionMetadata[]} metadata */
 export function xlsxBytes(table, metadata = []) {
   if (table.rows.length > 1048575 || table.headers.length > 16384) throw new Error('This result exceeds Excel worksheet limits. Download CSV or JSON instead.');
   const ns = 'http://schemas.openxmlformats.org', rel = ns + '/officeDocument/2006/relationships', main = ns + '/spreadsheetml/2006/main';
