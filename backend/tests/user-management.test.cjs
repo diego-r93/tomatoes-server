@@ -103,6 +103,45 @@ test('user management integration with a legacy SQLite database and local SMTP',
       expect(await request('PUT', '/api/users/update-password', { oldPassword: 'admin', newPassword: 'new-password' }, admin.accessToken), 403);
       expect(await request('POST', '/api/users', { email: 'anonymous@example.com', password: 'password-123' }), 403);
     });
+    await t.test('dashboard reads preserve access, saved queries and schema responses', async subtest => {
+      const Dashboard = require('../src/database/dashboard/models/dashboard.model').default;
+      const sensorData = require('../src/database/influxdb/models/sensorDataModel').default;
+      const { client } = require('../src/database/influxdb/config/influxdb');
+      const memberToken = oldUser.accessToken;
+      const charts = [{ id: 7, query: 'range(start: v.timeRangeStart, stop: v.timeRangeStop) |> aggregateWindow(every: v.windowPeriod)' }];
+      const dashboard = { _id: 'example', name: 'Example', charts };
+      const rows = [{ _field: 'temperature', _value: 27 }];
+      const calls = [];
+      subtest.mock.method(Dashboard, 'aggregate', async () => [{ _id: 'example', name: 'Example', panelCount: 1 }]);
+      subtest.mock.method(Dashboard, 'findById', id => {
+        const lean = async () => id === 'example' ? dashboard : null;
+        return { lean, select: field => { assert.equal(field, 'charts'); return { lean }; } };
+      });
+      subtest.mock.method(sensorData, 'getSensorData', async query => { calls.push(query); return rows; });
+      subtest.mock.method(client, 'getQueryApi', () => ({ collectRows: async flux => {
+        calls.push(flux);
+        return (flux.includes('measurementFieldKeys') ? ['temperature'] : ['_measurement', 'host']).map(_value => ({ _value }));
+      } }));
+      try {
+        assert.deepEqual(expect(await request('GET', '/dashboards/library', undefined, memberToken), 200), [{ _id: 'example', name: 'Example', panelCount: 1 }]);
+        assert.deepEqual(expect(await request('GET', '/dashboards/library/example', undefined, memberToken), 200), dashboard);
+        assert.deepEqual(expect(await request('GET', '/dashboards/library/example/export', undefined, memberToken), 200), charts);
+        expect(await request('GET', '/dashboards/library/missing', undefined, memberToken), 404);
+        const payload = { dashboardId: 'example', panelId: '7', start: '-1h', stop: 'now()', window: '30s', query: 'Untrusted draft' };
+        expect(await request('POST', '/influx/panel', payload), 401);
+        expect(await request('POST', '/influx', payload, memberToken), 403);
+        expect(await request('POST', '/influx/panel', { ...payload, start: 'invalid' }, memberToken), 400);
+        expect(await request('POST', '/influx/panel', { ...payload, panelId: 'missing' }, memberToken), 404);
+        assert.equal(calls.length, 0);
+        assert.deepEqual(expect(await request('POST', '/influx/panel', payload, memberToken), 200), rows);
+        assert.deepEqual(calls, ['range(start: -1h, stop: now()) |> aggregateWindow(every: 30s)']);
+        expect(await request('GET', '/dashboards/schema?bucket=test&measurement=sensor', undefined, memberToken), 403);
+        assert.deepEqual(expect(await request('GET', '/dashboards/schema?bucket=test&measurement=sensor', undefined, admin.accessToken), 200),
+          { bucket: 'test', measurement: 'sensor', fields: ['temperature'], tags: ['host'] });
+      } finally {
+        subtest.mock.restoreAll();
+      }
+    });
     await t.test('profiles sanitize private fields; groups preserve account data and reject privilege changes', async () => {
       const list = expect(await request('GET', '/api/users', undefined, admin.accessToken), 200);
       assert(list.every(user => !('password' in user) && !('token_hash' in user)));
