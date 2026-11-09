@@ -12,7 +12,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useLanguage } from '@/composables/useLanguage';
 const { t } = useLanguage();
 
@@ -21,19 +21,17 @@ const props = defineProps({ disabled: Boolean });
 const inputId = useId();
 
 const isDragging = ref(false);
-const fileInput = ref(null);
+const fileInput = ref<HTMLInputElement | null>(null);
 
-const emit = defineEmits(['file-selected']);
+const emit = defineEmits<{ 'file-selected': [file: File] }>();
 
 const onChange = () => {
   if (props.disabled) return;
-  const files = fileInput.value.files;
-  if (files.length > 0) {
-    emit('file-selected', files[0]);
-  }
+  const file = fileInput.value?.files?.[0];
+  if (file) emit('file-selected', file);
 };
 
-const dragover = (event) => {
+const dragover = (event: DragEvent) => {
   event.preventDefault();
   if (!props.disabled) isDragging.value = true;
 };
@@ -42,12 +40,11 @@ const dragleave = () => {
   isDragging.value = false;
 };
 
-const drop = (element) => {
-  element.preventDefault();
-  if (props.disabled) return;
-  fileInput.value.files = element.dataTransfer.files;
-  onChange();
+const drop = (event: DragEvent) => {
+  event.preventDefault();
   isDragging.value = false;
+  const file = event.dataTransfer?.files[0];
+  if (!props.disabled && file) emit('file-selected', file);
 };
 </script>
 

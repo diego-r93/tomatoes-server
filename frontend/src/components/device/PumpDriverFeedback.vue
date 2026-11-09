@@ -22,16 +22,18 @@
     <PumpHistoryDialog v-if="historyOpen" :key="device.host" :host="device.host" @close="historyOpen = false" />
   </section>
 </template>
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue';
 import PumpHistoryDialog from './PumpHistoryDialog.vue';
 import { useLanguage } from '@/composables/useLanguage';
 import { formatTime, formatDateTime } from '@/composables/dateTime.mjs';
 import { driverMessage, driverProblem } from '@/composables/pumpDriverFeedback.mjs';
-const props = defineProps({device:{type:Object,required:true},clock:Number});
+import type { DiscoveredDevice } from '@/composables/deviceInventoryUtils';
+
+const props = defineProps<{ device: DiscoveredDevice; clock?: number }>();
 const {t} = useLanguage();
 const historyOpen = ref(false);
-function pulseTime(value) { return value ? (Math.abs((props.clock || Date.now()) - value) >= 86400000 ? formatDateTime(value) : formatTime(value)) : '—'; }
+function pulseTime(value: number | null | undefined) { return value ? (Math.abs((props.clock || Date.now()) - value) >= 86400000 ? formatDateTime(value) : formatTime(value)) : '—'; }
 </script>
 <style scoped lang="scss">
 .driver-feedback { margin-top:18px; border-top:1px solid rgb(var(--v-theme-border)); padding-top:16px; } h3 {font-size:14px;font-weight:500;} .driver-note,.driver-registers {font-size:12px;color:rgb(var(--v-theme-muted));line-height:1.5;margin:8px 0;} .driver-pump {padding:12px 0;border-bottom:1px solid rgb(var(--v-theme-border));} .driver-heading {display:flex;align-items:center;justify-content:space-between;font-size:13px;} .driver-pump>p {font-size:13px;margin:6px 0;} small,summary {font-size:12px;color:rgb(var(--v-theme-muted));} summary {cursor:pointer;margin-top:8px;} .driver-registers {overflow-wrap:anywhere;} .driver-history {display:grid;grid-template-columns:70px 1fr;gap:8px;font-size:11px;border-top:1px solid rgb(var(--v-theme-border));padding:6px 0;}

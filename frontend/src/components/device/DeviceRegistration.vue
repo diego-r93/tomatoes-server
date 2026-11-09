@@ -6,7 +6,7 @@
         <h1 class="app-page-title">{{ t('Registration') }}</h1>
         <p>{{ t('Review factory devices and installed boards.') }}</p>
       </div>
-      <v-btn variant="outlined" prepend-icon="mdi-refresh" :loading="loading" @click="refresh"> {{ t('Refresh') }} </v-btn>
+      <v-btn variant="outlined" prepend-icon="mdi-refresh" :loading="loading" @click="refresh()"> {{ t('Refresh') }} </v-btn>
     </header>
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-4" role="alert">
@@ -83,26 +83,29 @@
   </v-container>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useLanguage } from '@/composables/useLanguage';
 const { t } = useLanguage();
 
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AppPageHeader from '@/components/navigation/AppPageHeader.vue';
 import { formatDateTime } from '@/composables/dateTime.mjs';
+import { isAxiosError, isCancel } from 'axios';
+import type { RegisteredBoard } from '@/composables/deviceReportTypes';
 import { http } from '@/services/http-common';
 
-const boards = ref([]);
+const boards = ref<RegisteredBoard[]>([]);
 const loading = ref(false);
 const error = ref('');
-const confirm = ref(null);
+type RegistrationAction = 'approve' | 'reject' | 'remove' | 'restore';
+const confirm = ref<{ board: RegisteredBoard; action: RegistrationAction } | null>(null);
 const saving = ref(false);
 const actionError = ref('');
 const actionLabels = { approve: 'Approve', reject: 'Reject', remove: 'Remove', restore: 'Restore' };
 const reconnectWaitMs = 120_000;
 const now = ref(Date.now());
-let controller;
-let reconnectTimer;
+let controller: AbortController | undefined;
+let reconnectTimer: ReturnType<typeof setInterval> | undefined;
 let disposed = false;
 watch(confirm, () => { actionError.value = ''; });
 
@@ -116,7 +119,7 @@ async function applyAction() {
     confirm.value = null;
     await refresh(true);
   } catch (issue) {
-    actionError.value = issue.response?.data?.message || 'Could not update board registration.';
+    actionError.value = (isAxiosError<{ message?: string }>(issue) ? issue.response?.data?.message : undefined) || 'Could not update board registration.';
   } finally {
     saving.value = false;
   }
@@ -128,13 +131,13 @@ const sections = computed(() => [
   { status: 'removed', title: t('Removed boards'), empty: t('No removed boards.') },
 ].map(section => ({ ...section, boards: boards.value.filter(board => board.status === section.status) })));
 
-function waitingForReconnect(board) {
+function waitingForReconnect(board: RegisteredBoard) {
   const since = board.status === 'pending' ? board.restoredAt : board.approvedAt;
-  return board.status !== 'removed' && !board.online && since
-    && now.value - Date.parse(since) < reconnectWaitMs;
+  return board.status !== 'removed' && !board.online && Boolean(since)
+    && now.value - Date.parse(since ?? '') < reconnectWaitMs;
 }
 
-function connectionLabel(board) {
+function connectionLabel(board: RegisteredBoard) {
   if (board.status === 'removed') return t('Blocked');
   if (board.online) return t('Online');
   return waitingForReconnect(board) ? t('Waiting for the board to reconnect (up to 2 min)') : t('Not seen');
@@ -148,13 +151,13 @@ async function refresh(force = false) {
   loading.value = true;
   error.value = '';
   try {
-    const { data } = await http.get('/mqtt/registry', { signal: request.signal, timeout: 10000 });
+    const { data } = await http.get<RegisteredBoard[]>('/mqtt/registry', { signal: request.signal, timeout: 10000 });
     if (controller === request && !request.signal.aborted) {
       now.value = Date.now();
       boards.value = data;
     }
   } catch (issue) {
-    if (controller === request && !request.signal.aborted && issue.code !== 'ERR_CANCELED') error.value = 'Could not load board registration. Try refreshing.';
+    if (controller === request && !request.signal.aborted && !isCancel(issue)) error.value = 'Could not load board registration. Try refreshing.';
   } finally {
     if (controller === request) loading.value = false;
   }

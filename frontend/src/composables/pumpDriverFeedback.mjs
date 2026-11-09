@@ -5,11 +5,19 @@ const messages = {
   missing: 'No driver feedback', incomplete: 'Incomplete driver feedback',
   waiting: 'Waiting for driver feedback', unobserved: 'No pulse observed',
 };
+/** @param {import("./deviceReportTypes").DriverResult} result */
 export const driverMessage = result => messages[result] || messages.unobserved;
+/** @param {import("./deviceReportTypes").DriverResult} result */
 export const driverProblem = result => ['supply-missing','short','temperature','supply-low','not-actuated','missing','incomplete'].includes(result);
+/** @param {import("./deviceInventoryUtils").DiscoveredDevice[]} devices */
 export function driverIssues(devices) {
   return devices.flatMap(device => (device.driverPulses || []).filter(pulse => driverProblem(pulse.result)).map(pulse => ({...pulse, host:device.host, deviceKey:device.key})));
 }
+/**
+ * @param {import("./deviceInventoryUtils").DiscoveredDevice[]} devices
+ * @param {import("./deviceReportTypes").DeviceDriverReport[]} feedback
+ * @returns {import("./deviceInventoryUtils").DiscoveredDevice[]}
+ */
 export function mergeDriverFeedback(devices, feedback) {
   if (!Array.isArray(feedback)) throw new Error('Invalid driver feedback response');
   const byHost = new Map(feedback.filter(entry => typeof entry?.host === 'string' && Array.isArray(entry.pumps)).map(entry => [entry.host, entry.pumps]));

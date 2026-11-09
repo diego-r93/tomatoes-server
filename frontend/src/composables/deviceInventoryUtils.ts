@@ -1,3 +1,5 @@
+import type { PumpDriverReport } from './deviceReportTypes';
+
 export interface DeviceOutput {
   gpio: number;
   code: string;
@@ -13,6 +15,7 @@ export interface DiscoveredDevice extends Record<string, unknown> {
   rssi: number | null;
   ports: Record<string, unknown>;
   outputs: DeviceOutput[];
+  driverPulses?: PumpDriverReport[];
   responded: boolean;
   receivedAt: number | null;
 }

@@ -23,7 +23,7 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 | Planned | SQLite file permissions | Restrict access to the database and its WAL and SHM files to the backend identity and authorized administrators. Verify permissions after a container restart. |
 | Planned | SQLite backup and restore | Create a consistent backup while the backend is running and verify restoration on an isolated copy. Include user and alert data in the check. |
 | Planned | SQLite library update | Keep SQLite and update the backend driver to a build with the WAL reset fix. Confirm the SQLite version loaded by the container and validate login and alert behavior on a restored copy before deployment. |
-| In progress | Gradual frontend migration to TypeScript | Devices and Alerting are validated in production. Dashboard library and draft state, refresh orchestration, time picker, query client, series, Time series/Gauge/Stat renderers, editor and inspector, Database schedules, Configuration, Help, sign-in, the authenticated Users area, public invitation acceptance and password recovery use typed contracts. Continue with the remaining legacy modules. The production build runs `vue-tsc` for migrated components and TypeScript modules. |
+| In progress | Gradual frontend migration to TypeScript | All Devices components, including registration, information, driver feedback and the firmware upload form, are included in strict TypeScript checks. The obsolete Dashboard view/editor files were retired after confirming no active callers. Existing panel URLs still redirect to the active dashboard. Alerting is validated in production. Dashboard library and draft state, refresh orchestration, time picker, query client, series, Time series/Gauge/Stat renderers, editor and inspector, Database schedules, Configuration, Help, sign-in, the authenticated Users area, public invitation acceptance and password recovery use typed contracts. Continue with the remaining legacy modules. The production build runs `vue-tsc` for migrated components and TypeScript modules. |
 | In progress | Broader backend refactoring | Express assembly and backend startup are separate. Dashboard library, export, schema and saved-panel reads are in production. Dashboard writes are in production. Concurrent editing and draft retention were verified. The live-observation service is in production. Verified the greenhouse connection and latest driver feedback for all four outputs through the saved dashboard API. Offline, stale and disconnected states passed isolated tests. An isolated broker outage confirmed that a saved pump schedule is published again after reconnect. |
 | Planned | Grafana retirement | Remove the temporary comparison service when the Tomatoes dashboards cover the required features. Grafana is already upgraded and isolated behind HTTPS. |
 | Planned | MQTT hostname | Plan mqtt.ceresgrow.com.br, broker certificate SAN and factory endpoint configuration. Do not expose MQTT externally as part of the local portal setup. |
@@ -37,7 +37,7 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 
 1. Replace the factory administrator credential and verify secure rotation.
 2. Protect the SQLite files, test a consistent backup and restore, and validate the library update on the restored copy.
-3. Audit the legacy ChartView and EditChart paths and their useChart helper. Retire unused paths or migrate any remaining callers. Then migrate the remaining Devices components and other JavaScript views, and expand vue-tsc coverage.
+3. Continue the TypeScript migration with remaining JavaScript views and shared modules, then expand vue-tsc coverage.
 4. Translate Database into Portuguese and Spanish and verify both languages plus the English default in the portal. Continue with Users and Alerting as separate deliveries.
 5. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
 
@@ -49,6 +49,8 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 ### Recently completed
 
 - **Dashboard state and refresh in TypeScript.** Typed the library, draft, layout, time range, panel results and dashboard API. Refresh runs with a stable dashboard and range snapshot and drops superseded responses. In Chrome, verified the selected range in executed Flux, manual and automatic refresh, live greenhouse panels, and draft cancellation. Typecheck, lint, build and all 51 frontend tests passed.
+
+- **Devices TypeScript coverage and legacy Dashboard cleanup.** Chrome verified both installed boards online, Device Information, pulse history with records, the firmware dialog with upload disabled until a file is selected, and both legacy panel redirects. Typecheck, lint, production build and all 51 frontend tests passed.
 
 - **Public account forms in TypeScript.** Migrated invitation acceptance, password reset requests and password updates. After deployment, Chrome verified invalid email, invalid invitation and mismatched password confirmation. Typecheck, lint, production build, 51 frontend tests and 12 isolated user-management tests passed.
 

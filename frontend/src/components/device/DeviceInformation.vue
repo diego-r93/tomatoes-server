@@ -2,13 +2,13 @@
   <div class="device-information">
     <v-btn v-if="canManage" :to="{ path: '/board-setup', query: { host: device.host } }" variant="outlined" size="small" prepend-icon="mdi-tune-variant" class="mb-4">{{ t('Board setup') }}</v-btn>
     <p class="information-host">{{ device.host }}</p><p class="information-note">{{ t('Hardware identity and the latest information reported by this device.') }}</p>
-    <section><h3>{{ t('Identity & network') }}</h3><dl class="information-grid"><div><dt>{{ t('Hostname') }}</dt><dd>{{ device.host }}</dd></div><div><dt>{{ t('MAC address') }}</dt><dd>{{ device.mac || t('Not reported') }}</dd></div><div><dt>{{ t('IP address') }}</dt><dd>{{ device.ip || t('Not reported') }}</dd></div><div><dt>{{ t('Discovery status') }}</dt><dd>{{ online ? t('Online') : t('Not seen recently') }}</dd></div><div><dt>{{ t('Wi-Fi signal') }}</dt><dd>{{ t(signalText(device)) }}</dd></div><div><dt>{{ t('Last discovery response') }}</dt><dd>{{ lastSeenLabel(device.receivedAt, clock, t) }}</dd></div><div><dt>{{ t('Response received at') }}</dt><dd>{{ formatDateTime(device.receivedAt, 'Browser', t('Not observed')) }}</dd></div><div v-if="device.datetime"><dt>{{ t('Device timestamp') }}</dt><dd>{{ formatDeviceTime(device.datetime) }}</dd></div></dl></section>
+    <section><h3>{{ t('Identity & network') }}</h3><dl class="information-grid"><div><dt>{{ t('Hostname') }}</dt><dd>{{ device.host }}</dd></div><div><dt>{{ t('MAC address') }}</dt><dd>{{ device.mac || t('Not reported') }}</dd></div><div><dt>{{ t('IP address') }}</dt><dd>{{ device.ip || t('Not reported') }}</dd></div><div><dt>{{ t('Discovery status') }}</dt><dd>{{ online ? t('Online') : t('Not seen recently') }}</dd></div><div><dt>{{ t('Wi-Fi signal') }}</dt><dd>{{ t(signalText(device)) }}</dd></div><div><dt>{{ t('Last discovery response') }}</dt><dd>{{ lastSeenLabel(device.receivedAt, clock, t) }}</dd></div><div><dt>{{ t('Response received at') }}</dt><dd>{{ formatDateTime(device.receivedAt, 'Browser', t('Not observed')) }}</dd></div><div v-if="deviceTime !== null"><dt>{{ t('Device timestamp') }}</dt><dd>{{ formatDeviceTime(deviceTime) }}</dd></div></dl></section>
     <section v-if="reportedDetails.length"><h3>{{ t('Reported system information') }}</h3><dl class="information-grid"><div v-for="item in reportedDetails" :key="item.label"><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div></dl></section>
     <section><div class="outputs-heading"><h3>{{ t('Reported outputs') }}</h3><span>{{ onCount }} ON · {{ offCount }} OFF{{ unknownCount ? ' · ' + t('{count} unknown', { count: unknownCount }) : '' }}</span></div><v-table v-if="device.outputs.length" class="information-outputs"><thead><tr><th>GPIO</th><th>{{ t('Output') }}</th><th>{{ t('State') }}</th><th>{{ t('Schedule source') }}</th><th>{{ t('Reported version') }}</th><th>{{ t('Sync') }}</th></tr></thead><tbody><tr v-for="output in device.outputs" :key="output.gpio"><td>{{ output.gpio }}</td><td>{{ output.label }}</td><td>{{ output.state === null ? t('Unknown') : output.state ? 'ON' : 'OFF' }}</td><td>{{ t(scheduleInfo(output.code).source) }}</td><td>{{ scheduleInfo(output.code).version }}</td><td>{{ scheduleInfo(output.code).status }}</td></tr></tbody></v-table><p v-else class="information-note">{{ t('No outputs were reported.') }}</p></section>
     <p class="information-note">{{ t('Read-only snapshot. Connection status is based on discovery responses. Device time and server reception time may differ.') }}</p>
   </div>
 </template>
-<script setup>
+<script setup lang="ts">
 import Authentication from '@/services/auth';
 const canManage = Boolean(Authentication.currentUser?.isAdmin);
 import { useLanguage } from '@/composables/useLanguage';
@@ -17,15 +17,25 @@ const { t } = useLanguage();
 import { formatDateTime, formatDeviceTime } from '@/composables/dateTime.mjs';
 import { computed } from 'vue';
 import { lastSeenLabel, signalText } from '@/composables/deviceInventoryUtils';
-const props = defineProps({ device: { type: Object, required: true }, online: Boolean, clock: Number });
+import type { DiscoveredDevice } from '@/composables/deviceInventoryUtils';
+
+const props = defineProps<{ device: DiscoveredDevice; online?: boolean; clock?: number }>();
+const deviceTime = computed(() => {
+  const time = props.device.datetime;
+  return typeof time === 'string' || typeof time === 'number' ? time : null;
+});
 const onCount = computed(() => props.device.outputs.filter(output => output.state === true).length);
 const offCount = computed(() => props.device.outputs.filter(output => output.state === false).length);
 const unknownCount = computed(() => props.device.outputs.filter(output => output.state === null).length);
-function scheduleInfo(code) {
-  const port = props.device.ports?.[code];
-  const expected = props.device.scheduleVersions?.[code];
-  const source = port?.configSource || 'Not reported';
-  const version = port?.configVersion || '—';
+function scheduleInfo(code: string) {
+  const port = props.device.ports[code];
+  const versions = props.device.scheduleVersions;
+  const expected: unknown = versions && typeof versions === 'object' && code in versions
+    ? Reflect.get(versions, code) : undefined;
+  const source = port && typeof port === 'object' && 'configSource' in port && typeof port.configSource === 'string'
+    ? port.configSource || 'Not reported' : 'Not reported';
+  const version = port && typeof port === 'object' && 'configVersion' in port && typeof port.configVersion === 'string'
+    ? port.configVersion || '—' : '—';
   if (!expected) return { source, version, status: t('No server schedule') };
   if (!props.online) return { source, version, status: t('Awaiting device') };
   if (source !== 'mqtt') return { source, version, status: t('Waiting for MQTT') };
@@ -33,11 +43,13 @@ function scheduleInfo(code) {
 }
 const reportedDetails = computed(() => {
   const source = props.device;
-  const fields = [
+  const chip = source.chip;
+  const firmware = source.firmware;
+  const fields: [label: string, candidates: unknown[]][] = [
     [t('Board model'), [source.model]],
     ['MQTT TLS', [typeof source.mqttTls === 'boolean' ? (source.mqttTls ? t('On') : t('Off')) : undefined]],
-    [t('Chip model'), [source.chipModel, source.chip_model, source.chip?.model]],
-    [t('Firmware version'), [source.fw, source.firmwareVersion, source.firmware_version, source.firmware?.version]],
+    [t('Chip model'), [source.chipModel, source.chip_model, chip && typeof chip === 'object' && 'model' in chip ? chip.model : undefined]],
+    [t('Firmware version'), [source.fw, source.firmwareVersion, source.firmware_version, firmware && typeof firmware === 'object' && 'version' in firmware ? firmware.version : undefined]],
     [t('SDK version'), [source.sdkVersion, source.sdk_version]],
     [t('Reported uptime (seconds)'), [source.uptime_s]],
     [t('Reported uptime'), [source.uptime_s == null ? source.uptime : undefined]],

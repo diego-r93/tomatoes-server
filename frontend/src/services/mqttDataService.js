@@ -7,6 +7,7 @@ class MqttDataService {
   publish(data) { return http.post('/mqtt', data); }
   updateGpio(id, data) { return updateGpio(id, data); }
   turnOffOutputs(host) { return turnOffOutputs(host); }
+  /** @returns {Promise<import('axios').AxiosResponse<{ devices: import('@/composables/deviceReportTypes').DeviceDriverReport[] }>>} */
   getPumpDriver(options = {}) { return http.get('/mqtt/pump-driver', options); }
   getAll(options = {}) { return getDeviceDiscovery(options); }
 }

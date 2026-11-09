@@ -9,7 +9,7 @@
   <DeviceRegistration v-else />
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useLanguage } from '@/composables/useLanguage';
 const { t } = useLanguage();
 import { ref } from 'vue';
@@ -17,6 +17,6 @@ import Authentication from '@/services/auth';
 import DeviceCard from '@/components/device/DeviceCardList.vue';
 import DeviceRegistration from '@/components/device/DeviceRegistration.vue';
 
-const tab = ref('devices');
+const tab = ref<'devices' | 'registration'>('devices');
 const canManage = Boolean(Authentication.currentUser?.isAdmin);
 </script>

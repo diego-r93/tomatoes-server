@@ -59,17 +59,20 @@
 
     <v-dialog :model-value="overlayKind === 'information'" max-width="680" :aria-label="t('Device information')" @update:model-value="!$event && closeOverlay()"><v-card :title="t('Device information')"><v-card-text><DeviceInformation v-if="overlayDevice" :device="overlayDevice" :online="responding(overlayDevice)" :clock="clock" /><div v-else class="overlay-unavailable"><v-progress-circular v-if="loading" indeterminate color="secondary" /><p>{{ loading ? t('Waiting for the device to respond…') : t('This device is not available in the current discovery results.') }}</p><v-btn v-if="!loading" variant="text" @click="refresh">{{ t('Refresh devices') }}</v-btn></div></v-card-text><v-card-actions><v-spacer /><v-btn color="primary" @click="closeOverlay">{{ t('Close') }}</v-btn></v-card-actions></v-card></v-dialog>
 
-    <v-dialog :model-value="overlayKind === 'firmware'" :persistent="firmwareBusy" max-width="760" :aria-label="t('Firmware update')" @update:model-value="!$event && closeOverlay()"><v-card><v-card-title class="firmware-dialog-title"><span>{{ t('Firmware update') }}</span><v-btn icon="mdi-close" size="small" variant="text" :disabled="firmwareBusy" :aria-label="t('Close firmware update')" @click="closeOverlay" /></v-card-title><v-card-text><FirmwareUpload v-if="firmwareTarget && overlayKind === 'firmware'" :key="firmwareTarget.host" :device="firmwareDevice" :online="Boolean(liveOverlayDevice?.ip && responding(liveOverlayDevice))" :refreshing="loading" :clock="clock" @busy="firmwareBusy = $event" @refresh="refresh" /><div v-else class="overlay-unavailable"><v-progress-circular v-if="loading" indeterminate color="secondary" /><p>{{ loading ? t('Waiting for the device to respond…') : t('Select a responding device to upload an image.') }}</p><v-btn v-if="!loading" variant="text" @click="refresh">{{ t('Refresh devices') }}</v-btn></div></v-card-text><v-card-actions><v-spacer /><v-btn :disabled="firmwareBusy" @click="closeOverlay">{{ t('Close') }}</v-btn></v-card-actions></v-card></v-dialog>
+    <v-dialog :model-value="overlayKind === 'firmware'" :persistent="firmwareBusy" max-width="760" :aria-label="t('Firmware update')" @update:model-value="!$event && closeOverlay()"><v-card><v-card-title class="firmware-dialog-title"><span>{{ t('Firmware update') }}</span><v-btn icon="mdi-close" size="small" variant="text" :disabled="firmwareBusy" :aria-label="t('Close firmware update')" @click="closeOverlay" /></v-card-title><v-card-text><FirmwareUpload v-if="firmwareTarget && firmwareDevice && overlayKind === 'firmware'" :key="firmwareTarget.host" :device="firmwareDevice" :online="Boolean(liveOverlayDevice?.ip && responding(liveOverlayDevice))" :refreshing="loading" :clock="clock" @busy="firmwareBusy = $event" @refresh="refresh" /><div v-else class="overlay-unavailable"><v-progress-circular v-if="loading" indeterminate color="secondary" /><p>{{ loading ? t('Waiting for the device to respond…') : t('Select a responding device to upload an image.') }}</p><v-btn v-if="!loading" variant="text" @click="refresh">{{ t('Refresh devices') }}</v-btn></div></v-card-text><v-card-actions><v-spacer /><v-btn :disabled="firmwareBusy" @click="closeOverlay">{{ t('Close') }}</v-btn></v-card-actions></v-card></v-dialog>
 
     <v-dialog v-model="settingsOpen" max-width="480"><v-card :title="t('Device display settings')"><v-card-text><v-select v-model="settings.layout" :label="t('Layout')" :items="layoutOptions" /><v-select v-model="settings.refreshSeconds" :label="t('Auto-refresh')" :items="refreshOptions" /><v-switch v-model="settings.showMac" :label="t('Show MAC addresses')" color="primary" hide-details /><p class="settings-note">{{ t('Preferences are saved in this browser. Connection status is based on discovery responses, not a continuous heartbeat. A refresh failure keeps the last known data.') }}</p></v-card-text><v-card-actions><v-spacer /><v-btn color="primary" @click="settingsOpen = false">{{ t('Done') }}</v-btn></v-card-actions></v-card></v-dialog>
 
-    <v-dialog v-model="commandOpen" max-width="480" persistent><v-card :title="command?.allOff ? t('Turn all outputs off?') : t('Confirm manual output')"><v-card-text><p v-if="command?.allOff">{{ t('Turn off every reported output on') }} <strong>{{ command.host }}</strong>?</p><p v-else>{{ t('Set') }} <strong>{{ command?.host }} · GPIO {{ command?.gpio }}</strong> {{ t('to') }} <strong>{{ command?.target ? 'ON' : 'OFF' }}</strong>?</p><p class="settings-note">{{ t('This sends a real manual command to the ESP32. The displayed state changes only when the device reports it.') }}</p><v-alert v-if="commandError" type="error" variant="tonal" class="mt-4">{{ t(commandError) }}</v-alert></v-card-text><v-card-actions><v-spacer /><v-btn :disabled="sending" @click="commandOpen = false">{{ t('Cancel') }}</v-btn><v-btn color="primary" :disabled="sending" :loading="sending" @click="confirmCommand">{{ command?.allOff ? t('Confirm all OFF') : command?.target ? t('Confirm ON') : t('Confirm OFF') }}</v-btn></v-card-actions></v-card></v-dialog>
+    <v-dialog v-model="commandOpen" max-width="480" persistent><v-card :title="allOffCommand ? t('Turn all outputs off?') : t('Confirm manual output')"><v-card-text><p v-if="allOffCommand">{{ t('Turn off every reported output on') }} <strong>{{ allOffCommand.host }}</strong>?</p><p v-else>{{ t('Set') }} <strong>{{ command?.host }} · GPIO {{ outputCommand?.gpio }}</strong> {{ t('to') }} <strong>{{ outputCommand?.target ? 'ON' : 'OFF' }}</strong>?</p><p class="settings-note">{{ t('This sends a real manual command to the ESP32. The displayed state changes only when the device reports it.') }}</p><v-alert v-if="commandError" type="error" variant="tonal" class="mt-4">{{ t(commandError) }}</v-alert></v-card-text><v-card-actions><v-spacer /><v-btn :disabled="sending" @click="commandOpen = false">{{ t('Cancel') }}</v-btn><v-btn color="primary" :disabled="sending" :loading="sending" @click="confirmCommand">{{ allOffCommand ? t('Confirm all OFF') : outputCommand?.target ? t('Confirm ON') : t('Confirm OFF') }}</v-btn></v-card-actions></v-card></v-dialog>
 
   </v-container>
 
 </template>
 
-<script setup>
+<script setup lang="ts">
+import { isAxiosError } from 'axios';
+import type { DiscoveredDevice } from '@/composables/deviceInventoryUtils';
+import type { OutputCommandDraft } from '@/composables/deviceOutputCommands';
 import { driverIssues, driverMessage } from '@/composables/pumpDriverFeedback.mjs';
 import { useLanguage } from '@/composables/useLanguage';
 const { t } = useLanguage();
@@ -102,24 +105,39 @@ const { devices, feedbackError, loading, initialLoading, hasLoaded, error, notic
 
 const pumpIssues = computed(() => driverIssues(devices.value));
 
-const query = ref(''), filter = ref('all'), page = ref(1), selectedKey = ref(''), settingsOpen = ref(false), commandOpen = ref(false), commandError = ref('');
+const query = ref<string | null>(''), filter = ref<DeviceFilter>('all'), page = ref(1), selectedKey = ref(''), settingsOpen = ref(false), commandOpen = ref(false), commandError = ref('');
 
-/** @type {import('vue').Ref<import('@/composables/deviceOutputCommands').OutputCommandDraft | null>} */
-const command = ref(null);
-
-const settings = reactive({ layout: 'details', sort: 'host', pageSize: 8, showMac: false, refreshSeconds: 30 });
+type DeviceFilter = 'all' | 'online' | 'unseen' | 'weak';
+const command = ref<OutputCommandDraft | null>(null);
+const allOffCommand = computed(() => command.value && 'allOff' in command.value ? command.value : null);
+const outputCommand = computed(() => command.value && 'gpio' in command.value ? command.value : null);
 
 const preferenceKey = 'tomatoes.devices.preferences.v1';
+let stored: Record<string, unknown> = {};
+try {
+  const parsed: unknown = JSON.parse(localStorage.getItem(preferenceKey) || '{}');
+  if (parsed && typeof parsed === 'object') stored = Object.fromEntries(Object.entries(parsed));
+} catch { /* Use defaults when preferences are unavailable. */ }
 
-try { const stored = JSON.parse(localStorage.getItem(preferenceKey) || '{}'); for (const [key, values] of Object.entries({ layout: ['details', 'cards'], sort: ['host', 'signal', 'status'], pageSize: [8, 16, 32], showMac: [false, true], refreshSeconds: [0, 15, 30, 60] })) if (values.includes(stored[key])) settings[key] = stored[key]; } catch { /* Use defaults when preferences are unavailable. */ }
+function preference<T>(key: string, allowed: readonly T[], fallback: T): T {
+  return allowed.find(value => value === stored[key]) ?? fallback;
+}
+
+const settings = reactive({
+  layout: preference('layout', ['details', 'cards'] as const, 'details'),
+  sort: preference('sort', ['host', 'signal', 'status'] as const, 'host'),
+  pageSize: preference('pageSize', [8, 16, 32] as const, 8),
+  showMac: preference('showMac', [false, true], false),
+  refreshSeconds: preference('refreshSeconds', [0, 15, 30, 60] as const, 30),
+});
 
 watch(settings, value => { try { localStorage.setItem(preferenceKey, JSON.stringify(value)); } catch { /* Display preferences still work in memory. */ } }, { deep: true });
 
 
 
-const responding = device => isResponding(device, clock.value);
+const responding = (device: DiscoveredDevice | null | undefined) => isResponding(device, clock.value);
 
-const filters = computed(() => [{ title: t('All devices'), value: 'all' }, { title: t('Online'), value: 'online' }, { title: t('Not seen'), value: 'unseen' }, { title: t('Weak signal'), value: 'weak' }]);
+const filters = computed<{ title: string; value: DeviceFilter }[]>(() => [{ title: t('All devices'), value: 'all' }, { title: t('Online'), value: 'online' }, { title: t('Not seen'), value: 'unseen' }, { title: t('Weak signal'), value: 'weak' }]);
 
 const sortOptions = computed(() => [{ title: t('Hostname'), value: 'host' }, { title: t('Strongest signal'), value: 'signal' }, { title: t('Online first'), value: 'status' }]);
 
@@ -144,12 +162,12 @@ const paged = computed(() => filtered.value.slice((page.value - 1) * settings.pa
 const capacity = computed(() => Math.min(settings.pageSize, filtered.value.length));
 
 const selectedDevice = computed(() => devices.value.find(device => device.key === selectedKey.value));
-const detailsPanel = ref(null);
+const detailsPanel = ref<InstanceType<typeof DeviceDetails> | null>(null);
 
-let detailsActivator = null;
+let detailsActivator: HTMLElement | null = null;
 
-async function selectDevice(key, event) {
-  detailsActivator = event?.currentTarget;
+async function selectDevice(key: string, event: MouseEvent) {
+  detailsActivator = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
   selectedKey.value = key;
   await nextTick();
   detailsPanel.value?.focusHeading();
@@ -170,12 +188,23 @@ watch(filtered, list => { if (selectedKey.value && !list.some(device => device.k
 
 function clearSearch() { query.value = ''; filter.value = 'all'; }
 
-/** @param {import('@/composables/deviceOutputCommands').OutputCommandDraft} draft */
-function openCommand(draft) { command.value = draft; commandError.value = ''; commandOpen.value = true; }
+function openCommand(draft: OutputCommandDraft) { command.value = draft; commandError.value = ''; commandOpen.value = true; }
 
-async function confirmCommand() { if (!command.value || sending.value) return; commandError.value = ''; try { const draft = command.value; if ('allOff' in draft) await sendAllOff(draft.deviceKey); else await sendOutput(draft.deviceKey, draft.gpio, draft.target, draft.originalState); commandOpen.value = false; } catch (issue) { commandError.value = issue.response?.data?.message || issue.message || 'The command could not be submitted.'; } }
+async function confirmCommand() {
+  const draft = command.value;
+  if (!draft || sending.value) return;
+  commandError.value = '';
+  try {
+    if ('allOff' in draft) await sendAllOff(draft.deviceKey);
+    else await sendOutput(draft.deviceKey, draft.gpio, draft.target, draft.originalState);
+    commandOpen.value = false;
+  } catch (issue) {
+    const response = isAxiosError<{ message?: string }>(issue) ? issue.response?.data?.message : undefined;
+    commandError.value = response || (issue instanceof Error ? issue.message : '') || 'The command could not be submitted.';
+  }
+}
 
-const overlayKind = ref(''), overlayHost = ref(''), firmwareTarget = ref(null), firmwareBusy = ref(false);
+const overlayKind = ref<'' | 'information' | 'firmware'>(''), overlayHost = ref(''), firmwareTarget = ref<DiscoveredDevice | null>(null), firmwareBusy = ref(false);
 
 onBeforeRouteLeave(() => !firmwareBusy.value);
 
@@ -184,11 +213,11 @@ const firmwareDevice = computed(() => liveOverlayDevice.value || firmwareTarget.
 watch(() => overlayKind.value === 'firmware' ? 15 : settings.refreshSeconds, setRefreshInterval, { immediate: true });
 watch(overlayKind, kind => { if (kind === 'firmware') refresh(); });
 
-const overlayDevice = computed(() => liveOverlayDevice.value || (deviceStore.deviceData?.host === overlayHost.value && deviceStore.deviceData.outputs ? deviceStore.deviceData : null));
+const overlayDevice = computed(() => liveOverlayDevice.value || (deviceStore.deviceData?.host === overlayHost.value ? deviceStore.deviceData : null));
 
-function openInformation(device) { if (firmwareBusy.value) return; deviceStore.setDeviceData(device); overlayHost.value = device.host; overlayKind.value = 'information'; }
+function openInformation(device: DiscoveredDevice) { if (firmwareBusy.value) return; deviceStore.setDeviceData(device); overlayHost.value = device.host; overlayKind.value = 'information'; }
 
-function openFirmware(device) { if (!canManage || firmwareBusy.value || !responding(device) || !device.ip) return; deviceStore.setDeviceData(device); overlayHost.value = device.host; firmwareTarget.value = { ...device }; overlayKind.value = 'firmware'; }
+function openFirmware(device: DiscoveredDevice) { if (!canManage || firmwareBusy.value || !responding(device) || !device.ip) return; deviceStore.setDeviceData(device); overlayHost.value = device.host; firmwareTarget.value = { ...device }; overlayKind.value = 'firmware'; }
 
 function closeOverlay() {
 
@@ -196,7 +225,7 @@ function closeOverlay() {
 
   overlayKind.value = ''; firmwareTarget.value = null;
 
-  if (['information', 'firmware'].includes(route.query.panel)) { const query = { ...route.query }; delete query.panel; delete query.device; router.replace({ path: '/device', query }); }
+  if (route.query.panel === 'information' || route.query.panel === 'firmware') { const query = { ...route.query }; delete query.panel; delete query.device; router.replace({ path: '/device', query }); }
 
 }
 
@@ -204,7 +233,7 @@ function closeOverlay() {
 
 watch([() => route.query.panel, () => route.query.device, devices], ([panel, host]) => {
 
-  if (!['information', 'firmware'].includes(panel) || typeof host !== 'string' || firmwareBusy.value) return;
+  if ((panel !== 'information' && panel !== 'firmware') || typeof host !== 'string' || firmwareBusy.value) return;
 
   if (panel === 'firmware') {
     const device = devices.value.find(item => item.host === host);

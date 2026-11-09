@@ -58,25 +58,51 @@
     </v-row>
   </div>
 </template>
-<script setup>
+<script setup lang="ts">
 import { useLanguage } from '@/composables/useLanguage';
 const { t } = useLanguage();
 
 import { computed, ref, watch } from 'vue';
 import DropFile from './DropZone.vue';
+import { isAxiosError } from 'axios';
+import type { AxiosProgressEvent } from 'axios';
+import type { DiscoveredDevice } from '@/composables/deviceInventoryUtils';
 import OTAService from '@/services/OTAService';
-const props = defineProps({ device: { type: Object, required: true }, online: Boolean, refreshing: Boolean, clock: { type: Number, required: true } });
-const emit = defineEmits(['busy', 'refresh']);
+import type { FirmwareUploadResult } from '@/services/OTAService';
+const props = defineProps<{ device: DiscoveredDevice; online?: boolean; refreshing?: boolean; clock: number }>();
+const emit = defineEmits<{ busy: [busy: boolean]; refresh: [] }>();
+
+interface RestartObservation {
+  fw: string;
+  bootId: string;
+  bootObservedAt: number;
+  receivedAt: number;
+  uptime: number | null;
+}
+
+type RestartWait = RestartObservation & { startedAt: number; confirmedAt: number; deadline: number };
+type UploadPhase = 'ready' | 'uploading' | 'verifying' | 'success' | 'error' | 'unconfirmed';
+
+function observation(device: DiscoveredDevice): RestartObservation {
+  return {
+    fw: typeof device.fw === 'string' ? device.fw : '',
+    bootId: typeof device.bootId === 'string' ? device.bootId : '',
+    bootObservedAt: typeof device.bootObservedAt === 'number' ? device.bootObservedAt : 0,
+    receivedAt: device.receivedAt ?? 0,
+    uptime: typeof device.uptime === 'number' ? device.uptime : null,
+  };
+}
 const sha256 = ref('');
 const confirmedByRestart = ref(false);
-const restart = ref(null);
+const restart = ref<RestartWait | null>(null);
 const onlineFirmware = ref('');
-const waitingForRestart = computed(() => restart.value && !onlineFirmware.value && props.clock < restart.value.deadline);
+const waitingForRestart = computed(() => Boolean(restart.value && !onlineFirmware.value && props.clock < restart.value.deadline));
 const restartMessage = computed(() => {
   if (onlineFirmware.value) return t('Back online, firmware {fw}', { fw: onlineFirmware.value });
   return waitingForRestart.value ? t('Waiting for the board to restart') : t('The board did not restart yet');
 });
-watch([() => props.device, () => props.online, restart], ([device, online, update]) => {
+watch([() => props.device, () => props.online, restart], ([report, online, update]) => {
+  const device = observation(report);
   if (!update || !device.fw || onlineFirmware.value) return;
   const bootChanged = update.bootId && device.bootId && device.bootId !== update.bootId
     && device.bootObservedAt > update.bootObservedAt && device.bootObservedAt >= update.startedAt;
@@ -89,10 +115,10 @@ watch([() => props.device, () => props.online, restart], ([device, online, updat
   const reportedAfterConfirmation = confirmedByRestart.value && device.receivedAt >= update.confirmedAt;
   if (reportedAfterConfirmation || (update.fw && device.fw !== update.fw) || uptimeReset) onlineFirmware.value = device.fw;
 });
-const selectedFile = ref(null), fileKey = ref(0), validationError = ref(''), error = ref(''), progress = ref(null), phase = ref('ready');
+const selectedFile = ref<File | null>(null), fileKey = ref(0), validationError = ref(''), error = ref(''), progress = ref<number | null>(null), phase = ref<UploadPhase>('ready');
 const busy = computed(() => phase.value === 'uploading' || phase.value === 'verifying');
-const formatSize = bytes => bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(2)} MB`;
-function selectFile(file) {
+const formatSize = (bytes: number) => bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+function selectFile(file: File) {
   selectedFile.value = null; validationError.value = '';
   if (!file || !file.name.toLowerCase().endsWith('.bin') || file.size === 0 || file.size > 6553600) { validationError.value = 'Choose a non-empty .bin firmware file up to 6,553,600 bytes.'; return; }
   selectedFile.value = file;
@@ -109,8 +135,8 @@ function reset() {
   progress.value = null;
 }
 
-function updateUploadProgress({ loaded, total }) {
-  if (phase.value !== 'uploading' || !Number.isFinite(total) || total <= 0) return;
+function updateUploadProgress({ loaded, total }: AxiosProgressEvent) {
+  if (phase.value !== 'uploading' || total === undefined || !Number.isFinite(total) || total <= 0) return;
   progress.value = Math.max(0, Math.min(100, Math.floor(loaded / total * 100)));
   if (loaded >= total) phase.value = 'verifying';
 }
@@ -118,8 +144,7 @@ function updateUploadProgress({ loaded, total }) {
 async function submit() {
   if (busy.value || !selectedFile.value || !props.online || !props.device.ip) return;
 
-  const { fw, uptime, receivedAt, bootId, bootObservedAt } = props.device;
-  const beforeUpload = { fw, uptime, bootId, bootObservedAt: bootObservedAt ?? 0, receivedAt: receivedAt ?? 0, startedAt: Date.now() };
+  const beforeUpload = { ...observation(props.device), startedAt: Date.now() };
   const formData = new FormData();
   formData.append('file', selectedFile.value);
   phase.value = 'uploading';
@@ -142,8 +167,9 @@ async function submit() {
     restart.value = { ...beforeUpload, confirmedAt, deadline: confirmedAt + 180_000 };
     emit('refresh');
   } catch (issue) {
-    const status = issue.response?.status;
-    const data = issue.response?.data;
+    const response = isAxiosError<FirmwareUploadResult>(issue) ? issue.response : undefined;
+    const status = response?.status;
+    const data = response?.data;
     sha256.value = data?.sha256 || '';
     const unconfirmed = !status || status === 504 || (status === 502 && data?.ok !== false);
     error.value = data?.error || data?.message || (unconfirmed
