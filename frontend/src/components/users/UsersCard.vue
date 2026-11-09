@@ -33,4 +33,8 @@ onMounted(load);
 .users-table-card { border-color: rgb(var(--v-theme-border)); }.user-link { display: flex; gap: 12px; align-items: center; color: rgb(var(--v-theme-on-surface)); text-decoration: none; padding: 12px 0; }.user-link strong { font-weight: 500; }.user-link small { display: block; color: rgb(var(--v-theme-muted)); overflow-wrap: anywhere; }.user-link:hover strong { text-decoration: underline; }
 .group-chips { display: flex; gap: 4px; flex-wrap: wrap; padding: 6px 0; }.last-sign-in { font-size: 13px; white-space: nowrap; }.muted,.users-note { color: rgb(var(--v-theme-muted)); }.users-note { font-size: 12px; margin: 14px 0 0; }.empty-users { padding: 30px !important; text-align: center; }
 @media(max-width:700px) { .users-table-card :deep(thead) { display: none; }.users-table-card :deep(table),.users-table-card :deep(tbody) { display: block; }.users-table-card :deep(tr) { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 14px; border-bottom: 1px solid rgb(var(--v-theme-border)); }.users-table-card :deep(td) { display: block; height: auto !important; padding: 0 !important; border: 0 !important; }.users-table-card :deep(td:first-child) { width: 100%; }.users-table-card :deep(td:last-child) { margin-left: auto; }.user-link { padding: 0; } }
+@media (max-width: 450px) {
+  .users-tools { align-items: stretch; flex-direction: column; gap: 8px; }
+  .users-tools > .v-btn { align-self: flex-end; }
+}
 </style>

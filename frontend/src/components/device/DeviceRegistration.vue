@@ -16,7 +16,7 @@
 
     <section v-for="section in sections" :key="section.status" class="mt-6">
       <h2 class="app-section-title mb-3">{{ section.title }} · {{ section.boards.length }}</h2>
-      <v-card variant="outlined">
+      <v-card variant="outlined" class="registration-panel">
         <v-table>
           <thead>
             <tr>
@@ -25,14 +25,29 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="board in section.boards" :key="board.host">
+            <tr v-for="board in section.boards" :key="board.host" class="registration-row">
               <th scope="row">{{ board.host }}</th>
-              <td>{{ board.model || '—' }}</td>
-              <td>{{ board.fw || '—' }}</td>
-              <td>{{ board.psramMB == null ? '—' : board.psramMB + ' MB' }}</td>
-              <td>{{ formatDateTime(board.firstSeen, 'Browser', t('Not observed')) }}</td>
-              <td>{{ connectionLabel(board) }}</td>
               <td>
+                <span class="registration-label" aria-hidden="true">{{ t('Model') }}</span>
+                {{ board.model || '—' }}
+              </td>
+              <td>
+                <span class="registration-label" aria-hidden="true">{{ t('Firmware') }}</span>
+                {{ board.fw || '—' }}
+              </td>
+              <td>
+                <span class="registration-label" aria-hidden="true">PSRAM</span>
+                {{ board.psramMB == null ? '—' : board.psramMB + ' MB' }}
+              </td>
+              <td>
+                <span class="registration-label" aria-hidden="true">{{ t('First seen') }}</span>
+                {{ formatDateTime(board.firstSeen, 'Browser', t('Not observed')) }}
+              </td>
+              <td>
+                <span class="registration-label" aria-hidden="true">{{ t('Connection') }}</span>
+                {{ connectionLabel(board) }}
+              </td>
+              <td class="registration-actions">
                 <v-btn v-if="board.status === 'removed'" size="small" variant="text" color="primary" @click="confirm = { board, action: 'restore' }">{{ t('Restore to pending') }}</v-btn>
                 <template v-else-if="board.factoryAuthenticated">
                   <v-btn v-if="board.status === 'pending'" size="small" variant="text" color="primary" @click="confirm = { board, action: 'approve' }">{{ t('Approve') }}</v-btn>
@@ -159,3 +174,48 @@ onBeforeUnmount(() => {
   controller?.abort();
 });
 </script>
+
+<style scoped lang="scss">
+.registration-panel { border-color: rgb(var(--v-theme-border)); }
+.registration-label { display: none; }
+
+@media (max-width: 900px) {
+  .registration-panel :deep(table),
+  .registration-panel :deep(tbody) { display: block; }
+
+  .registration-panel :deep(thead) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .registration-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 16px;
+    padding: 16px;
+  }
+
+  .registration-row + .registration-row { border-top: 1px solid rgb(var(--v-theme-border)); }
+
+  .registration-panel .registration-row > * {
+    display: block;
+    height: auto;
+    padding: 0;
+    border: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .registration-row > th,
+  .registration-actions { grid-column: 1 / -1; }
+
+  .registration-label {
+    display: block;
+    color: rgb(var(--v-theme-muted));
+    font-size: 12px;
+    margin-bottom: 2px;
+  }
+}
+</style>

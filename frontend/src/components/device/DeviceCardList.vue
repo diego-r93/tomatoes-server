@@ -34,9 +34,9 @@
 
           <template v-else>
 
-            <v-card v-if="settings.layout === 'details'" variant="outlined" class="device-table-card" :style="{ minHeight: `${42 + capacity * 64}px` }"><v-table class="device-table"><thead><tr><th>{{ t('Device') }}</th><th>{{ t('Connection') }}</th><th class="network-column">{{ t('Network') }}</th><th class="outputs-column">{{ t('Outputs') }}</th><th>{{ t('Details') }}</th></tr></thead><tbody><tr v-for="device in paged" :key="device.key" :class="{ 'selected-row': selectedKey === device.key }"><td class="device-identity"><button type="button" class="device-name" @click="selectedKey = device.key">{{ device.host }}</button><small v-if="settings.showMac">{{ device.mac || t('No MAC reported') }}</small></td><td><span class="connection-status" :class="{ 'connection-status--online': responding(device) }">{{ responding(device) ? t('Online') : t('Not seen') }}</span><small>{{ lastSeenLabel(device.receivedAt, clock, t) }}</small></td><td class="network-column"><span class="signal-reading" :class="{ 'text-warning': responding(device) && weakSignal(device) }"><v-icon icon="mdi-wifi" size="15" /> {{ responding(device) ? t(signalText(device)) : '—' }}</span><small>{{ device.ip || t('No IP reported') }}</small></td><td class="outputs-column">{{ responding(device) ? `${device.outputs.filter(output => output.state === true).length} / ${device.outputs.length} ON` : t('Last state') }}</td><td><v-btn variant="text" size="small" @click="selectedKey = device.key">{{ t('View') }}</v-btn></td></tr></tbody></v-table></v-card>
+            <v-card v-if="settings.layout === 'details'" variant="outlined" class="device-table-card" :style="{ minHeight: `${42 + capacity * 64}px` }"><v-table class="device-table"><thead><tr><th>{{ t('Device') }}</th><th>{{ t('Connection') }}</th><th class="network-column">{{ t('Network') }}</th><th class="outputs-column">{{ t('Outputs') }}</th><th>{{ t('Details') }}</th></tr></thead><tbody><tr v-for="device in paged" :key="device.key" :class="{ 'selected-row': selectedKey === device.key }"><td class="device-identity"><button type="button" class="device-name" @click="selectDevice(device.key)">{{ device.host }}</button><small v-if="settings.showMac">{{ device.mac || t('No MAC reported') }}</small></td><td><span class="connection-status" :class="{ 'connection-status--online': responding(device) }">{{ responding(device) ? t('Online') : t('Not seen') }}</span><small>{{ lastSeenLabel(device.receivedAt, clock, t) }}</small></td><td class="network-column"><span class="signal-reading" :class="{ 'text-warning': responding(device) && weakSignal(device) }"><v-icon icon="mdi-wifi" size="15" /> {{ responding(device) ? t(signalText(device)) : '—' }}</span><small>{{ device.ip || t('No IP reported') }}</small></td><td class="outputs-column">{{ responding(device) ? `${device.outputs.filter(output => output.state === true).length} / ${device.outputs.length} ON` : t('Last state') }}</td><td><v-btn variant="text" size="small" @click="selectDevice(device.key)">{{ t('View') }}</v-btn></td></tr></tbody></v-table></v-card>
 
-            <div v-else class="device-cards"><DeviceCard v-for="device in paged" :key="device.key" :device="device" :online="responding(device)" :selected="selectedKey === device.key" :clock="clock" :show-mac="settings.showMac" @select="selectedKey = $event" /><div v-for="slot in capacity - paged.length" :key="`slot-${slot}`" class="device-card-placeholder" aria-hidden="true" /></div>
+            <div v-else class="device-cards"><DeviceCard v-for="device in paged" :key="device.key" :device="device" :online="responding(device)" :selected="selectedKey === device.key" :clock="clock" :show-mac="settings.showMac" @select="selectDevice" /><div v-for="slot in capacity - paged.length" :key="`slot-${slot}`" class="device-card-placeholder" aria-hidden="true" /></div>
 
             <nav class="inventory-pagination" :aria-label="t('Device list pages')"><span>{{ t('{start}–{end} of {count} devices', { start: (page - 1) * settings.pageSize + 1, end: Math.min(page * settings.pageSize, filtered.length), count: filtered.length }) }}</span><v-pagination v-model="page" :length="pageCount" :total-visible="5" rounded="sm" active-color="primary" :aria-label="t('Device pages')" /></nav>
 
@@ -44,14 +44,14 @@
 
         </div>
 
-        <DeviceDetails v-if="selectedDevice" :device="selectedDevice" :online="responding(selectedDevice)" :clock="clock" :pending="pending" :sending="sending" :all-off-pending="Boolean(pendingAll[selectedDevice.key])" @all-off="openCommand" :can-update-firmware="canManage" @close="selectedKey = ''" @change="openCommand" @information="openInformation" @firmware="openFirmware" />
+        <DeviceDetails v-if="selectedDevice" ref="detailsPanel" :device="selectedDevice" :online="responding(selectedDevice)" :clock="clock" :pending="pending" :sending="sending" :all-off-pending="Boolean(pendingAll[selectedDevice.key])" @all-off="openCommand" :can-update-firmware="canManage" @close="selectedKey = ''" @change="openCommand" @information="openInformation" @firmware="openFirmware" />
 
       </div>
 
     <v-alert v-if="feedbackError" type="warning" variant="tonal" class="mt-4">{{ t('Driver feedback updates are unavailable. Last observations are shown.') }}</v-alert>
     <v-alert v-if="pumpIssues.length" type="warning" variant="tonal" class="mt-4" role="status">
       <strong>{{ t('Pump driver needs attention') }}</strong>
-      <div v-for="issue in pumpIssues" :key="issue.code"><v-btn variant="text" size="small" @click="selectedKey = issue.deviceKey">{{ issue.host }} #{{ issue.pump }}</v-btn> {{ t(driverMessage(issue.result)) }}</div>
+      <div v-for="issue in pumpIssues" :key="issue.code"><v-btn variant="text" size="small" @click="selectDevice(issue.deviceKey, true)">{{ issue.host }} #{{ issue.pump }}</v-btn> {{ t(driverMessage(issue.result)) }}</div>
     </v-alert>
       <footer class="devices-footer"><span>Tomatoes v1.0.0</span><span>{{ t('Online: replied within 90 seconds · Not seen: no recent reply') }}</span></footer>
 
@@ -78,7 +78,7 @@ import Authentication from '@/services/auth';
 const canManage = Boolean(Authentication.currentUser?.isAdmin);
 import AppPageHeader from '@/components/navigation/AppPageHeader.vue';
 
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, nextTick, reactive, ref, watch } from 'vue';
 
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 
@@ -141,6 +141,16 @@ const paged = computed(() => filtered.value.slice((page.value - 1) * settings.pa
 const capacity = computed(() => Math.min(settings.pageSize, filtered.value.length));
 
 const selectedDevice = computed(() => devices.value.find(device => device.key === selectedKey.value));
+const detailsPanel = ref(null);
+
+async function selectDevice(key, fromWarning = false) {
+  selectedKey.value = key;
+  if (fromWarning || window.matchMedia('(max-width: 1100px)').matches) {
+    await nextTick();
+    detailsPanel.value?.focusHeading();
+  }
+}
+
 
 watch([query, filter, () => settings.pageSize, () => settings.sort], () => { page.value = 1; });
 
@@ -202,12 +212,21 @@ watch(overlayDevice, device => { if (overlayKind.value === 'firmware' && !firmwa
 
 .firmware-dialog-title { display: flex; justify-content: space-between; align-items: center; gap: 12px; }.overlay-unavailable { min-height: 180px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; color: rgb(var(--v-theme-muted)); }
 
+.devices-page { --app-content-width: clamp(1440px, 84vw, 2480px); }
 .device-command-notice :deep(.v-snackbar__wrapper) { margin-top: 64px; width: min(560px, calc(100vw - 32px)); min-width: 0; border: 1px solid rgba(var(--v-theme-on-surface), .16); }
 .device-command-notice :deep(.v-snackbar__content) { overflow-wrap: anywhere; }
 .inventory-progress { height: 4px; margin-bottom: 12px; }
-.inventory-count { color: rgb(var(--v-theme-muted)); font-size: 12px; border: 1px solid rgb(var(--v-theme-border)); border-radius: 4px; padding: 4px 9px; }.devices-tools { display: grid; grid-template-columns: minmax(220px, 1fr) 190px 130px; gap: 12px; margin-bottom: 20px; }.connection-filters { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 14px; }.filter-count { margin-left: 8px; padding: 0 4px; border-radius: 3px; background: rgba(var(--v-theme-on-surface), .05); font-size: 12px; }.inventory-meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 12px; color: rgb(var(--v-theme-muted)); margin-bottom: 12px; }.device-inventory { display: grid; gap: 20px; align-items: start; }.device-inventory--details { grid-template-columns: minmax(0, 1fr) 320px; }.inventory-results { min-width: 0; }.device-table-card { border-color: rgb(var(--v-theme-border)); }.device-table { background: transparent; }.device-table :deep(table) { width: 100%; table-layout: fixed; }.device-table :deep(td) { height: 64px; }.device-table :deep(th:first-child) { width: 30%; }.device-table :deep(th:nth-child(2)) { width: 17%; }.device-table :deep(th:last-child) { width: 13%; }.device-table :deep(td) { overflow-wrap: anywhere; }.device-table :deep(td small) { display: block; color: rgb(var(--v-theme-muted)); font-size: 12px; margin-top: 4px; }.device-name { border: 0; padding: 0; text-align: left; color: inherit; background: transparent; font-weight: 500; overflow-wrap: anywhere; }.device-name:hover { text-decoration: underline; }.selected-row { background: rgb(var(--v-theme-selection)); }.connection-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: rgb(var(--v-theme-muted)); white-space: nowrap; }.connection-status:before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }.connection-status--online { color: rgb(var(--v-theme-success)); }.signal-reading { white-space: nowrap; font-size: 12px; }.device-inventory--details .network-column, .device-inventory--details .outputs-column { display: none; }.device-inventory--details .device-table :deep(th:first-child) { width: 48%; }.device-inventory--details .device-table :deep(th:nth-child(2)) { width: 30%; }.device-inventory--details .device-table :deep(th:last-child) { width: 22%; }
+.inventory-count { color: rgb(var(--v-theme-muted)); font-size: 12px; border: 1px solid rgb(var(--v-theme-border)); border-radius: 4px; padding: 4px 9px; }.devices-tools { display: grid; grid-template-columns: minmax(220px, 1fr) 190px 130px; gap: 12px; margin-bottom: 20px; }.connection-filters { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 14px; }.filter-count { margin-left: 8px; padding: 0 4px; border-radius: 3px; background: rgba(var(--v-theme-on-surface), .05); font-size: 12px; }.inventory-meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 12px; color: rgb(var(--v-theme-muted)); margin-bottom: 12px; }.device-inventory { display: grid; gap: 20px; align-items: start; }.device-inventory--details { grid-template-columns: minmax(0, 2fr) minmax(380px, 3fr); }.inventory-results { min-width: 0; }.device-table-card { border-color: rgb(var(--v-theme-border)); }.device-table { background: transparent; }.device-table :deep(table) { width: 100%; table-layout: fixed; }.device-table :deep(td) { height: 64px; }.device-table :deep(th:first-child) { width: 30%; }.device-table :deep(th:nth-child(2)) { width: 17%; }.device-table :deep(th:last-child) { width: 13%; }.device-table :deep(td) { overflow-wrap: anywhere; }.device-table :deep(td small) { display: block; color: rgb(var(--v-theme-muted)); font-size: 12px; margin-top: 4px; }.device-name { border: 0; padding: 0; text-align: left; color: inherit; background: transparent; font-weight: 500; overflow-wrap: anywhere; }.device-name:hover { text-decoration: underline; }.selected-row { background: rgb(var(--v-theme-selection)); }.connection-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: rgb(var(--v-theme-muted)); white-space: nowrap; }.connection-status:before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }.connection-status--online { color: rgb(var(--v-theme-success)); }.signal-reading { white-space: nowrap; font-size: 12px; }.device-inventory--details .network-column, .device-inventory--details .outputs-column { display: none; }.device-inventory--details .device-table :deep(th:first-child) { width: 48%; }.device-inventory--details .device-table :deep(th:nth-child(2)) { width: 30%; }.device-inventory--details .device-table :deep(th:last-child) { width: 22%; }
 
 .device-cards { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; }.device-inventory--details .device-cards { grid-template-columns: repeat(2,minmax(0,1fr)); }.device-card-placeholder { min-height: 184px; }.inventory-pagination { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; color: rgb(var(--v-theme-muted)); font-size: 12px; }.devices-footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 12px; color: rgb(var(--v-theme-muted)); margin-top: 24px; }.settings-note { color: rgb(var(--v-theme-muted)); font-size: 12px; margin-top: 14px; }
+
+@media (min-width: 1700px) {
+  .device-inventory--details .network-column,
+  .device-inventory--details .outputs-column { display: table-cell; }
+  .device-inventory--details .device-table :deep(th:first-child) { width: 30%; }
+  .device-inventory--details .device-table :deep(th:nth-child(2)) { width: 17%; }
+  .device-inventory--details .device-table :deep(th:last-child) { width: 13%; }
+}
 
 @media(max-width:1100px) { .device-inventory--details { grid-template-columns: minmax(0,1fr); }.device-inventory--details>:last-child { grid-row: 1; }.device-inventory--details .device-cards { grid-template-columns: repeat(3,minmax(0,1fr)); }.device-inventory--details .network-column,.device-inventory--details .outputs-column { display: table-cell; }.device-inventory--details .device-table :deep(th:first-child) { width: 30%; }.device-inventory--details .device-table :deep(th:nth-child(2)) { width: 17%; }.device-inventory--details .device-table :deep(th:last-child) { width: 13%; } }
 
