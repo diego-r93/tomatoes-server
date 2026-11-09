@@ -1,19 +1,14 @@
 import { queueScheduleSync } from '../mqtt/schedules';
 import { authenticate, requireAdmin } from '../users/http';
 import { Express, Router } from 'express';
-import * as board from '../database/mongodb/controllers/board.controller';
+import { createBoardController } from '../database/mongodb/controllers/board.controller';
+import { createBoardScheduleService } from '../boards/scheduleService';
+import { boardRepository } from '../database/mongodb/repositories/board.repository';
+
+const board = createBoardController(createBoardScheduleService(boardRepository, queueScheduleSync));
 
 const boardRoutes = (app: Express) => {
     const router = Router();
-    router.use((req, res, next) => {
-        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
-            res.once('finish', () => {
-                if (res.statusCode >= 200 && res.statusCode < 300) queueScheduleSync();
-            });
-        }
-        next();
-    });
-
     // Create a new Board
     router.post("/", authenticate, requireAdmin, board.create);
 
