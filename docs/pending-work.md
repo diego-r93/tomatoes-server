@@ -14,7 +14,6 @@ Updated 2026-11-10. Completed features are documented in the commit report and t
 | Pending | Email invitations and notifications | Configure the sender and verify real delivery, invitation and password-reset links. Outlook/Hotmail OAuth preparation exists. |
 | Pending | WhatsApp notifications | Configure the Meta Business account, number, access credentials and approved templates; validate real delivery. |
 | Pending | Alert threshold review | Confirm crop pH/EC/temperature limits and low battery charge threshold before enabling those rules. Review and resume the paused esp32s3-1C1250 rules after validating the installed greenhouse board. Existing server/driver/BMS rules were validated with current observations. |
-| Pending publication | Server commits | Publish the local server commits, including the deployed dashboard editor update, after the owner authorizes the push. |
 | Planned | User/group board permissions | Define board-level access policies beyond the existing Admin/User roles. |
 | Planned | MongoDB replacement or upgrade | Choose a supported database path and data migration before moving away from MongoDB 4.4 compatibility. |
 | Planned | InfluxDB 3 and query migration | Evaluate Flux to InfluxQL migration, feature differences and data retention/migration. Current InfluxDB remains on version 2. |
@@ -55,6 +54,8 @@ Review references: [LGPD, consolidated text](https://www2.camara.leg.br/legin/fe
 - Greenhouse and battery checks need physical validation. Historical MQTT disconnects need the original log archive. Firmware publication, pull-based OTA and the next PCB require separate coordination.
 
 ### Recently completed
+
+- **Server commits published.** GitHub branch `codex/frontend-schedules-refactor` was verified at `6b28a36` after publishing `ed0c77f`, `0035fde`, `ffc88c4` and `6b28a36`.
 
 - **Dedicated panel editor, Bar gauge and Table deployed** (`ffc88c4`). Add panel and Edit open their own routes. The editor includes a live preview, visualization descriptions and additional uPlot display options. Production builds, frontend lint and typecheck, 54 frontend tests and 61 backend tests passed. Chrome verified both routes, the visualization picker and live InfluxDB data in the preview. The broker stayed running.
 
