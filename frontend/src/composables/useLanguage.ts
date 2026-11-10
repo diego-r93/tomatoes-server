@@ -1,5 +1,7 @@
 import { readonly, ref } from 'vue';
 import { boardSetupMessages } from '../locales/boardSetup.ts';
+import { usersMessages } from '../locales/users.ts';
+import { alertMessages } from '../locales/alert.ts';
 import { databaseMessages } from '../locales/database.ts';
 import { dashboardMessages } from '../locales/dashboard.ts';
 import { interfaceMessages } from '../locales/interface.ts';
@@ -187,6 +189,8 @@ function setLanguage(value: unknown) {
 const boardSetup: MessageCatalog = boardSetupMessages;
 const interfaceCatalog: MessageCatalog = interfaceMessages;
 const database: MessageCatalog = databaseMessages;
+const users: MessageCatalog = usersMessages;
+const alert: MessageCatalog = alertMessages;
 const dashboard: MessageCatalog = dashboardMessages;
 
 function t(key: string, parameters: Record<string, unknown> = {}): string {
@@ -196,6 +200,8 @@ function t(key: string, parameters: Record<string, unknown> = {}): string {
     ?? interfaceCatalog[locale]?.[key]
     ?? dashboard[locale]?.[key]
     ?? database[locale]?.[key]
+    ?? users[locale]?.[key]
+    ?? alert[locale]?.[key]
     ?? messages.en[key]
     ?? key;
   return message.replace(/\{(\w+)\}/g, (placeholder, name) => Object.hasOwn(parameters, name) ? String(parameters[name]) : placeholder);

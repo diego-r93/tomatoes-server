@@ -1,24 +1,27 @@
 <template>
   <div>
-    <div class="users-tools"><v-text-field v-model="query" label="Search users" placeholder="Name, username or email" prepend-inner-icon="mdi-magnify" hide-details clearable variant="outlined" /><v-btn variant="text" prepend-icon="mdi-refresh" :loading="loading" @click="load">Refresh</v-btn></div>
-    <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
+    <div class="users-tools"><v-text-field v-model="query" :label="t('Search users')" :placeholder="t('Name, username or email')" prepend-inner-icon="mdi-magnify" hide-details clearable variant="outlined" /><v-btn variant="text" prepend-icon="mdi-refresh" :loading="loading" @click="load">{{ t('Refresh') }}</v-btn></div>
+    <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ t(error) }}</v-alert>
     <v-progress-linear v-if="loading" indeterminate color="primary" />
     <v-card variant="outlined" class="users-table-card">
-      <v-table><thead><tr><th>User</th><th>Role</th><th>Status</th><th>Groups</th><th>Last sign-in</th><th>Actions</th></tr></thead><tbody>
-        <tr v-for="user in filtered" :key="user.id"><td><router-link class="user-link" :to="`/users/users/${user.id}`"><v-avatar color="surface-variant" size="34">{{ initials(user) }}</v-avatar><span><strong>{{ fullName(user) }}</strong><v-icon v-if="user.isBuiltin" icon="mdi-lock-outline" size="14" class="ml-1" /><small>{{ user.username }} · {{ user.email }}</small></span></router-link></td><td><v-chip :color="user.isAdmin ? 'primary' : undefined" size="small" variant="outlined">{{ userRoleLabel(user) }}</v-chip></td><td><v-chip :color="user.enabled ? 'success' : undefined" size="small" variant="tonal">{{ user.enabled ? 'Active' : 'Disabled' }}</v-chip></td><td><div class="group-chips"><v-chip v-for="group in user.groups" :key="group.id" size="small" variant="outlined">{{ group.name }}</v-chip><span v-if="!user.groups.length" class="muted">No group</span></div></td><td class="last-sign-in">{{ dateTime(user.lastLoginAt) }}</td><td><v-btn variant="text" :to="`/users/users/${user.id}`">View</v-btn></td></tr>
-        <tr v-if="!loading && !filtered.length"><td colspan="6" class="empty-users">{{ query ? 'No users match your search.' : 'No users found.' }}</td></tr>
+      <v-table><thead><tr><th>{{ t('User') }}</th><th>{{ t('Role') }}</th><th>{{ t('Status') }}</th><th>{{ t('Groups') }}</th><th>{{ t('Last sign-in') }}</th><th>{{ t('Actions') }}</th></tr></thead><tbody>
+        <tr v-for="user in filtered" :key="user.id"><td><router-link class="user-link" :to="`/users/users/${user.id}`"><v-avatar color="surface-variant" size="34">{{ initials(user) }}</v-avatar><span><strong>{{ fullName(user) }}</strong><v-icon v-if="user.isBuiltin" icon="mdi-lock-outline" size="14" class="ml-1" /><small>{{ user.username }} · {{ user.email }}</small></span></router-link></td><td><v-chip :color="user.isAdmin ? 'primary' : undefined" size="small" variant="outlined">{{ t(userRoleLabel(user)) }}</v-chip></td><td><v-chip :color="user.enabled ? 'success' : undefined" size="small" variant="tonal">{{ t(user.enabled ? 'Active' : 'Disabled') }}</v-chip></td><td><div class="group-chips"><v-chip v-for="group in user.groups" :key="group.id" size="small" variant="outlined">{{ group.name }}</v-chip><span v-if="!user.groups.length" class="muted">{{ t('No group') }}</span></div></td><td class="last-sign-in">{{ dateTime(user.lastLoginAt, t('Never')) }}</td><td><v-btn variant="text" :to="`/users/users/${user.id}`">{{ t('View') }}</v-btn></td></tr>
+        <tr v-if="!loading && !filtered.length"><td colspan="6" class="empty-users">{{ t(query ? 'No users match your search.' : 'No users found.') }}</td></tr>
       </tbody></v-table>
     </v-card>
-    <p class="users-note"><v-icon icon="mdi-lock-outline" size="16" /> The built-in admin account cannot be deleted or disabled.</p>
+    <p class="users-note"><v-icon icon="mdi-lock-outline" size="16" /> {{ t('The built-in admin account cannot be deleted or disabled.') }}</p>
   </div>
 </template>
 <script setup lang="ts">
+import { useLanguage } from '@/composables/useLanguage';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import userService from '@/services/userService';
 import { dateTime, fullName, initials, userError, userRoleLabel } from '@/composables/userManagementUtils';
 import type { UserRecord } from '@/services/userTypes';
 import { useUserManagement } from './userManagementContext';
+
+const { t } = useLanguage();
 
 const { actor } = useUserManagement();
 const router = useRouter(), users = ref<UserRecord[]>([]), query = ref<string | null>(''), loading = ref(false), error = ref('');

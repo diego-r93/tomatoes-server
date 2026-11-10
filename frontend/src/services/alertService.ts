@@ -142,14 +142,25 @@ export function alertError(error: unknown) {
   return message || 'The alert service is unavailable. Please try again.';
 }
 
-export const dateLabel = (value: number | null | undefined) => formatDateTime(value, 'Browser', 'Never');
+export const dateLabel = (value: number | null | undefined, fallback = 'Never') => formatDateTime(value, 'Browser', fallback);
 type SourceLabel = Pick<AlertSource, 'kind' | 'pump' | 'condition' | 'measurement' | 'unit'>;
-export const sourceLabel = (source: SourceLabel) => ({
-  pump_driver: `Pump ${String(source.pump).padStart(2, '0')} driver / ${source.condition}`,
+type Translate = (key: string, parameters?: Record<string, unknown>) => string;
+const driverLabels = { failure: 'Failed actuation', missing: 'No driver feedback', short: 'Driver short circuit',
+  temperature: 'Driver overtemperature', supply: 'Pump supply absent / low' };
+export function sourceLabel(source: SourceLabel, t?: Translate) {
+  if (source.kind === 'metric' && source.measurement) return source.measurement;
+  if (source.kind === 'pump_driver') {
+    const pump = String(source.pump).padStart(2, '0');
+    const condition = source.condition ? driverLabels[source.condition] : 'Driver condition detected';
+    return t ? t('Pump {pump} driver / {condition}', { pump, condition: t(condition) }) : `Pump ${pump} driver / ${source.condition}`;
+  }
+  const key = {
   device_age: 'Device last seen', wifi: 'Wi-Fi signal', output_on: 'GPIO ON duration',
   cpu_temperature: 'CPU temperature', disk_usage: 'Disk usage',
-  metric_age: 'Telemetry age', metric: source.measurement || 'Sensor metric',
-}[source.kind]);
+  metric_age: 'Telemetry age', metric: 'Sensor metric',
+  }[source.kind];
+  return t ? t(key) : key;
+}
 export const ruleUnit = (source: SourceLabel) => ({
   pump_driver: '', device_age: 'sec', wifi: 'dBm', output_on: 'sec', cpu_temperature: '°C',
   disk_usage: '%', metric_age: 'sec', metric: source.unit || '',

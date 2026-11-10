@@ -1,3 +1,5 @@
+import { alertMessages } from '../src/locales/alert.ts';
+import { usersMessages } from '../src/locales/users.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { computed } from 'vue';
@@ -94,5 +96,32 @@ test('Database labels, connection details and pulse durations follow the chosen 
   const parameters = text => [...text.matchAll(/\{(\w+)\}/g)].map(item => item[1]).sort();
   for (const catalog of Object.values(databaseMessages)) {
     for (const [key, value] of Object.entries(catalog)) assert.deepEqual(parameters(value), parameters(key), key);
+  }
+});
+
+test('Users and Alerting labels react to language changes and retain message parameters', () => {
+  const { setLanguage, t } = useLanguage();
+  const role = computed(() => t('Admin'));
+  const state = computed(() => t('Firing'));
+  const email = 'test@example.com';
+  try {
+    setLanguage('en');
+    assert.equal(role.value, 'Admin');
+    assert.equal(state.value, 'Firing');
+    setLanguage('pt-BR');
+    assert.equal(role.value, 'Administrador');
+    assert.equal(state.value, 'Em alerta');
+    assert.equal(t('To: {email}', { email }), 'Para: ' + email);
+    setLanguage('es');
+    assert.equal(state.value, 'En alerta');
+    assert.equal(t('Contact points'), 'Puntos de contacto');
+    assert.equal(t('To: {email}', { email }), 'Para: ' + email);
+  } finally { setLanguage('en'); }
+  const parameters = value => [...value.matchAll(/\{(\w+)\}/g)].map(item => item[1]).sort();
+  for (const catalog of [usersMessages, alertMessages]) {
+    assert.deepEqual(Object.keys(catalog['pt-BR']).sort(), Object.keys(catalog.es).sort());
+    for (const entries of Object.values(catalog)) {
+      for (const [key, value] of Object.entries(entries)) assert.deepEqual(parameters(value), parameters(key), key);
+    }
   }
 });

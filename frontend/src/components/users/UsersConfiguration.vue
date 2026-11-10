@@ -1,13 +1,13 @@
 <template>
   <v-container fluid class="users-page app-page">
-    <AppPageHeader :title="actor?.isAdmin ? 'Administration / Users' : 'My account'" icon="mdi-account-group-outline"/>
-    <header class="users-heading app-page-heading"><div><h1 class="app-page-title">{{ actor?.isAdmin ? 'Users & access' : 'My account' }}</h1><p>{{ actor?.isAdmin ? 'Manage people, groups and invitations.' : 'Manage your profile and active sessions.' }}</p></div><v-btn v-if="actor?.isAdmin" color="primary" prepend-icon="mdi-email-plus-outline" :disabled="!emailConfiguration.configured" @click="openInvite">Invite user</v-btn></header>
-    <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}<template #append><v-btn @click="loadIdentity">Retry</v-btn></template></v-alert>
+    <AppPageHeader :title="t(actor?.isAdmin ? 'Administration / Users' : 'My account')" icon="mdi-account-group-outline"/>
+    <header class="users-heading app-page-heading"><div><h1 class="app-page-title">{{ t(actor?.isAdmin ? 'Users & access' : 'My account') }}</h1><p>{{ t(actor?.isAdmin ? 'Manage people, groups and invitations.' : 'Manage your profile and active sessions.') }}</p></div><v-btn v-if="actor?.isAdmin" color="primary" prepend-icon="mdi-email-plus-outline" :disabled="!emailConfiguration.configured" @click="openInvite">{{ t('Invite user') }}</v-btn></header>
+    <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ t(error) }}<template #append><v-btn @click="loadIdentity">{{ t('Retry') }}</v-btn></template></v-alert>
     <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-4" />
     <template v-if="actor">
-      <v-alert v-if="actor.isAdmin && !emailConfiguration.configured" color="secondary" variant="tonal" icon="mdi-email-off-outline" class="mb-5">Email delivery is not configured yet. You can manage users and groups; invitations and email resets become available after setup.</v-alert>
-      <v-tabs v-if="actor.isAdmin" color="primary" class="mb-5" aria-label="User administration">
-        <v-tab to="/users/users">Users</v-tab><v-tab to="/users/groups">Groups</v-tab><v-tab to="/users/invitations">Invitations</v-tab>
+      <v-alert v-if="actor.isAdmin && !emailConfiguration.configured" color="secondary" variant="tonal" icon="mdi-email-off-outline" class="mb-5">{{ t('Email delivery is not configured yet. You can manage users and groups; invitations and email resets become available after setup.') }}</v-alert>
+      <v-tabs v-if="actor.isAdmin" color="primary" class="mb-5" :aria-label="t('User administration')">
+        <v-tab to="/users/users">{{ t('Users') }}</v-tab><v-tab to="/users/groups">{{ t('Groups') }}</v-tab><v-tab to="/users/invitations">{{ t('Invitations') }}</v-tab>
       </v-tabs>
       <router-view :key="route.path" />
       <InviteUserDialog v-if="actor.isAdmin" v-model="inviteOpen" :default-days="emailConfiguration.defaultInvitationDays" @created="invitationCreated" />
@@ -15,6 +15,7 @@
   </v-container>
 </template>
 <script setup lang="ts">
+import { useLanguage } from '@/composables/useLanguage';
 import AppPageHeader from '@/components/navigation/AppPageHeader.vue';
 import { onMounted, provide, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -24,6 +25,8 @@ import { userError } from '@/composables/userManagementUtils';
 import type { EmailConfiguration, UserIdentity } from '@/services/userTypes';
 import { userManagementKey } from './userManagementContext';
 import InviteUserDialog from './InviteUserDialog.vue';
+
+const { t } = useLanguage();
 const route = useRoute(), router = useRouter();
 const actor = ref<UserIdentity | null>(null), loading = ref(false), error = ref(''), inviteOpen = ref(false);
 const emailConfiguration = ref<EmailConfiguration>({ configured: false, defaultInvitationDays: 7 });

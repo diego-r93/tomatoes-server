@@ -1,24 +1,35 @@
 <template>
   <v-dialog v-model="visible" max-width="520" persistent>
-    <v-card title="Invite user"><v-card-text>
+    <v-card :title="t('Invite user')"><v-card-text>
       <v-form @submit.prevent="submit">
-        <v-text-field v-model="draft.email" label="Email address" type="email" :rules="[required, validEmail]" :disabled="busy" />
-        <v-select v-model="draft.groupIds" :items="groups" item-title="name" item-value="id" label="Add to groups" multiple chips :disabled="busy || loading" />
-        <v-select v-model="draft.expiresInDays" :items="[1, 3, 7, 14, 30]" label="Invitation validity (days)" :disabled="busy" />
-        <v-textarea v-model="draft.message" label="Personal message (optional)" rows="2" maxlength="1000" counter :disabled="busy" />
-        <p class="invitation-note">The recipient will choose their username and password. The invitation link must be opened from a network that can reach this Tomatoes server.</p>
-        <v-alert v-if="error" type="error" variant="tonal" class="mt-4">{{ error }}</v-alert>
-        <div class="invitation-actions"><v-btn :disabled="busy" @click="visible = false">Cancel</v-btn><v-btn type="submit" color="primary" :loading="busy" :disabled="loading || busy">Send invitation</v-btn></div>
+        <v-text-field v-model="draft.email" :label="t('Email address')" type="email" :rules="[localizedRequired, localizedValidEmail]" :disabled="busy" />
+        <v-select v-model="draft.groupIds" :items="groups" item-title="name" item-value="id" :label="t('Add to groups')" multiple chips :disabled="busy || loading" />
+        <v-select v-model="draft.expiresInDays" :items="[1, 3, 7, 14, 30]" :label="t('Invitation validity (days)')" :disabled="busy" />
+        <v-textarea v-model="draft.message" :label="t('Personal message (optional)')" rows="2" maxlength="1000" counter :disabled="busy" />
+        <p class="invitation-note">{{ t('The recipient will choose their username and password. The invitation link must be opened from a network that can reach this Tomatoes server.') }}</p>
+        <v-alert v-if="error" type="error" variant="tonal" class="mt-4">{{ t(error) }}</v-alert>
+        <div class="invitation-actions"><v-btn :disabled="busy" @click="visible = false">{{ t('Cancel') }}</v-btn><v-btn type="submit" color="primary" :loading="busy" :disabled="loading || busy">{{ t('Send invitation') }}</v-btn></div>
       </v-form>
     </v-card-text></v-card>
   </v-dialog>
 </template>
 <script setup lang="ts">
+import { useLanguage } from '@/composables/useLanguage';
 import { computed, reactive, ref, watch } from 'vue';
 import userService from '@/services/userService';
 import { required, validEmail, userError } from '@/composables/userManagementUtils';
 import type { InvitationFields, UserGroup } from '@/services/userTypes';
 import type { SubmitEventPromise } from 'vuetify';
+
+const { t } = useLanguage();
+function localizedValidEmail(value: Parameters<typeof validEmail>[0]) {
+  const result = validEmail(value);
+  return result === true ? true : t(result);
+}
+function localizedRequired(value: Parameters<typeof required>[0]) {
+  const result = required(value);
+  return result === true ? true : t(result);
+}
 
 const props = defineProps({ modelValue: Boolean, defaultDays: { type: Number, default: 7 } });
 const emit = defineEmits<{ 'update:modelValue': [open: boolean]; created: [] }>();
