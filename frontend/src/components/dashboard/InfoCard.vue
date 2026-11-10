@@ -52,8 +52,6 @@
       <header class="focused-toolbar">
         <div class="focused-location"><v-btn icon="mdi-arrow-left" variant="text" size="small" class="focused-back" :aria-label="t('Back to dashboard')" :title="t('Back to dashboard')" @click="focused=null"/><span class="focused-dashboard-label" :title="dashboard.folder+' / '+dashboard.name">{{ dashboard.folder }} / {{ dashboard.name }}</span><span v-if="dirty" class="unsaved-dot" :aria-label="t('Unsaved changes')"/></div>
         <div class="dashboard-controls">
-          <v-btn v-if="canManage && dirty" icon="mdi-content-save-outline" variant="outlined" color="primary" :loading="saving" :aria-label="t('Save dashboard')" :title="t('Save dashboard')" @click="save"/>
-          <v-btn v-if="canManage" icon="mdi-cog-outline" variant="outlined" :aria-label="t('Edit panel')" :title="t('Panel settings')" @click="openEditor(focusedChart)"/>
           <DashboardTimeRange v-if="!dashboardSettings.hideTimePicker" v-model="range" :timezone="dashboardSettings.timezone"/>
           <v-btn icon="mdi-magnify-minus-outline" variant="outlined" :aria-label="t('Zoom out time range')" :title="t('Zoom out time range')" @click="zoomOut"/>
           <div class="refresh-controls"><v-btn icon="mdi-refresh" variant="outlined" :aria-label="t('Refresh panel')" :title="t('Refresh panel')" :disabled="fetching" @click="refreshData"/><select v-model="refresh" :aria-label="t('Auto refresh')"><option v-for="value in ['Off',...dashboardSettings.intervals]" :key="value" :value="value">{{ t(value) }}</option></select></div>
@@ -61,7 +59,7 @@
         </div>
       </header>
       <v-alert v-if="error" type="error" variant="tonal" class="focused-error" role="alert">{{ t(error) }}</v-alert>
-      <div class="focused-chart-content"><DashboardPanel :editing="canManage" :chart="focusedChart" :result="results[String(focusedChart.id)]" :timezone="dashboardSettings.timezone" @inspect="openInspector(focusedChart)" @view="undefined" @edit="openEditor(focusedChart)" @remove="confirmRemove(focusedChart)"/></div>
+      <div class="focused-chart-content"><DashboardPanel :show-view="false" :chart="focusedChart" :result="results[String(focusedChart.id)]" :timezone="dashboardSettings.timezone" @inspect="openInspector(focusedChart)"/></div>
     </v-card>
   </v-dialog>
   <PanelInspector v-if="inspection" :snapshot="inspection" @close="inspection=null"/>
