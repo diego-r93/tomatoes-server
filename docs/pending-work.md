@@ -18,7 +18,7 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 | Planned | User/group board permissions | Define board-level access policies beyond the existing Admin/User roles. |
 | Planned | MongoDB replacement or upgrade | Choose a supported database path and data migration before moving away from MongoDB 4.4 compatibility. |
 | Planned | InfluxDB 3 and query migration | Evaluate Flux to InfluxQL migration, feature differences and data retention/migration. Current InfluxDB remains on version 2. |
-| Priority | Administrator credential | Require a unique password for the built-in administrator, support secure rotation, and verify that the factory credential no longer grants access before widening portal access. |
+| Priority | Administrator credential | Require a unique password for the built-in administrator, support secure rotation, and verify that the factory credential no longer grants access before a pilot with real users or wider portal access. Also tracked as an LGPD security dependency. |
 | Planned | Grafana retirement | Remove the temporary comparison service when the Tomatoes dashboards cover the required features. Grafana is already upgraded and isolated behind HTTPS. |
 | Planned | MQTT hostname | Plan mqtt.ceresgrow.com.br, broker certificate SAN and factory endpoint configuration. Do not expose MQTT externally as part of the local portal setup. |
 | Planned | Pull-based OTA | Store signed firmware by model, notify boards through MQTT and let boards download through HTTPS for cloud deployment. Requires coordinated firmware work. |
@@ -27,10 +27,26 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 | Planned | Next PCB driver feedback | Evaluate ADC sampling of IPROPI and ESP32 connections for nFAULT/DRVOFF. Current TCC v2.0 does not measure pump current; a driver ON result does not confirm water flow. Include EN and IO0 in the programming connector for automatic flashing, as noted by Claude after read-only UART0 validation. Coordinate with Claude. |
 | Planned | Cloud migration | Preserve factory-certificate admission and registration while planning tenant isolation, backups and deployment. |
 
+## LGPD readiness before a pilot or product rollout
+
+Technical review on 2026-11-09. The current installation has HTTPS, password hashing, revocable server-side sessions, hashed invitation and password-reset tokens, role checks on reviewed account routes and SQLite file permissions. Those controls cover part of the security requirements. Product compliance also depends on documented operational decisions. Check the Art. 4(I) exception only if the actual processing is exclusively private and non-economic by a natural person. Evaluate the real pilot and commercial operations separately.
+
+| Status | Item | Next step |
+| --- | --- | --- |
+| Priority | LGPD · Inventory, roles and legal bases | Record each purpose, necessary fields, legal basis, storage location, access, recipients and disposal period. Cover profiles, IP and browser records, invitations, alert recipients, logs, exports, backups and device telemetry when linkable to an individual. Determine controller and operator roles for self-hosted and hosted deployments. Document a balancing assessment if relying on legitimate interest. |
+| Priority | LGPD · Privacy notice and rights channel | Identify the controller and publish a clear notice at the relevant collection points. Assign a responsible contact and assess whether a formal data protection officer is required. Document identity verification, deadlines and secure handling of access, correction, deletion or anonymization when applicable, sharing information and consent withdrawal where relevant. Test the process with fictitious records. |
+| Priority | LGPD · Retention and minimization | Keep operational telemetry retention separate from account-data retention. Define and test disposal for expired or revoked sessions, invitations and resets, user activity, notification recipients, proxy logs and backups. Review whether phone, location, full IP and raw user-agent data are needed. Test account closure across related records, including residual audit data, while documenting justified retention and preserving legally required records. |
+| Priority | LGPD · Session and log protection | Finish the administrator credential task. Minimize cached profile fields and assess a Secure, HttpOnly cookie design with suitable SameSite and CSRF controls. Redact invitation and reset tokens from proxy and application logs and review referrer handling and log rotation. Test authorization and cross-account access. |
+| Before real provider use or cloud migration | LGPD · Processors and international transfers | Map what the email provider, Meta/WhatsApp, DNS/ACME services and future hosting actually receive. Review contracts, subprocessors, locations, retention and any applicable international transfer mechanism. Validate the record of WhatsApp opt-in and withdrawal if consent is the legal basis. Verify tenant isolation before shared hosting. |
+| Before pilot with real users | LGPD · Incident response and recovery | Assign a responsible person and document detection, containment, session and secret revocation, risk assessment, required notices and the incident register under ANPD Resolution 15/2024. Exercise the procedure and define backup protection and disposal for the future product. |
+
+Review references: [LGPD, consolidated text](https://www2.camara.leg.br/legin/fed/lei/2018/lei-13709-14-agosto-2018-787077-normaatualizada-pl.html), [ANPD rules for small processing agents](https://www.gov.br/anpd/pt-br/acesso-a-informacao/institucional/atos-normativos/regulamentacoes_anpd/resolucao-cd-anpd-no-2-de-27-de-janeiro-de-2022), [incident response regulation](https://bibliotecadigital.mj.gov.br/bitstream/1/12879/2/RES_ANPD_2024_15.html), [international transfer regulation](https://www.gov.br/anpd/pt-br/acesso-a-informacao/institucional/atos-normativos/regulamentacoes_anpd/resolucao-cd-anpd-no-19-de-23-de-agosto-de-2024).
+
 ## Next tasks in order
 
 1. Replace the factory administrator credential and verify secure rotation.
-2. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
+2. Prepare the LGPD data inventory and address token redaction in access logs before enabling email invitations or password reset delivery.
+3. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
 
 ### Waiting on a test or external input
 
