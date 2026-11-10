@@ -9,10 +9,12 @@ interface MonitorSettings {
 
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { http } from '@/services/http-common';
+import { useLanguage } from './useLanguage';
 import { boardConnection } from './boardConnectionUtils.ts';
 
 // Read the existing discovery monitor; do not publish commands or discovery requests.
 export function useBoardConnections() {
+  const { t } = useLanguage();
   const snapshot = ref<BoardConnectionSnapshot | null>(null), loading = ref(false), error = ref(''), clock = ref(Date.now());
   let request: Promise<void> | null = null;
   let controller: AbortController | undefined;
@@ -38,7 +40,7 @@ export function useBoardConnections() {
     }).finally(() => { if (!disposed) { loading.value = false; request = null; } });
     return request;
   }
-  const connectionFor = (code: string) => boardConnection(code, snapshot.value, clock.value);
+  const connectionFor = (code: string) => boardConnection(code, snapshot.value, clock.value, t);
   const resume = () => { if (!document.hidden) { clock.value = Date.now() + clockOffset; refreshConnections(); } };
   onMounted(() => {
     refreshConnections();

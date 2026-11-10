@@ -18,10 +18,10 @@ export function matchingBoards(boards: PumpSchedule[], query: string, status: Sc
   if (order === 'name' || order === 'code') { const key = order === 'name' ? 'pumperName' : 'pumperCode'; result.sort((a, b) => String(a[key]).localeCompare(String(b[key]))); }
   return result;
 }
-export function pulseLabel(value: unknown, unit: 'minutes' | 'milliseconds' = 'minutes') {
+export function pulseLabel(value: unknown, unit: 'minutes' | 'milliseconds' = 'minutes', locale = 'en') {
   const duration = Number(value);
   if (!Number.isFinite(duration)) return 'Not set';
-  return unit === 'milliseconds' ? `${duration.toLocaleString('en-US')} ms` : `${Number((duration / 60000).toFixed(3)).toLocaleString('en-US')} min`;
+  return unit === 'milliseconds' ? `${duration.toLocaleString(locale)} ms` : `${Number((duration / 60000).toFixed(3)).toLocaleString(locale)} min`;
 }
 export function boardDetails(name: unknown, duration: unknown) {
   const pumperName = String(name ?? '').trim(), pulseDuration = Number(duration);

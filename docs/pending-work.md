@@ -8,7 +8,7 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 | In progress | Greenhouse battery validation | esp32s3-1C1250 is installed. On November 9 the portal confirmed the board online and the driver reported actuation for outputs #01–#03 around 15:02 local time. The latest #04 record was from November 8. Continue checking battery operation, scheduled pulses, physical pump operation, driver start/end and recovery. Review the greenhouse alerts after monitoring. |
 | Waiting for user | Firmware repository and publication | Claude reports local main 3e9bb1b. The bench board runs the pre-commit E1/pH build and the second board remains on 16a5c1c. VMUV retry, pulse telemetry, R9 fixes and the T2 supervisor test were previously completed. Publication waits for the intended GitHub repository and explicit user authorization; do not push firmware meanwhile. |
 | Pending | Battery Bluetooth stability | Repeat a prolonged read-only test with better signal. The collector and Energy dashboard work, but timeouts occurred near -83 dBm. |
-| In progress | Interface languages | Continue translating remaining pages into Portuguese and Spanish; keep English as the default. Devices, Configuration, Help and Dashboard library/editor/inspector/time-picker translations are implemented. Remaining pages include Database, Alerting and Users. |
+| In progress | Interface languages | Continue translating remaining pages into Portuguese and Spanish; keep English as the default. Devices, Configuration, Help and Dashboard library/editor/inspector/time-picker translations are implemented. Database is deployed and verified in English, Brazilian Portuguese and Spanish. Users and Alerting remain. |
 | Partial | ESP32 diagnostic views (T5) | Both boards now have real diagnostic panels. Bench dashboard includes CPU/peaks, heap/PSRAM, MQTT/SPI counters, cpu_other and reported per-task CPU; second-board controller dashboard covers core diagnostics. Consider equivalent per-task views on the second board if needed. Debug-only or below-threshold per-task samples may be absent; absence is not zero. |
 | Inconclusive: archive needed | Historical MQTT disconnects (T6) | Review completed: current broker logs start November 6; no November 2-5 events or archived broker log found. Firmware report dates the seven N1 drops to November 3, not November 4/5. Broker-side reason remains unconfirmed; reopen only with an original archive. See mqtt-disconnect-review.md. |
 | To review | Server account and sudo policy | Audit current MQTT service identities and the Linux sudo policy before proposing changes; the peer handoff may describe an earlier migration state. Preserve SSH/VS Code access. |
@@ -31,7 +31,7 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 ## Next tasks in order
 
 1. Replace the factory administrator credential and verify secure rotation.
-2. Translate Database into Portuguese and Spanish and verify both languages plus the English default in the portal. Continue with Users and Alerting as separate deliveries.
+2. Translate Users into Portuguese and Spanish and verify both languages plus the English default in the portal. Continue with Alerting as a separate delivery.
 3. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
 
 ### Waiting on a test or external input
@@ -40,6 +40,8 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 - Greenhouse and battery checks need physical validation. Historical MQTT disconnects need the original log archive. Firmware publication, pull-based OTA and the next PCB require separate coordination.
 
 ### Recently completed
+
+- **Database interface translations deployed.** Localized the pump directory, schedule editor, settings, confirmations, errors and board connection tooltips. English remains the default. The production build, typecheck, lint and all 52 frontend tests passed. Chrome verified the pump list in all three languages and the schedule editor in Portuguese and Spanish.
 
 - **Backend refactor, stage 3.** Device discovery and manual output commands are separate. The Users store delegates JWT signing and active-session validation to a session module. Alert evaluation delegates notification queueing and delivery to a separate worker module. HTTP contracts, permissions and stored data were preserved. The production image built successfully and all 60 backend tests passed in a network-isolated container. After backend-only deployment, the protected Devices, Users and Alerting endpoints returned HTTP 401 without a session. The Mosquitto start time remained unchanged.
 

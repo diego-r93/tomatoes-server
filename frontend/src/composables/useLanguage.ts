@@ -1,5 +1,6 @@
 import { readonly, ref } from 'vue';
 import { boardSetupMessages } from '../locales/boardSetup.ts';
+import { databaseMessages } from '../locales/database.ts';
 import { dashboardMessages } from '../locales/dashboard.ts';
 import { interfaceMessages } from '../locales/interface.ts';
 
@@ -53,7 +54,7 @@ const messages: Record<Language, Record<string, string>> = {
     "reduceMotion": "Reduce motion",
     "motionHelp": "Keep decorative animations still. Your system preference is also respected.",
     "language": "Language",
-    "languageHelp": "Choose the language for Configuration, Devices, Dashboards and the sidebar.",
+    "languageHelp": "Choose the display language. Some pages are still being translated.",
     "applied": "applied",
     "storageUnavailable": "Browser storage is unavailable; changes last for this session.",
     "saved": "Saved in this browser",
@@ -102,7 +103,7 @@ const messages: Record<Language, Record<string, string>> = {
     "reduceMotion": "Reduzir movimento",
     "motionHelp": "Desative as animações decorativas. A preferência do sistema também é respeitada.",
     "language": "Idioma",
-    "languageHelp": "Escolha o idioma de Configuração, Dispositivos, Painéis e do menu lateral.",
+    "languageHelp": "Escolha o idioma da interface. Algumas páginas ainda estão sendo traduzidas.",
     "applied": "aplicado",
     "storageUnavailable": "O armazenamento do navegador está indisponível. As alterações valem para esta sessão.",
     "saved": "Salvo neste navegador",
@@ -151,7 +152,7 @@ const messages: Record<Language, Record<string, string>> = {
     "reduceMotion": "Reducir movimiento",
     "motionHelp": "Desactiva las animaciones decorativas. También se respeta la preferencia del sistema.",
     "language": "Idioma",
-    "languageHelp": "Elige el idioma de Configuración, Dispositivos, Paneles y del menú lateral.",
+    "languageHelp": "Elige el idioma de la interfaz. Algunas páginas todavía se están traduciendo.",
     "applied": "aplicado",
     "storageUnavailable": "El almacenamiento del navegador no está disponible. Los cambios duran esta sesión.",
     "saved": "Guardado en este navegador",
@@ -185,6 +186,7 @@ function setLanguage(value: unknown) {
 
 const boardSetup: MessageCatalog = boardSetupMessages;
 const interfaceCatalog: MessageCatalog = interfaceMessages;
+const database: MessageCatalog = databaseMessages;
 const dashboard: MessageCatalog = dashboardMessages;
 
 function t(key: string, parameters: Record<string, unknown> = {}): string {
@@ -193,6 +195,7 @@ function t(key: string, parameters: Record<string, unknown> = {}): string {
     ?? boardSetup[locale]?.[key]
     ?? interfaceCatalog[locale]?.[key]
     ?? dashboard[locale]?.[key]
+    ?? database[locale]?.[key]
     ?? messages.en[key]
     ?? key;
   return message.replace(/\{(\w+)\}/g, (placeholder, name) => Object.hasOwn(parameters, name) ? String(parameters[name]) : placeholder);

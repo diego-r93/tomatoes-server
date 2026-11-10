@@ -1,10 +1,13 @@
 <template>
-  <span class="board-connection" :class="`board-connection--${connection.state}`" tabindex="0" role="img" :aria-label="`Board ${connection.host}: ${connection.label}. ${connection.detail}`">
+  <span class="board-connection" :class="`board-connection--${connection.state}`" tabindex="0" role="img" :aria-label="t('Board {host}: {status}. {detail}', { host: connection.host, status: connection.label, detail: connection.detail })">
     <i aria-hidden="true"/><span>{{ connection.label }}</span>
     <v-tooltip activator="parent" location="bottom" max-width="340">{{ connection.detail }}</v-tooltip>
   </span>
 </template>
 <script setup lang="ts">
+import { useLanguage } from '@/composables/useLanguage';
+
+const { t } = useLanguage();
 export interface BoardConnection {
   host: string;
   state: 'online' | 'unseen' | 'unknown';
