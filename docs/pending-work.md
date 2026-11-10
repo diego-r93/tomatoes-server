@@ -1,6 +1,6 @@
 # Pending work
 
-Updated 2026-11-09. Completed features are documented in the commit report and their feature guides.
+Updated 2026-11-10. Completed features are documented in the commit report and their feature guides.
 
 | Status | Item | Next step |
 | --- | --- | --- |
@@ -27,16 +27,18 @@ Updated 2026-11-09. Completed features are documented in the commit report and t
 | Planned | Next PCB driver feedback | Evaluate ADC sampling of IPROPI and ESP32 connections for nFAULT/DRVOFF. Current TCC v2.0 does not measure pump current; a driver ON result does not confirm water flow. Include EN and IO0 in the programming connector for automatic flashing, as noted by Claude after read-only UART0 validation. Coordinate with Claude. |
 | Planned | Cloud migration | Preserve factory-certificate admission and registration while planning tenant isolation, backups and deployment. |
 
-## LGPD readiness before a pilot or product rollout
+## LGPD readiness (deferred)
+
+Deferred on 2026-11-10. Revisit before a pilot with real users, before enabling real invitation or password-reset delivery, or when planning a commercial or hosted rollout. The administrator credential remains a separate security task.
 
 Technical review on 2026-11-09. The current installation has HTTPS, password hashing, revocable server-side sessions, hashed invitation and password-reset tokens, role checks on reviewed account routes and SQLite file permissions. Those controls cover part of the security requirements. Product compliance also depends on documented operational decisions. Check the Art. 4(I) exception only if the actual processing is exclusively private and non-economic by a natural person. Evaluate the real pilot and commercial operations separately.
 
 | Status | Item | Next step |
 | --- | --- | --- |
-| Priority | LGPD · Inventory, roles and legal bases | Record each purpose, necessary fields, legal basis, storage location, access, recipients and disposal period. Cover profiles, IP and browser records, invitations, alert recipients, logs, exports, backups and device telemetry when linkable to an individual. Determine controller and operator roles for self-hosted and hosted deployments. Document a balancing assessment if relying on legitimate interest. |
-| Priority | LGPD · Privacy notice and rights channel | Identify the controller and publish a clear notice at the relevant collection points. Assign a responsible contact and assess whether a formal data protection officer is required. Document identity verification, deadlines and secure handling of access, correction, deletion or anonymization when applicable, sharing information and consent withdrawal where relevant. Test the process with fictitious records. |
-| Priority | LGPD · Retention and minimization | Keep operational telemetry retention separate from account-data retention. Define and test disposal for expired or revoked sessions, invitations and resets, user activity, notification recipients, proxy logs and backups. Review whether phone, location, full IP and raw user-agent data are needed. Test account closure across related records, including residual audit data, while documenting justified retention and preserving legally required records. |
-| Priority | LGPD · Session and log protection | Finish the administrator credential task. Minimize cached profile fields and assess a Secure, HttpOnly cookie design with suitable SameSite and CSRF controls. Redact invitation and reset tokens from proxy and application logs and review referrer handling and log rotation. Test authorization and cross-account access. |
+| Deferred | LGPD · Inventory, roles and legal bases | Record each purpose, necessary fields, legal basis, storage location, access, recipients and disposal period. Cover profiles, IP and browser records, invitations, alert recipients, logs, exports, backups and device telemetry when linkable to an individual. Determine controller and operator roles for self-hosted and hosted deployments. Document a balancing assessment if relying on legitimate interest. |
+| Deferred | LGPD · Privacy notice and rights channel | Identify the controller and publish a clear notice at the relevant collection points. Assign a responsible contact and assess whether a formal data protection officer is required. Document identity verification, deadlines and secure handling of access, correction, deletion or anonymization when applicable, sharing information and consent withdrawal where relevant. Test the process with fictitious records. |
+| Deferred | LGPD · Retention and minimization | Keep operational telemetry retention separate from account-data retention. Define and test disposal for expired or revoked sessions, invitations and resets, user activity, notification recipients, proxy logs and backups. Review whether phone, location, full IP and raw user-agent data are needed. Test account closure across related records, including residual audit data, while documenting justified retention and preserving legally required records. |
+| Deferred | LGPD · Session and log protection | Finish the administrator credential task. Minimize cached profile fields and assess a Secure, HttpOnly cookie design with suitable SameSite and CSRF controls. Redact invitation and reset tokens from proxy and application logs and review referrer handling and log rotation. Test authorization and cross-account access. |
 | Before real provider use or cloud migration | LGPD · Processors and international transfers | Map what the email provider, Meta/WhatsApp, DNS/ACME services and future hosting actually receive. Review contracts, subprocessors, locations, retention and any applicable international transfer mechanism. Validate the record of WhatsApp opt-in and withdrawal if consent is the legal basis. Verify tenant isolation before shared hosting. |
 | Before pilot with real users | LGPD · Incident response and recovery | Assign a responsible person and document detection, containment, session and secret revocation, risk assessment, required notices and the incident register under ANPD Resolution 15/2024. Exercise the procedure and define backup protection and disposal for the future product. |
 
@@ -45,8 +47,7 @@ Review references: [LGPD, consolidated text](https://www2.camara.leg.br/legin/fe
 ## Next tasks in order
 
 1. Replace the factory administrator credential and verify secure rotation.
-2. Prepare the LGPD data inventory and address token redaction in access logs before enabling email invitations or password reset delivery.
-3. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
+2. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
 
 ### Waiting on a test or external input
 
