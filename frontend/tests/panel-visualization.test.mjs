@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { visualizationFor, visualizationError, gaugeReading, gaugeColor, gaugeFraction, gaugeSegments, gaugeArc } from '../src/composables/panelVisualization.ts';
+import { visualizationFor, visualizationError, gaugeReading, reduceSeries, gaugeColor, gaugeFraction, gaugeSegments, gaugeArc } from '../src/composables/panelVisualization.ts';
 import { chartDefinition, alignRows, processingFor } from '../src/composables/dashboardUtils.ts';
 const config = changes => visualizationFor({ visualization: { type: 'gauge', ...changes } });
 
@@ -51,4 +51,15 @@ test('invalid scales, calculations, colors and thresholds are rejected without a
   for (const change of [{min:2,max:2},{min:NaN},{min:-1e308,max:1e308},{reducer:'sum'},{color:'red'},{showThresholds:'yes'},{thresholds:[{value:90,color:'#ff0000'},{value:80,color:'#ffff00'}]},{thresholds:[{value:null,color:'#ff0000'}]},{series:4}]) assert.ok(visualizationError({visualization:config(change)}), JSON.stringify(change));
   assert.ok(visualizationError({visualization:{type:'unknown'}}));
   assert.equal(visualizationError({visualization:config({thresholds:[]})}), '');
+});
+
+test('bar gauges reduce each series independently and tables have validated defaults', () => {
+  const data = [[1, 2, 3], [1, null, 5], [10, 0, null]];
+  const bar = config({ type: 'bar-gauge', orientation: 'vertical', reducer: 'mean' });
+  assert.equal(visualizationError({ visualization: bar }), '');
+  assert.deepEqual(['cell', 'cell'].map((_, index, labels) => reduceSeries(data, labels, bar, index).value), [3, 5]);
+  assert.ok(visualizationError({ visualization: { ...bar, orientation: 'diagonal' } }));
+  assert.equal(visualizationFor({ visualization: { type: 'table' } }).pageSize, 25);
+  assert.equal(visualizationError({ visualization: { type: 'table', tableOrder: 'oldest' } }), '');
+  assert.ok(visualizationError({ visualization: { type: 'table', pageSize: 500 } }));
 });

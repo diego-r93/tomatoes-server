@@ -6,12 +6,24 @@ export type SeriesStyle = Omit<uPlot.Series, 'stroke' | 'fill' | 'label'> & { la
 export interface ChartOptions {
   chartTitle?: string;
   unit?: string;
+  description?: string;
+  transparent?: boolean;
+  lineStyle?: 'linear' | 'step' | 'bars';
+  tooltipMode?: 'all' | 'nearest' | 'hidden';
+  legendPosition?: 'bottom' | 'right';
+  legendMode?: 'list' | 'values';
+  axisPlacement?: 'left' | 'right' | 'hidden';
+  axisLabel?: string;
+  showGrid?: boolean;
   series?: SeriesStyle[];
   axes?: { scale?: string }[];
 }
 
 export interface VisualizationSettings {
-  type: 'time-series' | 'gauge' | 'stat';
+  type: 'time-series' | 'gauge' | 'stat' | 'bar-gauge' | 'table';
+  orientation: 'horizontal' | 'vertical';
+  pageSize: 10 | 25 | 50;
+  tableOrder: 'newest' | 'oldest';
   reducer: 'last' | 'mean' | 'min' | 'max';
   series: string | null;
   min: number;

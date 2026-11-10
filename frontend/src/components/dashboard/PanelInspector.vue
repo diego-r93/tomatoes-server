@@ -4,7 +4,7 @@
       <header class="inspector-heading"><div><h1>{{ t("Inspect:") }} {{ snapshot.chart.options.chartTitle }}</h1><p>{{ summary }} {{ t("· Snapshot from") }} {{ capturedAt }}</p></div><v-btn icon="mdi-close" variant="text" :aria-label="t('Close inspector')" @click="emit('close')"/></header>
       <v-tabs v-model="tab" color="primary" class="inspector-tabs"><v-tab v-for="name in inspectorTabs" :key="name" :value="name">{{ t(name) }}</v-tab></v-tabs>
       <div class="inspector-body">
-        <v-alert v-if="snapshot.result.error || snapshot.result.loading" type="warning" variant="tonal" class="mb-4">{{ t(snapshot.result.error || 'A refresh was in progress when this snapshot was opened.') }} {{ snapshot.result.data?.[0]?.length ? t('The last loaded samples are shown.') : '' }}</v-alert>
+        <v-alert v-if="snapshot.result.error || snapshot.result.loading" type="warning" variant="tonal" class="mb-4">{{ t(snapshot.result.error || 'A refresh was in progress when this snapshot was opened.') }} {{ (snapshot.result.data?.[0]?.length || snapshot.result.rawRows?.length) ? t('The last loaded samples are shown.') : '' }}</v-alert>
         <template v-if="tab === 'Data'">
           <div class="data-toolbar"><div class="data-options"><v-select v-model="source" :label="t('Data source')" :items="[{title:t('Chart data'),value:'chart'},{title:t('Query response'),value:'response'}]" variant="outlined" hide-details/><v-switch v-if="source === 'chart'" v-model="formatted" :label="t('Formatted values')" color="primary" hide-details/><v-switch v-model="excelCsv" :label="t('Excel-compatible CSV')" color="primary" hide-details/></div><div class="download-actions"><v-btn prepend-icon="mdi-file-delimited-outline" variant="outlined" :disabled="!table.rows.length || exporting" @click="exportData('csv')">{{ t("Download CSV") }}</v-btn><v-btn prepend-icon="mdi-microsoft-excel" color="primary" :disabled="!table.rows.length || exporting" :loading="exporting" @click="exportData('xlsx')">{{ t("Download Excel") }}</v-btn></div></div>
           <p class="inspector-note">{{ t(source === 'chart' ? 'Chart data includes the panel transformations. Unformatted exports keep numeric values and full precision.' : 'Original rows returned by the executed Flux query, before panel transformations.') }} {{ t("Downloads include all") }} {{ table.rows.length.toLocaleString('en-US') }} {{ t("rows in this snapshot.") }}</p>
@@ -46,7 +46,7 @@ type JsonSource = 'panel' | InspectionSource | 'request';
 const props = defineProps<{ snapshot: PanelInspectionSnapshot }>();
 const emit = defineEmits<{ close: [] }>();
 const tab = ref<(typeof inspectorTabs)[number]>('Data');
-const source = ref<InspectionSource>('chart');
+const source = ref<InspectionSource>(props.snapshot.chart.visualization?.type === 'table' ? 'response' : 'chart');
 const jsonSource = ref<JsonSource>('panel');
 const formatted = ref(false);
 const excelCsv = ref(false);

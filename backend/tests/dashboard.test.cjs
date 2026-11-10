@@ -33,3 +33,25 @@ test('Stat settings round-trip without samples; invalid age limits and options a
  assert.equal(validateCharts([{...panel,visualization:{type:'stat'}}]).length,1);
  for(const update of [{sparkline:1},{staleAfterSeconds:0},{staleAfterSeconds:1.5},{staleAfterSeconds:604801},{reducer:'sum'},{series:42},{color:'red'}]) assert.throws(()=>validateCharts([{...panel,visualization:{...visualization,...update}}]));
 });
+
+test('bar gauge and table options round-trip and reject unsupported settings', () => {
+  const bar = {
+    ...original[0],
+    visualization: { type: 'bar-gauge', orientation: 'vertical', min: -10, max: 50 },
+    options: { ...original[0].options, description: 'Compare cells', transparent: true },
+  };
+  const table = {
+    ...original[1],
+    visualization: { type: 'table', pageSize: 50, tableOrder: 'oldest' },
+  };
+  assert.deepEqual(validateDashboard({ name: 'Panels', charts: [bar, table] }).charts, [bar, table]);
+  for (const [panel, options] of [
+    [bar, { orientation: 'diagonal' }],
+    [bar, { max: -20 }],
+    [table, { pageSize: 100 }],
+    [table, { tableOrder: 'random' }],
+  ]) {
+    assert.throws(() => validateCharts([{ ...panel, visualization: { ...panel.visualization, ...options } }]));
+  }
+  assert.throws(() => validateCharts([{ ...bar, options: { ...bar.options, legendMode: 'other' } }]));
+});

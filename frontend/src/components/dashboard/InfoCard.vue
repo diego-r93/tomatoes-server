@@ -1,8 +1,8 @@
 <template>
   <AppPageHeader :height="dashboard && mobile ? 120 : 56" class="dashboard-appbar">
     <div class="dashboard-topbar">
-      <div class="dashboard-breadcrumb"><v-icon icon="mdi-view-dashboard-outline" size="19"/><router-link to="/dashboard" :aria-label="t('Back to dashboards')">{{ dashboard ? dashboard.folder : t('Dashboards') }}</router-link><template v-if="dashboard"><span>/</span><span class="dashboard-name">{{ dashboard.name }}</span><span v-if="dirty" class="unsaved-dot" :aria-label="t('Unsaved changes')" :title="t('Unsaved changes')" /></template></div>
-      <div v-if="dashboard" class="dashboard-controls">
+      <div class="dashboard-breadcrumb"><v-icon icon="mdi-view-dashboard-outline" size="19"/><router-link to="/dashboard" :aria-label="t('Back to dashboards')">{{ dashboard ? dashboard.folder : t('Dashboards') }}</router-link><template v-if="dashboard"><span>/</span><span class="dashboard-name">{{ dashboard.name }}</span><template v-if="editingRoute"><span>/</span><span>{{ t(editor?.isNew ? "Add panel" : "Edit panel") }}</span></template><span v-if="dirty" class="unsaved-dot" :aria-label="t('Unsaved changes')" :title="t('Unsaved changes')" /></template></div>
+      <div v-if="dashboard && !editingRoute" class="dashboard-controls">
         <v-btn v-if="canManage" icon="mdi-chart-box-plus-outline" variant="outlined" :aria-label="t('Add panel')" :title="t('Add panel')" @click="openEditor()"/>
         <v-btn v-if="canManage" icon="mdi-content-save-outline" variant="outlined" :color="dirty?'primary':undefined" :disabled="!dirty" :loading="saving" :aria-label="t('Save dashboard')" :title="t('Save dashboard')" @click="save"/>
         <v-btn v-if="canManage" icon="mdi-cog-outline" variant="outlined" :aria-label="t('Dashboard settings')" :title="t('Dashboard settings')" @click="openSettings"/>
@@ -18,6 +18,13 @@
     <v-alert v-if="error" type="error" variant="tonal" closable class="mb-5" @click:close="error=''">{{ t(error) }}</v-alert>
     <v-alert v-if="notice" type="success" variant="tonal" closable class="mb-5" @click:close="notice=''">{{ t(notice) }}</v-alert>
     <div v-if="loading" class="app-loading-state"><v-progress-circular indeterminate color="secondary"/><p>{{ t("Loading dashboards…") }}</p></div>
+    <PanelEditor v-else-if="editor" :key="route.path" ref="panelEditor" :chart="editor.chart" :is-new="editor.isNew" :bucket="dashboardSettings.bucket" :range="range" :window="currentWindow" :timezone="dashboardSettings.timezone" @close="closeEditor" @apply="applyPanel">
+      <template #time-range><DashboardTimeRange v-model="range" :timezone="dashboardSettings.timezone"/></template>
+    </PanelEditor>
+    <v-alert v-else-if="editingRoute && dashboard" type="warning" variant="tonal">
+      {{ t(canManage ? 'Panel not found.' : 'Only administrators can edit panels.') }}
+      <v-btn variant="text" @click="closeEditor">{{ t('Back to dashboard') }}</v-btn>
+    </v-alert>
     <template v-else-if="!route.params.dashboardId">
       <header class="app-page-heading"><div><h1>{{ t("Dashboards") }}</h1><p>{{ t("Keep server health and growing systems in their own dashboards.") }}</p></div><div class="app-action-row"><v-btn variant="outlined" prepend-icon="mdi-refresh" @click="load">{{ t("Refresh") }}</v-btn><v-btn v-if="canManage" variant="outlined" prepend-icon="mdi-import" @click="importInput?.click()">{{ t("Import charts") }}</v-btn><v-btn v-if="canManage" prepend-icon="mdi-view-grid-plus" color="primary" @click="createDashboard">{{ t("New dashboard") }}</v-btn></div></header>
       <div class="library-filters"><v-text-field v-model="search" :label="t('Search dashboards, descriptions or tags')" prepend-inner-icon="mdi-magnify" variant="outlined" hide-details clearable/><v-select v-model="folder" :items="[{title:t('All folders'),value:'All folders'},...folders.map(value=>({title:value,value}))]" :label="t('Folder')" variant="outlined" hide-details/></div>
@@ -58,7 +65,6 @@
     </v-card>
   </v-dialog>
   <PanelInspector v-if="inspection" :snapshot="inspection" @close="inspection=null"/>
-  <PanelEditor v-if="editor" :chart="editor.chart" :is-new="editor.isNew" :bucket="dashboardSettings.bucket" :range="range" :window="currentWindow" :timezone="dashboardSettings.timezone" @close="editor=null" @apply="applyPanel"/>
   <v-dialog v-model="settingsOpen" max-width="1040" scrollable><v-card v-if="settingsDraft"><v-card-title>{{ t("Dashboard settings") }}</v-card-title><v-card-text><div class="settings-layout"><nav><v-btn v-for="name in settingsTabs" :key="name" :variant="settingsTab===name?'tonal':'text'" @click="settingsTab=name">{{ t(name) }}</v-btn></nav><div class="settings-fields"><template v-if="settingsTab==='General'"><label>{{ t("Name") }}<input v-model="settingsDraft.name" maxlength="160"></label><label>{{ t("Description") }}<textarea v-model="settingsDraft.description" rows="3" maxlength="2000"/></label><label>{{ t("Folder") }}<input v-model="settingsDraft.folder" maxlength="100" list="dashboard-folders"><datalist id="dashboard-folders"><option v-for="name in folders" :key="name">{{ name }}</option></datalist></label><label>{{ t("Tags, separated by commas") }}<input v-model="tagText"></label></template><template v-else-if="settingsTab==='Time options'"><label>{{ t("Timezone") }}<select v-model="settingsDraft.settings.timezone"><option value="Browser">{{ t("Browser") }}</option><option>UTC</option><option>America/Sao_Paulo</option></select></label><label>{{ t("Default time range") }}<select v-model="settingsDraft.settings.range"><option v-for="[name,value] in timeRanges" :key="value" :value="value">{{ t(name) }}</option></select></label><label>{{ t("Default auto refresh") }}<select v-model="settingsDraft.settings.refresh" :aria-label="t('Default auto refresh')"><option v-for="value in refreshIntervals" :key="value" :value="value">{{ t(value) }}</option></select></label><label>{{ t("Available refresh intervals, separated by commas") }}<input v-model="intervalText"></label><label class="check"><input v-model="settingsDraft.settings.hideTimePicker" type="checkbox"> {{ t("Hide time picker") }}</label><label class="check"><input v-model="settingsDraft.settings.pauseHidden" type="checkbox"> {{ t("Pause refresh when this browser tab is hidden") }}</label></template><template v-else-if="settingsTab==='Data defaults'"><label>{{ t("Default bucket") }}<input v-model="settingsDraft.settings.bucket"></label><p class="muted">{{ t("Used for new panels. Existing Flux queries keep their own bucket and tag filters.") }}</p></template><pre v-else>{{ JSON.stringify(settingsDraft,null,2) }}</pre></div></div><v-alert v-if="settingsError" type="error" variant="tonal" class="mt-4">{{ t(settingsError) }}</v-alert></v-card-text><v-card-actions><v-spacer/><v-btn @click="settingsOpen=false">{{ t("Cancel") }}</v-btn><v-btn color="primary" variant="flat" @click="applySettings">{{ t("Apply settings") }}</v-btn></v-card-actions></v-card></v-dialog>
   <v-dialog :model-value="!!dialog" max-width="520" persistent><v-card v-if="dialog"><v-card-title>{{ t(dialogTitle) }}</v-card-title><v-card-text><template v-if="dialog.kind==='remove'">{{ t('Remove {name} from this dashboard? Measurements in InfluxDB stay unchanged. Save dashboard to keep the change.',{name:dialog.chart.options.chartTitle}) }}</template><template v-else-if="dialog.kind==='delete-dashboard'">{{ t('Delete {name} and its panel definitions? Measurements in InfluxDB stay unchanged. This cannot be undone.',{name:dialog.item.name}) }}</template><template v-else-if="dialog.kind==='new'"><label class="new-name">{{ t("Dashboard name") }}<input v-model="newName" maxlength="160" @keydown.enter="confirmDialog"></label></template><template v-else>{{ t("Discard unsaved changes? You can export your draft before leaving.") }}</template></v-card-text><v-card-actions><v-spacer/><v-btn @click="cancelDialog">{{ t("Cancel") }}</v-btn><v-btn v-if="dialog.kind==='leave'" variant="outlined" @click="exportCurrent">{{ t("Export draft") }}</v-btn><v-btn color="primary" variant="flat" :loading="saving" @click="confirmDialog">{{ t(dialog.kind==='new'?'Create dashboard':dialog.kind==='remove'?'Remove panel':dialog.kind==='delete-dashboard'?'Delete dashboard':'Discard changes') }}</v-btn></v-card-actions></v-card></v-dialog>
 </template>
@@ -105,7 +111,17 @@ const range = ref<DashboardRange>('-1h');
 const refresh = ref('Off');
 const focused = ref<string | null>(null);
 const inspection = ref<PanelInspectionSnapshot | null>(null);
-const editor = ref<{ chart: ChartPanelDefinition; isNew: boolean } | null>(null);
+const panelEditor = ref<InstanceType<typeof PanelEditor> | null>(null);
+const editingRoute = computed(() => Boolean(route.params.panelEditor));
+const editor = computed(() => {
+  if (!editingRoute.value || !dashboard.value || !canManage) return null;
+  const id = route.params.panelId;
+  if (typeof id === 'string' && id) {
+    const chart = chartById(id);
+    return chart ? { chart, isNew: false } : null;
+  }
+  return { chart: newChart(dashboard.value.charts), isNew: true };
+});
 const dialog = ref<DashboardDialog | null>(null);
 const importInput = ref<HTMLInputElement | null>(null);
 const settingsDraft = ref<(DashboardDocument & { settings: DashboardSettings }) | null>(null);
@@ -186,7 +202,6 @@ async function load() {
   abortQueries();
   loading.value = true;
   error.value = '';
-  editor.value = null;
   focused.value = null;
   inspection.value = null;
 
@@ -205,12 +220,16 @@ async function load() {
       if (route.query.panel) focused.value = String(route.query.panel);
       if (canManage && route.query.edit) {
         const chart = chartById(String(route.query.edit));
-        if (chart) openEditor(chart);
+        if (chart) {
+          await router.replace({ name: 'dashboard-workspace', params: {
+            dashboardId: id, panelEditor: 'panel', panelId: String(chart.id),
+          } });
+        }
       }
       await nextTick();
       if (serial === loadSerial) {
         loading.value = false;
-        void refreshData();
+        if (!editingRoute.value) void refreshData();
       }
     } else {
       const { data } = await api.list();
@@ -278,7 +297,8 @@ async function refreshData() {
         );
         if (serial !== fetchSerial) return;
         const durationMs = Math.round(performance.now() - started);
-        const aligned = alignRows(data, processingFor(chart));
+        const tabular = chart.visualization?.type === 'table';
+        const aligned = tabular ? { data: [[], []] as [number[], number[]], labels: [] } : alignRows(data, processingFor(chart));
         results.value[id] = {
           ...aligned,
           rawRows: data,
@@ -291,7 +311,7 @@ async function refreshData() {
           responseBytes: new TextEncoder().encode(JSON.stringify(data)).length,
           loading: false,
           updated: Date.now(),
-          error: data.length && !aligned.data.slice(1).some(values => values.some(value => value !== null))
+          error: !tabular && data.length && !aligned.data.slice(1).some(values => values.some(value => value !== null))
             ? 'The query returned no numeric values. Check the field type.' : '',
         };
       } catch (issue) {
@@ -408,7 +428,16 @@ async function toggleFullscreen() {
 
 function openEditor(chart?: ChartPanelDefinition) {
   if (!canManage || !dashboard.value) return;
-  editor.value = { chart: chart ? clone(chart) : newChart(dashboard.value.charts), isNew: !chart };
+  focused.value = null;
+  void router.push({ name: 'dashboard-workspace', params: {
+    dashboardId: String(route.params.dashboardId), panelEditor: 'panel', panelId: chart ? String(chart.id) : '',
+  } });
+}
+
+function closeEditor() {
+  void router.replace({ name: 'dashboard-workspace', params: {
+    dashboardId: String(route.params.dashboardId), panelEditor: '', panelId: '',
+  } });
 }
 
 function applyPanel(chart: ChartPanelDefinition) {
@@ -420,8 +449,8 @@ function applyPanel(chart: ChartPanelDefinition) {
   else charts[index] = chart;
   markDirty();
   resetLayout();
-  editor.value = null;
-  void refreshData();
+  panelEditor.value?.acceptDraft();
+  closeEditor();
 }
 
 function confirmRemove(chart: ChartPanelDefinition) {
@@ -620,18 +649,29 @@ function routeGuard() {
 }
 
 function beforeUnload(event: BeforeUnloadEvent) {
-  if (dirty.value) {
+  if (dirty.value || panelEditor.value?.hasUnsavedChanges()) {
     event.preventDefault();
     event.returnValue = '';
   }
 }
 
-onBeforeRouteLeave(routeGuard);
-onBeforeRouteUpdate((to, from) => to.params.dashboardId === from.params.dashboardId || routeGuard());
+function confirmPanelNavigation() {
+  return !panelEditor.value?.hasUnsavedChanges() || window.confirm(t('Discard changes to this panel?'));
+}
+
+onBeforeRouteLeave(() => confirmPanelNavigation() && routeGuard());
+onBeforeRouteUpdate((to, from) => {
+  if (to.path !== from.path && !confirmPanelNavigation()) return false;
+  return to.params.dashboardId === from.params.dashboardId || routeGuard();
+});
 watch(() => route.params.dashboardId, load);
 watch([range, () => dashboardSettings.value.timezone], () => {
+  if (editingRoute.value) return;
   abortQueries();
   void refreshData();
+});
+watch(editingRoute, (editing, wasEditing) => {
+  if (wasEditing && !editing && route.params.dashboardId === dashboard.value?._id) void refreshData();
 });
 watch(refresh, value => {
   clearInterval(timer);

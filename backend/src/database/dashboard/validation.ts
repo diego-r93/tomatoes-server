@@ -5,14 +5,19 @@ import { HttpError } from '../../users/types';
 function validateVisualization(value: any) {
   if (value === undefined) return;
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new HttpError(400, 'Panel visualization must be an object.');
-  const v = { mappings: [], sparkline: true, staleAfterSeconds: 120, type: 'time-series', reducer: 'last', series: null, min: 0, max: 100, color: '#73bf69', showThresholds: true, thresholds: [{ value: 80, color: '#f2cc0c' }, { value: 90, color: '#f2495c' }], ...value };
-  if (!['time-series', 'gauge', 'stat'].includes(v.type)) throw new HttpError(400, 'Unsupported panel visualization.');
-  if (!['gauge','stat'].includes(v.type)) return;
+  const v = { orientation: 'horizontal', pageSize: 25, tableOrder: 'newest', mappings: [], sparkline: true, staleAfterSeconds: 120, type: 'time-series', reducer: 'last', series: null, min: 0, max: 100, color: '#73bf69', showThresholds: true, thresholds: [{ value: 80, color: '#f2cc0c' }, { value: 90, color: '#f2495c' }], ...value };
+  if (!['time-series', 'gauge', 'stat', 'bar-gauge', 'table'].includes(v.type)) throw new HttpError(400, 'Unsupported panel visualization.');
+  if (v.type === 'table') {
+    if (![10, 25, 50].includes(v.pageSize) || !['newest', 'oldest'].includes(v.tableOrder)) throw new HttpError(400, 'Invalid table options.');
+    return;
+  }
+  if (v.type === 'bar-gauge' && !['horizontal', 'vertical'].includes(v.orientation)) throw new HttpError(400, 'Invalid bar orientation.');
+  if (v.type === 'time-series') return;
   if (v.type === 'stat' && (!Array.isArray(v.mappings) || v.mappings.length > 20 || v.mappings.some((m:any,i:number) => !m || !Number.isFinite(m.value) || typeof m.text !== 'string' || !m.text.trim() || m.text.length > 80 || v.mappings.slice(0,i).some((old:any)=>old.value===m.value)))) throw new HttpError(400,'Use up to 20 unique numeric value mappings with nonempty labels.');
   if (v.type === 'stat' && (typeof v.sparkline !== 'boolean' || !Number.isInteger(v.staleAfterSeconds) || v.staleAfterSeconds < 1 || v.staleAfterSeconds > 604800)) throw new HttpError(400, 'Stat requires a sparkline option and a sample age limit from 1 to 604800 seconds.');
   if (!['last', 'mean', 'min', 'max'].includes(v.reducer)) throw new HttpError(400, 'Invalid gauge calculation.');
   if (v.series !== null && (typeof v.series !== 'string' || !v.series || v.series.length > 4096)) throw new HttpError(400, 'Invalid gauge series.');
-  if (v.type === 'gauge' && (![v.min, v.max].every(Number.isFinite) || v.max <= v.min || !Number.isFinite(v.max - v.min))) throw new HttpError(400, 'Gauge maximum must exceed minimum. Both must be finite numbers.');
+  if (v.type !== 'stat' && (![v.min, v.max].every(Number.isFinite) || v.max <= v.min || !Number.isFinite(v.max - v.min))) throw new HttpError(400, 'Gauge maximum must exceed minimum. Both must be finite numbers.');
   const color = (item: unknown) => typeof item === 'string' && /^#[0-9a-f]{6}$/i.test(item);
   if (!color(v.color) || typeof v.showThresholds !== 'boolean') throw new HttpError(400, 'Invalid gauge color or threshold display.');
   if (!Array.isArray(v.thresholds) || v.thresholds.length > 10) throw new HttpError(400, 'Use at most 10 gauge thresholds.');
@@ -30,6 +35,15 @@ export function validateCharts(value: unknown): any[] {
     ids.add(String(chart.id));
     if (typeof chart.query !== 'string' || chart.query.length > 50000 || !chart.options || typeof chart.options !== 'object' || !chart.layout) throw new HttpError(400, 'Each panel needs a query, options and layout.');
     if (typeof chart.options.chartTitle !== 'string' || chart.options.chartTitle.length > 200) throw new HttpError(400, 'Panel titles must contain at most 200 characters.');
+    const { description, transparent, lineStyle, tooltipMode, legendPosition, legendMode, axisPlacement, axisLabel, showGrid } = chart.options;
+    if ((description !== undefined && (typeof description !== 'string' || description.length > 1000))
+      || (axisLabel !== undefined && (typeof axisLabel !== 'string' || axisLabel.length > 100))
+      || [transparent, showGrid].some(option => option !== undefined && typeof option !== 'boolean')
+      || (lineStyle !== undefined && !['linear', 'step', 'bars'].includes(lineStyle))
+      || (tooltipMode !== undefined && !['all', 'nearest', 'hidden'].includes(tooltipMode))
+      || (legendPosition !== undefined && !['bottom', 'right'].includes(legendPosition))
+      || (legendMode !== undefined && !['list', 'values'].includes(legendMode))
+      || (axisPlacement !== undefined && !['left', 'right', 'hidden'].includes(axisPlacement))) throw new HttpError(400, 'Invalid panel display options.');
     for (const key of ['x', 'y', 'w', 'h']) if (!Number.isInteger(chart.layout[key]) || chart.layout[key] < (['w', 'h'].includes(key) ? 1 : 0) || chart.layout[key] > (key === 'w' || key === 'x' ? 12 : 10000)) throw new HttpError(400, 'Panel layout is invalid.');
     if (!Array.isArray(chart.data) || chart.data.length) throw new HttpError(400, 'Save chart definitions with an empty data array. Samples stay in InfluxDB.');
     validateVisualization(chart.visualization);
