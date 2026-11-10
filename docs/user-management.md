@@ -16,6 +16,26 @@ Management routes require an active session, and administrative operations requi
 
 Session and activity timestamps begin with this version. Browser/OS detection is approximate, based on the user agent. The proxy overwrites forwarded IP headers and the backend trusts one proxy hop. Keep the backend behind the configured Nginx proxy.
 
+## Transactional SMTP with Resend
+
+1. Add a dedicated sending subdomain in Resend and add the DNS records displayed for sending. Wait for the domain to be verified. Leave click tracking disabled so invitation and reset links point directly to the portal.
+2. Create an API key with Sending access restricted to the verified subdomain. Put the key in the private root `SMTP_PASS` field on the host.
+3. Set the following values in the root `.env`, substituting the verified domain and the portal URL for your installation.
+
+```dotenv
+APP_PUBLIC_URL=https://app.example.com
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_REQUIRE_TLS=true
+SMTP_AUTH_TYPE=login
+SMTP_FROM=notifications@mail.example.com
+SMTP_USER=resend
+SMTP_PASS=
+```
+
+Recreate the backend after filling the key so Compose reloads the environment. First verify delivery to an address you control. Then use a test account to confirm invitation acceptance, password reset and alert delivery. For a LAN-only portal, open invitation and reset links from the LAN.
+
 ## Personal Outlook / Hotmail sender
 
 Use an existing personal account. No password for the Microsoft account belongs in `SMTP_PASS`. Internet access is needed to authorize and send email, even though invitation links open only on the local network.
