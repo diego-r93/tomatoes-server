@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { createSetupTransport, setProbeLabel, validProbeLabel } = require('../src/mqtt/setupTransport');
+const { createSetupTransport, parseEcParameters, setEcParameters, setProbeLabel, validProbeLabel } = require('../src/mqtt/setupTransport');
 
 const host = 'esp32s3-A00001';
 const message = data => Buffer.from(JSON.stringify(data));
@@ -35,8 +35,9 @@ test('setup saves only a current revision, verifies readback and reconciles a lo
  const { HttpError } = require('../src/users/types');
  let current = { ok: true, rev: 8, readback: { label: 'old' } };
  const writes = [];
- const exchange = async (_id, op, rev, label) => {
+ const exchange = async (_id, op, rev, args) => {
   if (op === 'setup.get') return current;
+  const { label } = args;
   writes.push({ rev, label });
   current = { ok: true, rev: rev + 1, readback: { label } };
   throw new HttpError(504, 'reply timed out');
@@ -56,4 +57,35 @@ test('setup saves only a current revision, verifies readback and reconciles a lo
 test('label validation matches the firmware ASCII and whitespace rules', () => {
  for (const label of ['', 'EC-bancada-01', 'a'.repeat(32), 'EC "A"']) assert.equal(validProbeLabel(label), true);
  for (const label of ['a'.repeat(33), ' EC', 'EC ', 'EC\n', 'EC\t', 'sonda é', null, 2]) assert.equal(validProbeLabel(label), false);
+});
+
+test('EC edits validate wire values and verify omitted fields stayed unchanged', async () => {
+ const initial = { label: 'probe', k: 1, alpha: 0.0214, tdsFactor: 0.47 };
+ const sent = [];
+ let current = { ok: true, rev: 0, readback: initial };
+ const exchange = async (_id, op, rev, args) => {
+  if (op === 'setup.get') return current;
+  assert.equal(op, 'ec.params.set');
+  sent.push(args);
+  current = { ok: true, rev: rev + 1, readback: { ...initial, ...args } };
+  return current;
+ };
+ for (const invalid of [{}, [], null, { k: '1.05' }, { k: 20 }, { alpha: 0.021401 }, { tdsFactor: 0.95 }, { other: 1 }]) {
+  assert.throws(() => parseEcParameters(invalid), { status: 400 });
+ }
+ assert.deepEqual(parseEcParameters({ k: 0.01, alpha: 0, tdsFactor: 0.9 }), { k: 0.01, alpha: 0, tdsFactor: 0.9 });
+ await assert.rejects(setEcParameters(exchange, 'write', 1, { k: 1.05 }), { status: 409 });
+ assert.equal((await setEcParameters(exchange, 'write', 0, { k: 1 })).outcome, 'unchanged');
+ const observed = await setEcParameters(exchange, 'write', 0, { k: 1.05 });
+ assert.deepEqual(sent, [{ k: 1.05 }]);
+ assert.equal(observed.outcome, 'verified');
+ assert.equal(observed.cellConstant, 1.05);
+ assert.equal(observed.temperatureCoefficient, 0.0214);
+ assert.equal(observed.tdsFactor, 0.47);
+ const inconsistentExchange = async (_id, op) => {
+  if (op === 'setup.get') return current;
+  current = { ok: true, rev: 2, readback: { ...initial, k: 1.05, alpha: 0.02, tdsFactor: 0.5 } };
+  return current;
+ };
+ await assert.rejects(setEcParameters(inconsistentExchange, 'write', 1, { alpha: 0.02 }), { status: 504 });
 });

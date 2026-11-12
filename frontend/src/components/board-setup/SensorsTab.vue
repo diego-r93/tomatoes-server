@@ -16,7 +16,7 @@
       <p v-if="sensor.key !== 'sht35' && supported && !settings" class="setup-muted mt-4">{{ t('Read board settings to see the reported values.') }}</p>
       <p v-else-if="sensor.key !== 'sht35' && settings" class="setup-muted mt-4">{{ t('Last read from the board · revision {revision}', { revision: settings.revision }) }}</p>
     </section>
-    <ProbeLabelEditor v-model="settings" :host="board.host" :online="online" :supported="supported" />
+    <ProbeLabelEditor v-model="settings" :host="board.host" :online="online" :supported="supported" :ec-editable="ecEditable" />
   </div>
 </template>
 <script setup lang="ts">
@@ -32,6 +32,7 @@ const supported = computed(() => {
   const caps = props.board.report?.caps;
   return Array.isArray(caps) && caps.includes('setup.v1');
 });
+const ecEditable = computed(() => supported.value && props.board.report?.caps?.includes('setup.ec-params.v1') === true);
 watch(supported, value => { if (!value) settings.value = null; });
 const phCalibration = computed(() => {
   const calibrated = settings.value?.phCalibrated;

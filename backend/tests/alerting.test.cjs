@@ -202,6 +202,8 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
   assert.equal((await req('GET',setupPath)).status,401);
   assert.equal((await req('GET',setupPath,undefined,member.accessToken)).status,403);
   assert.equal((await req('PUT',setupPath+'/ec-label',{revision:0,label:'new'},member.accessToken)).status,403);
+  assert.equal((await req('PUT',setupPath+'/ec-parameters',{revision:0,parameters:{k:1.05}},member.accessToken)).status,403);
+  assert.equal((await req('PUT',setupPath+'/ec-parameters',{revision:0,parameters:{k:20}},admin.accessToken)).status,400);
   assert.equal((await req('PUT',setupPath+'/ec-label',{revision:0,label:' invalid '},admin.accessToken)).status,400);
   assert.equal((await req('POST','/mqtt/',{topic:'esp32s3-A00001/setup/req',message:'{}'},admin.accessToken)).status,400);
   const telegram=(await store.listContacts()).find(contact=>contact.kind==='telegram');

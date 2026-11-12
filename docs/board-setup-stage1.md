@@ -47,7 +47,15 @@ Live Pi validation on esp32s3-07945C read revision 0, verified a temporary name 
 
 The pH card displays whether the firmware uses saved calibration or its theoretical Nernst response. The conductivity card displays the cell constant, temperature coefficient in percent per degree Celsius, and TDS factor. All values come from the same board readback used by the label editor and are marked with its revision. Unsupported or unread values are never interpreted as defaults.
 
-Claude flashed the bench and validated ec.params.set, ph.cal.set and ph.cal.clear over serial. These operations remain to be integrated and verified through the portal.
+Claude flashed the bench and validated ec.params.set, ph.cal.set and ph.cal.clear over serial.
+
+## Conductivity parameter editing
+
+Administrators can edit the cell constant (0.01–10 cm⁻¹), temperature coefficient (0–5 %/°C) and TDS factor (0.40–0.90) after reading a board with setup.v1 and setup.ec-params.v1. The API accepts the coefficient as a fraction per degree Celsius. Supported precision follows board readback (4 decimal places for k, 5 for alpha, 3 for the TDS factor). The API rejects invalid values and stale revisions before publishing a write. The form sends only edited fields. The backend verifies the full EC readback and resulting revision.
+
+The server and frontend are deployed. The bench currently advertises setup.v1 and the portal correctly refuses an EC parameter write until it receives setup.ec-params.v1. A scoped MQTT bench test changed k from 1 to 1.05 at revision 1 and restored k to 1 at revision 2. Alpha 0.0214 and TDS factor 0.47 were preserved. The live API rejected invalid input (400), unauthenticated access (401) and a greenhouse write (409). Backend and frontend production builds, lint, 68 backend tests and 55 frontend tests passed.
+
+The pH write operations and physical calibration remain pending.
 
 ## Next calibration milestone
 

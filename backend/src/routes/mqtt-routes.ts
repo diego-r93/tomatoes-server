@@ -1,7 +1,7 @@
 import { pipeline } from 'node:stream/promises';
 import { pulseHistoryCursor, pumpHistoryCsv, pumpHistoryImported, readHistoryRetention, updateHistoryRetention } from '../mqtt/pumpHistory';
 import { HttpError } from '../users/types';
-import { boardSetupSettings, updateBoardProbeLabel } from '../mqtt/boardSetup';
+import { boardSetupSettings, updateBoardEcParameters, updateBoardProbeLabel } from '../mqtt/boardSetup';
 import { pumpDriverSnapshots } from '../mqtt/pumpDrivers';
 import { changeRegistration, deviceAdmission, listRegisteredDevices } from '../mqtt/deviceRegistry';
 import { queueScheduleSync } from "../mqtt/schedules";
@@ -55,6 +55,10 @@ const mqttRoutes = (app: Express) => {
     }));
     router.put("/setup/:host/ec-label", authenticate, requireAdmin, endpoint(async (req, res) => {
         res.set('Cache-Control', 'no-store').json(await updateBoardProbeLabel(req.params.host as string, req.body, context(res).user));
+    }));
+
+    router.put("/setup/:host/ec-parameters", authenticate, requireAdmin, endpoint(async (req, res) => {
+        res.set('Cache-Control', 'no-store').json(await updateBoardEcParameters(req.params.host as string, req.body, context(res).user));
     }));
 
     router.get("/registry", authenticate, requireAdmin, endpoint(async (_req, res) => { res.json(await listRegisteredDevices()); }));

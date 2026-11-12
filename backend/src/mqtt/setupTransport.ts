@@ -5,7 +5,32 @@ const maxRevision = 0xffffffff;
 const timeoutMessage = 'The board did not reply to setup.';
 const unknownMessage = 'The change could not be verified. Read the settings before saving again.';
 
-export type SetupOperation = 'setup.get' | 'ec.label.set';
+export type SetupOperation = 'setup.get' | 'ec.label.set' | 'ec.params.set';
+type SetupArguments = Record<string, string | number>;
+
+const ecFields = {
+  k: { min: 0.01, max: 10, decimals: 4, readback: 'cellConstant' },
+  alpha: { min: 0, max: 0.05, decimals: 5, readback: 'temperatureCoefficient' },
+  tdsFactor: { min: 0.4, max: 0.9, decimals: 3, readback: 'tdsFactor' },
+} as const;
+type EcKey = keyof typeof ecFields;
+type EcParameters = Partial<Record<EcKey, number>>;
+
+export function parseEcParameters(input: unknown): EcParameters {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new HttpError(400, 'Enter at least one conductivity parameter.');
+  }
+  const entries = Object.entries(input);
+  if (!entries.length) throw new HttpError(400, 'Enter at least one conductivity parameter.');
+  for (const [key, value] of entries) {
+    if (!Object.hasOwn(ecFields, key)) throw new HttpError(400, 'Unknown conductivity parameter.');
+    const { min, max, decimals } = ecFields[key as EcKey];
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max || Number(value.toFixed(decimals)) !== value) {
+      throw new HttpError(400, 'Check the conductivity parameter ranges and decimal places.');
+    }
+  }
+  return Object.fromEntries(entries);
+}
 type Publisher = (topic: string, payload: string) => Promise<unknown>;
 type Reply = { ok: boolean; rev: number; error?: unknown; readback?: unknown };
 type Pending = {
@@ -32,11 +57,11 @@ export function createSetupTransport(timeoutMs = 4000) {
         for (const entry of pending.values()) entry.settle(new HttpError(503, 'Board setup MQTT is unavailable.'));
       }
     },
-    request(host: string, id: string, op: SetupOperation, rev = 0, label?: string): Promise<Reply> {
+    request(host: string, id: string, op: SetupOperation, rev = 0, args?: SetupArguments): Promise<Reply> {
       const send = publish;
       if (!send) throw new HttpError(503, 'Board setup MQTT is unavailable.');
       if (pending.has(host)) throw new HttpError(409, 'A board setup request is already in progress.');
-      const payload = JSON.stringify({ id, op, rev, ...(label === undefined ? {} : { args: { label } }) });
+      const payload = JSON.stringify({ id, op, rev, ...(args === undefined ? {} : { args }) });
       if (Buffer.byteLength(payload) > 255) throw new HttpError(400, 'Board setup request is too large.');
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => settle(new HttpError(504, timeoutMessage)), timeoutMs);
@@ -68,7 +93,7 @@ export function createSetupTransport(timeoutMs = 4000) {
 
 export const setupTransport = createSetupTransport();
 
-type Exchange = (id: string, op: SetupOperation, rev?: number, label?: string) => Promise<Reply>;
+type Exchange = (id: string, op: SetupOperation, rev?: number, args?: SetupArguments) => Promise<Reply>;
 
 export async function readSetup(exchange: Exchange) {
   const reply = await exchange(randomUUID(), 'setup.get');
@@ -84,24 +109,42 @@ export async function readSetup(exchange: Exchange) {
   };
 }
 
-export async function setProbeLabel(exchange: Exchange, id: string, revision: number, label: string) {
-  // Read before writing to check the displayed revision and skip unchanged values.
+type SetupSettings = Awaited<ReturnType<typeof readSetup>>;
+
+async function writeSetup(exchange: Exchange, id: string, revision: number,
+  op: Exclude<SetupOperation, 'setup.get'>, args: SetupArguments,
+  matches: (observed: SetupSettings, previous: SetupSettings) => boolean) {
   const current = await readSetup(exchange);
   if (current.revision !== revision) throw new HttpError(409, 'Board settings changed. Read them again before saving.');
-  if (current.label === label) return { ...current, outcome: 'unchanged' as const };
+  if (matches(current, current)) return { ...current, outcome: 'unchanged' as const };
   let reply: Reply | undefined;
-  try { reply = await exchange(id, 'ec.label.set', revision, label); } catch (error) {
+  try { reply = await exchange(id, op, revision, args); } catch (error) {
     if (!(error instanceof HttpError) || ![503, 504].includes(error.status)) throw error;
   }
   if (reply && !reply.ok) {
     if (reply.error === 'revision conflict') throw new HttpError(409, 'Board settings changed. Read them again before saving.');
-    if (reply.error !== 'readback mismatch') throw new HttpError(502, 'The board rejected the label change.');
+    if (reply.error !== 'readback mismatch') {
+      throw new HttpError(502, op === 'ec.label.set' ? 'The board rejected the label change.' : 'The board rejected the conductivity parameters.');
+    }
   }
   const observed = await readSetup(exchange).catch(() => {
     throw new HttpError(504, unknownMessage);
   });
-  if (observed.revision !== revision + 1 || observed.label !== label || (reply?.ok && reply.rev !== observed.revision)) {
+  if (observed.revision !== revision + 1 || !matches(observed, current) || (reply?.ok && reply.rev !== observed.revision)) {
     throw new HttpError(504, unknownMessage);
   }
   return { ...observed, outcome: reply?.ok ? 'verified' as const : 'reconciled' as const };
+}
+
+export function setProbeLabel(exchange: Exchange, id: string, revision: number, label: string) {
+  return writeSetup(exchange, id, revision, 'ec.label.set', { label }, observed => observed.label === label);
+}
+
+export function setEcParameters(exchange: Exchange, id: string, revision: number, parameters: EcParameters) {
+  const keys = Object.keys(ecFields) as EcKey[];
+  return writeSetup(exchange, id, revision, 'ec.params.set', parameters, (observed, previous) =>
+    keys.every(key => {
+      const field = ecFields[key].readback;
+      return observed[field] === (parameters[key] ?? previous[field]);
+    }));
 }
