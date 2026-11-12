@@ -9,7 +9,6 @@ Updated 2026-11-11. Completed features are documented in the commit report and t
 | Waiting for user | Firmware repository and publication | Claude reports local main 3e9bb1b. The bench board runs the pre-commit E1/pH build and the second board remains on 16a5c1c. VMUV retry, pulse telemetry, R9 fixes and the T2 supervisor test were previously completed. Publication waits for the intended GitHub repository and explicit user authorization; do not push firmware meanwhile. |
 | Pending | Battery Bluetooth stability | Repeat a prolonged read-only test with better signal. The collector and Energy dashboard work, but timeouts occurred near -83 dBm. |
 | Partial | ESP32 diagnostic views (T5) | Both boards now have real diagnostic panels. Bench dashboard includes CPU/peaks, heap/PSRAM, MQTT/SPI counters, cpu_other and reported per-task CPU; second-board controller dashboard covers core diagnostics. Consider equivalent per-task views on the second board if needed. Debug-only or below-threshold per-task samples may be absent; absence is not zero. |
-| Inconclusive: archive needed | Historical MQTT disconnects (T6) | Review completed: current broker logs start November 6; no November 2-5 events or archived broker log found. Firmware report dates the seven N1 drops to November 3, not November 4/5. Broker-side reason remains unconfirmed; reopen only with an original archive. See mqtt-disconnect-review.md. |
 | To review | Server account and sudo policy | Audit current MQTT service identities and the Linux sudo policy before proposing changes; the peer handoff may describe an earlier migration state. Preserve SSH/VS Code access. |
 | In progress | Email password reset and alerts | Resend SMTP is active. The test recipient confirmed delivery, invitation link, registration and sign-in. Test password reset with the new account, then confirm delivery of an alert email. |
 | Pending | WhatsApp notifications | Configure the Meta Business account, number, access credentials and approved templates; validate real delivery. |
@@ -51,9 +50,11 @@ Review references: [LGPD, consolidated text](https://www2.camara.leg.br/legin/fe
 ### Waiting on a test or external input
 
 - Calibration awaits firmware bench results. The EC label pilot needs the MQTT request, response, and revision checks coordinated with Claude.
-- Greenhouse and battery checks need physical validation. Historical MQTT disconnects need the original log archive. Firmware publication, pull-based OTA and the next PCB require separate coordination.
+- Greenhouse and battery checks need physical validation. Firmware publication, pull-based OTA and the next PCB require separate coordination.
 
 ### Recently completed
+
+- **Historical MQTT disconnect review closed as inconclusive (T6).** The available Mosquitto logs start on November 6 and do not cover the seven November 3 disconnects. See the [investigation record](mqtt-disconnect-review.md).
 
 - **Email invitations validated with Resend.** The sending domain was verified and the backend authenticated over STARTTLS. The recipient confirmed that the invitation arrived, opened the portal, registered, and signed in.
 
