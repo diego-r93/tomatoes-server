@@ -1,12 +1,15 @@
 # Pending work
 
-Updated 2026-11-11. Completed features are documented in the commit report and their feature guides.
+Updated 2026-11-12. Completed features are documented in the commit report and their feature guides.
 
 | Status | Item | Next step |
 | --- | --- | --- |
-| Pilot deployed and tested | Board setup: sensors and calibration | EC probe label is readable and editable over setup.v1 from the admin portal. Bench verified via live API and MQTT, including rejected invalid input and stale revision, then the original label was restored. The portal shows the settings read back from the board. EC parameter editing is deployed behind the setup.ec-params.v1 capability. The bench advertises setup.ec-params.v1 and setup.ph-cal.v1. Claude verified the EC edit and restoration through the portal; the API confirmed factory values at revision 4. Manual pH coefficient editing and reset are deployed. The live API verified the bench write at revision 5 and restored factory pH and EC settings at revision 6. Firmware rejected stale and out-of-range requests and acknowledged a repeated request without reapplying it. The browser confirmed saving at revision 7 and restoring factory pH at revision 8. Validate missing probes and define raw sample capture before solution-based trials. The greenhouse firmware does not yet support setup.v1. |
+| Pending | Guided pH and EC calibration | The bench firmware supports raw samples and reports stability. Build the guided capture flow, coefficient calculation, and calibration history with solution lot and expiry. Validate on the bench with pH 7 and 4, an optional pH 10 check, and the AKSO 1413 µS/cm standard. |
+| To verify on the bench | EC probe state transitions | State 2 was verified in the dashboard and Board setup. Exercise the return to measuring with a valid solution and verify the other hardware states when reproducible. Automated testing verified suppression of range notifications while a recent probe state is invalid. |
+| Pending | Server GitHub publication | The server branch is ahead of the tracked GitHub branch. Publish the local changes when authorized. |
+| Pending | Raspberry Pi Wi-Fi at the greenhouse | The portal was verified from the main LAN with the Pi on Wi-Fi near the router. Compare signal, packet loss and reconnects after moving the Pi to its intended location. The dashboard already shows RSSI and its history. |
 | In progress | Greenhouse battery validation | esp32s3-1C1250 is installed. On November 9 the portal confirmed the board online and the driver reported actuation for outputs #01–#03 around 15:02 local time. The latest #04 record was from November 8. Continue checking battery operation, scheduled pulses, physical pump operation, driver start/end and recovery. Review the greenhouse alerts after monitoring. |
-| Waiting for user | Firmware repository and publication | Claude reports local main bda68f5, including probe validity, revisioned NVS settings and the release USB fix. The bench has a separate setup.v1 test build and the greenhouse board remains on 16a5c1c. Firmware publication awaits the destination repository and authorization. |
+| Waiting for user | Firmware repository and publication | Claude reports local main 6e87a84, with the EC state update running on bench board esp32s3-07945C. The greenhouse board remains on 16a5c1c. Select the destination repository and authorize publication. |
 | Pending | Battery Bluetooth stability | Repeat a prolonged read-only test with better signal. The collector and Energy dashboard work, but timeouts occurred near -83 dBm. |
 | Partial | ESP32 diagnostic views (T5) | Both boards now have real diagnostic panels. Bench dashboard includes CPU/peaks, heap/PSRAM, MQTT/SPI counters, cpu_other and reported per-task CPU; second-board controller dashboard covers core diagnostics. Consider equivalent per-task views on the second board if needed. Debug-only or below-threshold per-task samples may be absent; absence is not zero. |
 | To review | Server account and sudo policy | Audit current MQTT service identities and the Linux sudo policy before proposing changes; the peer handoff may describe an earlier migration state. Preserve SSH/VS Code access. |
@@ -43,15 +46,22 @@ Review references: [LGPD, consolidated text](https://www2.camara.leg.br/legin/fe
 
 ## Next tasks in order
 
-1. Replace the factory administrator credential and verify secure rotation.
-2. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
+1. Implement guided calibration and schedule the bench session with reference solutions.
+2. Replace the factory administrator credential and verify secure rotation.
+3. Audit the MQTT service identities and sudo grants in read-only mode. Record the current scope and propose changes that preserve SSH and VS Code access.
 
 ### Waiting on a test or external input
 
-- The EC label pilot passed serial and live server-to-board MQTT validation. Physical probe-absence, raw sample capture and calibration with reference solutions remain pending.
+- Guided calibration needs a bench session with reference solutions. EC state 2 is confirmed. The return to measuring and additional fault states still need physical verification.
 - Greenhouse and battery checks need physical validation. Firmware publication, pull-based OTA and the next PCB require separate coordination.
 
 ### Recently completed
+
+- **EC probe state deployed** (`a9d47d8`). The bench reported state 2 over MQTT and the portal displayed it in the dashboard and Board setup. Range alerts suppress notifications for recent invalid states.
+
+- **Manual pH coefficients and EC settings validated.** The portal confirmed the pH test write at revision 7 and factory restoration at revision 8. Claude independently verified the restored settings on serial.
+
+- **Dashboard save confirmation and message history** (`283b2c8`). Chrome verified confirmation, the success notice and the saved message in revision 23. The Raspberry Pi Wi-Fi gauge uses the same panel space as the other gauges.
 
 - **Release USB write timeout fixed in bench testing.** Claude reports firmware commit 0d65346 starts the command ports at the beginning of setup. Eight of eight writes received replies after the fix, compared with one of eight before it. The greenhouse board was not reflashed for this test.
 
