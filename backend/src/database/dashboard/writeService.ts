@@ -7,13 +7,20 @@ export function createDashboard(body: unknown) {
   return insertDashboard(randomUUID(), validateDashboard(body));
 }
 
-export async function updateDashboard(id: string, body: unknown) {
+export async function updateDashboard(id: string, body: unknown, author = '') {
   const revision = (body as { revision?: unknown } | null | undefined)?.revision;
   if (typeof revision !== 'number' || !Number.isInteger(revision)) {
     throw new HttpError(400, 'The dashboard revision is required.');
   }
 
-  const item = await updateDashboardAtRevision(id, revision, validateDashboard(body));
+  const saveMessage = (body as { saveMessage?: unknown }).saveMessage;
+  if (saveMessage !== undefined && (typeof saveMessage !== 'string' || saveMessage.length > 500)) {
+    throw new HttpError(400, 'The change message must have at most 500 characters.');
+  }
+  const entry = typeof saveMessage === 'string'
+    ? { revision: revision + 1, message: saveMessage.trim(), author, savedAt: new Date() }
+    : undefined;
+  const item = await updateDashboardAtRevision(id, revision, validateDashboard(body), entry);
   if (!item) {
     throw new HttpError(409, 'This dashboard changed in another session. Export your draft, then reload before saving.');
   }

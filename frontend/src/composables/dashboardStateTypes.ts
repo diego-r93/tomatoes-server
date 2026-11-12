@@ -33,9 +33,10 @@ export interface DashboardSummary {
 
 export interface DashboardDocument extends DashboardSummary {
   settings?: Partial<DashboardSettings>;
+  saveHistory?: { revision: number; message: string; author: string; savedAt: string }[];
   charts: ChartPanelDefinition[];
 }
 
 export type DashboardWrite = Pick<DashboardDocument, 'name' | 'description' | 'folder' | 'tags' | 'settings'>
   & Partial<Pick<DashboardDocument, '_id' | 'revision' | 'favorite'>>
-  & { charts: unknown[] };
+  & { charts: unknown[]; saveMessage?: string };

@@ -44,7 +44,7 @@ async function main() {
         id: gaugeId,
         query: latestQuery,
         data: [],
-        options: { ...options, chartTitle: 'Wi-Fi RSSI', description: 'Latest Wi-Fi signal in the last two minutes.' },
+        options: { ...options, chartTitle: 'Wi-Fi RSSI' },
         processing: { multiplier: 1, offset: 0, minimum: '', maximum: '', decimals: 0, gaps: 'Gaps' },
         visualization: {
           type: 'gauge', reducer: 'last', min: -100, max: 0,

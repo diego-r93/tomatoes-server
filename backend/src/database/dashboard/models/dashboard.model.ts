@@ -11,6 +11,7 @@ const schema = new mongoose.Schema({
   settings: { type: mongoose.Schema.Types.Mixed, default: {} },
   charts: { type: [mongoose.Schema.Types.Mixed], default: [] },
   revision: { type: Number, default: 1 },
+  saveHistory: { type: [{ _id: false, revision: Number, message: String, author: String, savedAt: Date }], default: [] },
 }, { timestamps: true, versionKey: false, collection: 'dashboards' });
 
 export default mongoose.model('Dashboard', schema);

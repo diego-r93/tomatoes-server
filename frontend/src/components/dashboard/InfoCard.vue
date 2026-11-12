@@ -4,7 +4,7 @@
       <div class="dashboard-breadcrumb"><v-icon icon="mdi-view-dashboard-outline" size="19"/><router-link to="/dashboard" :aria-label="t('Back to dashboards')">{{ dashboard ? dashboard.folder : t('Dashboards') }}</router-link><template v-if="dashboard"><span>/</span><span class="dashboard-name">{{ dashboard.name }}</span><template v-if="editingRoute"><span>/</span><span>{{ t(editor?.isNew ? "Add panel" : "Edit panel") }}</span></template><span v-if="dirty" class="unsaved-dot" :aria-label="t('Unsaved changes')" :title="t('Unsaved changes')" /></template></div>
       <div v-if="dashboard && !editingRoute" class="dashboard-controls">
         <v-btn v-if="canManage" icon="mdi-chart-box-plus-outline" variant="outlined" :aria-label="t('Add panel')" :title="t('Add panel')" @click="openEditor()"/>
-        <v-btn v-if="canManage" icon="mdi-content-save-outline" variant="outlined" :color="dirty?'primary':undefined" :disabled="!dirty" :loading="saving" :aria-label="t('Save dashboard')" :title="t('Save dashboard')" @click="save"/>
+        <v-btn v-if="canManage" icon="mdi-content-save-outline" variant="outlined" :color="dirty?'primary':undefined" :disabled="!dirty" :loading="saving" :aria-label="t('Save dashboard')" :title="t('Save dashboard')" @click="openSave"/>
         <v-btn v-if="canManage" icon="mdi-cog-outline" variant="outlined" :aria-label="t('Dashboard settings')" :title="t('Dashboard settings')" @click="openSettings"/>
         <DashboardTimeRange v-if="!dashboardSettings.hideTimePicker" v-model="range" :timezone="dashboardSettings.timezone"/>
         <v-btn icon="mdi-magnify-minus-outline" variant="outlined" :aria-label="t('Zoom out time range')" :title="t('Zoom out time range')" @click="zoomOut"/>
@@ -63,7 +63,29 @@
     </v-card>
   </v-dialog>
   <PanelInspector v-if="inspection" :snapshot="inspection" @close="inspection=null"/>
-  <v-dialog v-model="settingsOpen" max-width="1040" scrollable><v-card v-if="settingsDraft"><v-card-title>{{ t("Dashboard settings") }}</v-card-title><v-card-text><div class="settings-layout"><nav><v-btn v-for="name in settingsTabs" :key="name" :variant="settingsTab===name?'tonal':'text'" @click="settingsTab=name">{{ t(name) }}</v-btn></nav><div class="settings-fields"><template v-if="settingsTab==='General'"><label>{{ t("Name") }}<input v-model="settingsDraft.name" maxlength="160"></label><label>{{ t("Description") }}<textarea v-model="settingsDraft.description" rows="3" maxlength="2000"/></label><label>{{ t("Folder") }}<input v-model="settingsDraft.folder" maxlength="100" list="dashboard-folders"><datalist id="dashboard-folders"><option v-for="name in folders" :key="name">{{ name }}</option></datalist></label><label>{{ t("Tags, separated by commas") }}<input v-model="tagText"></label></template><template v-else-if="settingsTab==='Time options'"><label>{{ t("Timezone") }}<select v-model="settingsDraft.settings.timezone"><option value="Browser">{{ t("Browser") }}</option><option>UTC</option><option>America/Sao_Paulo</option></select></label><label>{{ t("Default time range") }}<select v-model="settingsDraft.settings.range"><option v-for="[name,value] in timeRanges" :key="value" :value="value">{{ t(name) }}</option></select></label><label>{{ t("Default auto refresh") }}<select v-model="settingsDraft.settings.refresh" :aria-label="t('Default auto refresh')"><option v-for="value in refreshIntervals" :key="value" :value="value">{{ t(value) }}</option></select></label><label>{{ t("Available refresh intervals, separated by commas") }}<input v-model="intervalText"></label><label class="check"><input v-model="settingsDraft.settings.hideTimePicker" type="checkbox"> {{ t("Hide time picker") }}</label><label class="check"><input v-model="settingsDraft.settings.pauseHidden" type="checkbox"> {{ t("Pause refresh when this browser tab is hidden") }}</label></template><template v-else-if="settingsTab==='Data defaults'"><label>{{ t("Default bucket") }}<input v-model="settingsDraft.settings.bucket"></label><p class="muted">{{ t("Used for new panels. Existing Flux queries keep their own bucket and tag filters.") }}</p></template><pre v-else>{{ JSON.stringify(settingsDraft,null,2) }}</pre></div></div><v-alert v-if="settingsError" type="error" variant="tonal" class="mt-4">{{ t(settingsError) }}</v-alert></v-card-text><v-card-actions><v-spacer/><v-btn @click="settingsOpen=false">{{ t("Cancel") }}</v-btn><v-btn color="primary" variant="flat" @click="applySettings">{{ t("Apply settings") }}</v-btn></v-card-actions></v-card></v-dialog>
+  <v-dialog v-model="saveOpen" max-width="520" :persistent="saving">
+    <v-card>
+      <v-card-title>{{ t('Save dashboard') }}</v-card-title>
+      <v-card-text>
+        <v-textarea v-model="saveMessage" :label="t('Change message (optional)')" maxlength="500" counter rows="3" autofocus :disabled="saving"/>
+        <v-alert v-if="saveError" type="error" variant="tonal">{{ t(saveError) }}</v-alert>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer/>
+        <v-btn :disabled="saving" @click="saveOpen=false">{{ t('Cancel') }}</v-btn>
+        <v-btn color="primary" variant="flat" :loading="saving" @click="save">{{ t('Save dashboard') }}</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+  <v-snackbar v-model="saveFeedback" location="top center" color="success" role="status">{{ t(saveStatus) }}</v-snackbar>
+  <v-dialog v-model="settingsOpen" max-width="1040" scrollable><v-card v-if="settingsDraft"><v-card-title>{{ t("Dashboard settings") }}</v-card-title><v-card-text><div class="settings-layout"><nav><v-btn v-for="name in settingsTabs" :key="name" :variant="settingsTab===name?'tonal':'text'" @click="settingsTab=name">{{ t(name) }}</v-btn></nav><div class="settings-fields"><template v-if="settingsTab==='General'"><label>{{ t("Name") }}<input v-model="settingsDraft.name" maxlength="160"></label><label>{{ t("Description") }}<textarea v-model="settingsDraft.description" rows="3" maxlength="2000"/></label><label>{{ t("Folder") }}<input v-model="settingsDraft.folder" maxlength="100" list="dashboard-folders"><datalist id="dashboard-folders"><option v-for="name in folders" :key="name">{{ name }}</option></datalist></label><label>{{ t("Tags, separated by commas") }}<input v-model="tagText"></label></template><template v-else-if="settingsTab==='Time options'"><label>{{ t("Timezone") }}<select v-model="settingsDraft.settings.timezone"><option value="Browser">{{ t("Browser") }}</option><option>UTC</option><option>America/Sao_Paulo</option></select></label><label>{{ t("Default time range") }}<select v-model="settingsDraft.settings.range"><option v-for="[name,value] in timeRanges" :key="value" :value="value">{{ t(name) }}</option></select></label><label>{{ t("Default auto refresh") }}<select v-model="settingsDraft.settings.refresh" :aria-label="t('Default auto refresh')"><option v-for="value in refreshIntervals" :key="value" :value="value">{{ t(value) }}</option></select></label><label>{{ t("Available refresh intervals, separated by commas") }}<input v-model="intervalText"></label><label class="check"><input v-model="settingsDraft.settings.hideTimePicker" type="checkbox"> {{ t("Hide time picker") }}</label><label class="check"><input v-model="settingsDraft.settings.pauseHidden" type="checkbox"> {{ t("Pause refresh when this browser tab is hidden") }}</label></template><template v-else-if="settingsTab==='Data defaults'"><label>{{ t("Default bucket") }}<input v-model="settingsDraft.settings.bucket"></label><p class="muted">{{ t("Used for new panels. Existing Flux queries keep their own bucket and tag filters.") }}</p></template><template v-else-if="settingsTab==='Save history'">
+    <p v-if="!settingsDraft.saveHistory?.length">{{ t('No saves recorded yet.') }}</p>
+    <v-list v-else>
+      <v-list-item v-for="entry in settingsDraft.saveHistory" :key="entry.revision"
+        :title="entry.message || t('No change message')"
+        :subtitle="[t('Revision {revision}', { revision: entry.revision }), entry.author, formatDateTime(entry.savedAt)].filter(Boolean).join(' · ')"/>
+    </v-list>
+  </template><pre v-else>{{ JSON.stringify(settingsDraft,null,2) }}</pre></div></div><v-alert v-if="settingsError" type="error" variant="tonal" class="mt-4">{{ t(settingsError) }}</v-alert></v-card-text><v-card-actions><v-spacer/><v-btn @click="settingsOpen=false">{{ t("Cancel") }}</v-btn><v-btn color="primary" variant="flat" @click="applySettings">{{ t("Apply settings") }}</v-btn></v-card-actions></v-card></v-dialog>
   <v-dialog :model-value="!!dialog" max-width="520" persistent><v-card v-if="dialog"><v-card-title>{{ t(dialogTitle) }}</v-card-title><v-card-text><template v-if="dialog.kind==='remove'">{{ t('Remove {name} from this dashboard? Measurements in InfluxDB stay unchanged. Save dashboard to keep the change.',{name:dialog.chart.options.chartTitle}) }}</template><template v-else-if="dialog.kind==='delete-dashboard'">{{ t('Delete {name} and its panel definitions? Measurements in InfluxDB stay unchanged. This cannot be undone.',{name:dialog.item.name}) }}</template><template v-else-if="dialog.kind==='new'"><label class="new-name">{{ t("Dashboard name") }}<input v-model="newName" maxlength="160" @keydown.enter="confirmDialog"></label></template><template v-else>{{ t("Discard unsaved changes? You can export your draft before leaving.") }}</template></v-card-text><v-card-actions><v-spacer/><v-btn @click="cancelDialog">{{ t("Cancel") }}</v-btn><v-btn v-if="dialog.kind==='leave'" variant="outlined" @click="exportCurrent">{{ t("Export draft") }}</v-btn><v-btn color="primary" variant="flat" :loading="saving" @click="confirmDialog">{{ t(dialog.kind==='new'?'Create dashboard':dialog.kind==='remove'?'Remove panel':dialog.kind==='delete-dashboard'?'Delete dashboard':'Discard changes') }}</v-btn></v-card-actions></v-card></v-dialog>
 </template>
 <script setup lang="ts">
@@ -123,10 +145,15 @@ const editor = computed(() => {
 const dialog = ref<DashboardDialog | null>(null);
 const importInput = ref<HTMLInputElement | null>(null);
 const settingsDraft = ref<(DashboardDocument & { settings: DashboardSettings }) | null>(null);
-const settingsTabs = ['General', 'Time options', 'Data defaults', 'JSON model'] as const;
+const settingsTabs = ['General', 'Time options', 'Data defaults', 'Save history', 'JSON model'] as const;
 const settingsTab = ref<(typeof settingsTabs)[number]>('General');
 const loading = ref(false);
 const saving = ref(false);
+const saveOpen = ref(false);
+const saveMessage = ref('');
+const saveError = ref('');
+const saveFeedback = ref(false);
+const saveStatus = ref('');
 const dirty = ref(false);
 const layoutGesture = ref(false);
 const fetching = ref(false);
@@ -455,14 +482,21 @@ function confirmRemove(chart: ChartPanelDefinition) {
   dialog.value = { kind: 'remove', chart };
 }
 
+function openSave() {
+  saveMessage.value = '';
+  saveError.value = '';
+  saveOpen.value = true;
+}
+
 async function save() {
   const current = dashboard.value;
-  if (!current || saving.value) return;
+  if (!current || !dirty.value || saving.value) return;
   saving.value = true;
-  error.value = '';
+  saveError.value = '';
   try {
     const payload = { ...clone(current), charts: current.charts.map(chartDefinition) };
-    const { data } = await api.save(payload);
+    const { data } = await api.save({ ...payload, saveMessage: saveMessage.value.trim() });
+    saveOpen.value = false;
     const latest = dashboard.value;
     if (!isAlive || latest?._id !== payload._id) return;
 
@@ -471,16 +505,18 @@ async function save() {
     if (unchanged) {
       dashboard.value = data;
       dirty.value = false;
-      notice.value = 'Dashboard saved to MongoDB.';
+      saveStatus.value = 'Dashboard saved.';
       resetLayout();
     } else {
       latest.revision = data.revision;
       latest.updatedAt = data.updatedAt;
+      latest.saveHistory = data.saveHistory;
       markDirty();
-      notice.value = 'Dashboard saved. Newer changes are still unsaved.';
+      saveStatus.value = 'Dashboard saved. Newer changes are still unsaved.';
     }
+    saveFeedback.value = true;
   } catch (issue) {
-    error.value = message(issue);
+    saveError.value = message(issue);
   } finally {
     saving.value = false;
   }

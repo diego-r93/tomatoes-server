@@ -7,10 +7,16 @@ export function insertDashboard(id: string, fields: DashboardFields) {
   return Dashboard.create({ _id: id, ...fields, revision: 1 });
 }
 
-export function updateDashboardAtRevision(id: string, revision: number, fields: DashboardFields) {
+type DashboardSave = { revision: number; message: string; author: string; savedAt: Date };
+
+export function updateDashboardAtRevision(id: string, revision: number, fields: DashboardFields, entry?: DashboardSave) {
   return Dashboard.findOneAndUpdate(
     { _id: id, revision },
-    { $set: fields, $inc: { revision: 1 } },
+    {
+      $set: fields,
+      $inc: { revision: 1 },
+      ...(entry && { $push: { saveHistory: { $each: [entry], $position: 0, $slice: 20 } } }),
+    },
     { new: true },
   ).lean();
 }

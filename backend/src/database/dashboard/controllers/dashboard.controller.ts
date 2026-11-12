@@ -17,7 +17,7 @@ export async function create(req: Request, res: Response) {
   res.status(201).json(await createDashboard(req.body));
 }
 export async function update(req: Request, res: Response) {
-  res.json(await updateDashboard(String(req.params.id), req.body));
+  res.json(await updateDashboard(String(req.params.id), req.body, context(res).user.username));
 }
 export async function remove(req: Request, res: Response) {
   await deleteDashboard(String(req.params.id), Number(req.query.revision));
