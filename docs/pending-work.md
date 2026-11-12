@@ -1,17 +1,17 @@
 # Pending work
 
-Updated 2026-11-10. Completed features are documented in the commit report and their feature guides.
+Updated 2026-11-11. Completed features are documented in the commit report and their feature guides.
 
 | Status | Item | Next step |
 | --- | --- | --- |
-| Paused until Wednesday, 2026-11-11 | Board setup: sensors and calibration | The admin preparation page is deployed. Claude bench-tested synchronized EC excitation and the pH precision fix (firmware local main 3e9bb1b). Resume by agreeing the probe-label persistence and readback pilot (bridge message 29), then validate probe status, raw samples and calibration on the bench. See board-setup-stage1.md. |
+| Awaiting bench validation | Board setup: sensors and calibration | The admin preparation page is deployed. Claude reports local firmware changes for probe validity and revisioned storage with readback. Validate on the bench. The agreed first pilot is the EC probe label. Its MQTT transport and backend-only write permissions are still proposed. See bridge message 57 and board-setup-stage1.md. |
 | In progress | Greenhouse battery validation | esp32s3-1C1250 is installed. On November 9 the portal confirmed the board online and the driver reported actuation for outputs #01–#03 around 15:02 local time. The latest #04 record was from November 8. Continue checking battery operation, scheduled pulses, physical pump operation, driver start/end and recovery. Review the greenhouse alerts after monitoring. |
 | Waiting for user | Firmware repository and publication | Claude reports local main 3e9bb1b. The bench board runs the pre-commit E1/pH build and the second board remains on 16a5c1c. VMUV retry, pulse telemetry, R9 fixes and the T2 supervisor test were previously completed. Publication waits for the intended GitHub repository and explicit user authorization; do not push firmware meanwhile. |
 | Pending | Battery Bluetooth stability | Repeat a prolonged read-only test with better signal. The collector and Energy dashboard work, but timeouts occurred near -83 dBm. |
 | Partial | ESP32 diagnostic views (T5) | Both boards now have real diagnostic panels. Bench dashboard includes CPU/peaks, heap/PSRAM, MQTT/SPI counters, cpu_other and reported per-task CPU; second-board controller dashboard covers core diagnostics. Consider equivalent per-task views on the second board if needed. Debug-only or below-threshold per-task samples may be absent; absence is not zero. |
 | Inconclusive: archive needed | Historical MQTT disconnects (T6) | Review completed: current broker logs start November 6; no November 2-5 events or archived broker log found. Firmware report dates the seven N1 drops to November 3, not November 4/5. Broker-side reason remains unconfirmed; reopen only with an original archive. See mqtt-disconnect-review.md. |
 | To review | Server account and sudo policy | Audit current MQTT service identities and the Linux sudo policy before proposing changes; the peer handoff may describe an earlier migration state. Preserve SSH/VS Code access. |
-| Pending | Email invitations and notifications | Configure the sender and verify real delivery, invitation and password-reset links. Outlook/Hotmail OAuth preparation exists. |
+| In progress | Email password reset and alerts | Resend SMTP is active. The test recipient confirmed delivery, invitation link, registration and sign-in. Test password reset with the new account, then confirm delivery of an alert email. |
 | Pending | WhatsApp notifications | Configure the Meta Business account, number, access credentials and approved templates; validate real delivery. |
 | Pending | Alert threshold review | Confirm crop pH/EC/temperature limits and low battery charge threshold before enabling those rules. Review and resume the paused esp32s3-1C1250 rules after validating the installed greenhouse board. Existing server/driver/BMS rules were validated with current observations. |
 | Planned | User/group board permissions | Define board-level access policies beyond the existing Admin/User roles. |
@@ -50,10 +50,12 @@ Review references: [LGPD, consolidated text](https://www2.camara.leg.br/legin/fe
 
 ### Waiting on a test or external input
 
-- Calibration is paused until Wednesday, 2026-11-11. Start by reviewing the probe-label persistence and readback proposal with Claude.
+- Calibration awaits firmware bench results. The EC label pilot needs the MQTT request, response, and revision checks coordinated with Claude.
 - Greenhouse and battery checks need physical validation. Historical MQTT disconnects need the original log archive. Firmware publication, pull-based OTA and the next PCB require separate coordination.
 
 ### Recently completed
+
+- **Email invitations validated with Resend.** The sending domain was verified and the backend authenticated over STARTTLS. The recipient confirmed that the invitation arrived, opened the portal, registered, and signed in.
 
 - **Server commits published.** GitHub branch `codex/frontend-schedules-refactor` was verified at `6b28a36` after publishing `ed0c77f`, `0035fde`, `ffc88c4` and `6b28a36`.
 
