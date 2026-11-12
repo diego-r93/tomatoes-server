@@ -1,5 +1,11 @@
 export const boardSetupMessages = {
   "pt-BR": {
+    "Measuring": "Medindo",
+    "Probe out of solution or below its measurement range": "Sonda fora da solução ou abaixo da faixa de medição",
+    "Probe disconnected": "Sonda desconectada",
+    "EC chip not responding": "Chip de condutividade sem resposta",
+    "Cell shorted": "Célula em curto",
+    "Diagnostic reading": "Leitura de diagnóstico",
     "pH 7 offset": "Offset em pH 7",
     "Acidic slope (pH 7\u20134)": "Inclinação ácida (pH 7–4)",
     "Alkaline slope (pH 7\u201310)": "Inclinação alcalina (pH 7–10)",
@@ -116,6 +122,12 @@ export const boardSetupMessages = {
     "Future records will include the operator, probe, reference solutions, quality, coefficients and device-confirmed revision. Saving on the server alone will not count as applied.": "Os registros futuros incluirão operador, sonda, soluções de referência, qualidade, coeficientes e revisão confirmada pela placa. Salvar somente no servidor não contará como aplicado."
   },
   "es": {
+    "Measuring": "Midiendo",
+    "Probe out of solution or below its measurement range": "Sonda fuera de la solución o por debajo del rango de medición",
+    "Probe disconnected": "Sonda desconectada",
+    "EC chip not responding": "El chip de conductividad no responde",
+    "Cell shorted": "Celda en cortocircuito",
+    "Diagnostic reading": "Lectura de diagnóstico",
     "pH 7 offset": "Offset en pH 7",
     "Acidic slope (pH 7\u20134)": "Pendiente ácida (pH 7–4)",
     "Alkaline slope (pH 7\u201310)": "Pendiente alcalina (pH 7–10)",

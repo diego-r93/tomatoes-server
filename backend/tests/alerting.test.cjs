@@ -419,3 +419,9 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
   assert((await store.getHistory(0)).some(row=>row.kind==='Firing'));
  });
 });
+
+test('invalid EC probe state clears threshold timing and suppresses notifications', () => {
+ const rule = { enabled: true, since: 1000, latched: true, incidentOpen: true, state: 'Firing' };
+ const next = transition(rule, { health: 'missing', suppressNotification: true, reason: 'Probe dry' }, 2000);
+ assert.deepEqual(next, { state: 'No data', since: null, latched: false, incidentOpen: true, notify: null, reason: 'Probe dry' });
+});

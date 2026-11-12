@@ -7,6 +7,7 @@ export default function dashboardRoutes(app: Express) {
   router.get('/', endpoint(controller.getcharts));
   router.post('/saveCharts', requireAdmin, endpoint(controller.saveCharts));
   router.post('/live', endpoint(controller.livePanel));
+  router.get('/ec-state/:host', endpoint(controller.ecState));
   router.get('/library', endpoint(controller.list));
   router.post('/library', requireAdmin, endpoint(controller.create));
   router.get('/schema', requireAdmin, endpoint(controller.schema));

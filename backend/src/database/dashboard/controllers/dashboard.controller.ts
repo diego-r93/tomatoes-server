@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { validateCharts } from '../validation';
 import { context } from '../../../users/http';
 import { readLivePanel } from '../live';
+import { deviceAdmission, isFactoryHostname } from '../../../mqtt/deviceRegistry';
+import { latestEcState } from '../../influxdb/ecState';
 import { HttpError } from '../../../users/types';
 import { listDashboardSummaries } from '../readRepository';
 import { readDashboard, readDashboardSchema, readLegacyCharts } from '../readService';
@@ -41,6 +43,15 @@ export async function schema(req: Request, res: Response) {
   const measurement = String(req.query.measurement || '');
   const tag = String(req.query.tag || '');
   res.json(await readDashboardSchema(bucket, measurement, tag));
+}
+
+export async function ecState(req: Request, res: Response) {
+  const host = req.params.host;
+  if (!isFactoryHostname(host) || await deviceAdmission(host) !== 'approved') {
+    throw new HttpError(404, 'Board not found.');
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  res.json(await latestEcState(host));
 }
 
 export async function livePanel(req: Request, res: Response) {

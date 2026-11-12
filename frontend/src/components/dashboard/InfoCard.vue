@@ -41,8 +41,8 @@
     </template>
     <template v-else-if="dashboard">
       <div v-if="!dashboard.charts.length" class="app-empty-state app-panel"><h2>{{ t("Start with your first panel") }}</h2><p>{{ t("Browse available measurements or enter your Flux query.") }}</p><v-btn v-if="canManage" color="primary" prepend-icon="mdi-plus" @click="openEditor()">{{ t("Add panel") }}</v-btn></div>
-      <grid-layout v-else-if="!mobile" :layout="layout" :col-num="12" :row-height="26" :margin="[8,8]" :is-draggable="canManage" :is-resizable="canManage" :vertical-compact="true" @update:layout="updateLayout" @layout-updated="updateLayout"><grid-item v-for="{ item, chart } in gridPanels" :key="item.i" v-bind="item" :min-w="3" :min-h="8" drag-allow-from=".chart-header" drag-ignore-from="button,.v-btn" @move="layoutGesture=true" @resize="layoutGesture=true"><DashboardPanel :chart="chart" :result="results[item.i]" :editing="canManage" :timezone="dashboardSettings.timezone" @inspect="openInspector(chart)" @view="focused=item.i" @edit="openEditor(chart)" @remove="confirmRemove(chart)" @move="moveEarlier(item.i)"/></grid-item></grid-layout>
-      <div v-else class="mobile-panels"><DashboardPanel v-for="chart in sortedCharts" :key="chart.id" :chart="chart" :result="results[String(chart.id)]" :editing="canManage" :timezone="dashboardSettings.timezone" @inspect="openInspector(chart)" @view="focused=String(chart.id)" @edit="openEditor(chart)" @remove="confirmRemove(chart)" @move="moveEarlier(String(chart.id))"/></div>
+      <grid-layout v-else-if="!mobile" :layout="layout" :col-num="12" :row-height="26" :margin="[8,8]" :is-draggable="canManage" :is-resizable="canManage" :vertical-compact="true" @update:layout="updateLayout" @layout-updated="updateLayout"><grid-item v-for="{ item, chart } in gridPanels" :key="item.i" v-bind="item" :min-w="3" :min-h="8" drag-allow-from=".chart-header" drag-ignore-from="button,.v-btn" @move="layoutGesture=true" @resize="layoutGesture=true"><DashboardPanel :chart="chart" :result="results[item.i]" :probe-status="panelEcStatus(chart)" :editing="canManage" :timezone="dashboardSettings.timezone" @inspect="openInspector(chart)" @view="focused=item.i" @edit="openEditor(chart)" @remove="confirmRemove(chart)" @move="moveEarlier(item.i)"/></grid-item></grid-layout>
+      <div v-else class="mobile-panels"><DashboardPanel v-for="chart in sortedCharts" :key="chart.id" :chart="chart" :result="results[String(chart.id)]" :probe-status="panelEcStatus(chart)" :editing="canManage" :timezone="dashboardSettings.timezone" @inspect="openInspector(chart)" @view="focused=String(chart.id)" @edit="openEditor(chart)" @remove="confirmRemove(chart)" @move="moveEarlier(String(chart.id))"/></div>
     </template>
     <div v-else class="app-empty-state"><h2>{{ t("Dashboard unavailable") }}</h2><v-btn @click="router.push('/dashboard')">{{ t("Back to dashboards") }}</v-btn></div>
     <input ref="importInput" hidden type="file" accept="application/json,.json" @change="importCharts">
@@ -59,7 +59,7 @@
         </div>
       </header>
       <v-alert v-if="error" type="error" variant="tonal" class="focused-error" role="alert">{{ t(error) }}</v-alert>
-      <div class="focused-chart-content"><DashboardPanel :show-view="false" :chart="focusedChart" :result="results[String(focusedChart.id)]" :timezone="dashboardSettings.timezone" @inspect="openInspector(focusedChart)"/></div>
+      <div class="focused-chart-content"><DashboardPanel :show-view="false" :chart="focusedChart" :result="results[String(focusedChart.id)]" :probe-status="panelEcStatus(focusedChart)" :timezone="dashboardSettings.timezone" @inspect="openInspector(focusedChart)"/></div>
     </v-card>
   </v-dialog>
   <PanelInspector v-if="inspection" :snapshot="inspection" @close="inspection=null"/>
@@ -96,6 +96,7 @@ import { GridItem, GridLayout } from 'grid-layout-plus';
 import { useDisplay } from 'vuetify';
 import Authentication from '@/services/auth';
 import api from '@/services/dashboardDataService';
+import { ecProbeStateLabel } from '@/composables/boardSetupInventory';
 import { runDashboardQuery } from '@/services/dashboardQuery';
 import AppPageHeader from '@/components/navigation/AppPageHeader.vue';
 import { formatDateTime } from '@/composables/dateTime.ts';
@@ -127,6 +128,20 @@ const dashboard = ref<DashboardDocument | null>(null);
 const saved = ref<DashboardDocument | null>(null);
 const results = ref<Partial<Record<string, PanelInspectionResult>>>({});
 const layout = ref<GridPanelLayout[]>([]);
+const ecStates = ref<Record<string, number>>({});
+const ecHosts = computed(() => [...new Set(dashboard.value?.charts.map(chart => ecTopic(chart)?.[1]).filter((host): host is string => Boolean(host)))].sort().join(','));
+
+function ecTopic(chart: ChartPanelDefinition) {
+  return /"sensors\/([A-Za-z0-9._-]+)\/cn0411\/(cond|compensatedCond|tds|rdres|vpp)"/.exec(chart.query);
+}
+
+function panelEcStatus(chart: ChartPanelDefinition) {
+  const topic = ecTopic(chart);
+  if (!topic) return undefined;
+  const code = ecStates.value[topic[1]];
+  if (code === undefined || code === 1) return undefined;
+  return { label: ecProbeStateLabel(code)!, diagnostic: ['rdres', 'vpp'].includes(topic[2]) };
+}
 const range = ref<DashboardRange>('-1h');
 const refresh = ref('Off');
 const focused = ref<string | null>(null);
@@ -697,6 +712,31 @@ onBeforeRouteLeave(() => confirmPanelNavigation() && routeGuard());
 onBeforeRouteUpdate((to, from) => {
   if (to.path !== from.path && !confirmPanelNavigation()) return false;
   return to.params.dashboardId === from.params.dashboardId || routeGuard();
+});
+watch(ecHosts, (hosts, _previous, onCleanup) => {
+  ecStates.value = {};
+  if (!hosts) return;
+  const controller = new AbortController();
+  let checking = false;
+  async function readStates() {
+    if (checking || document.hidden) return;
+    checking = true;
+    const entries = await Promise.allSettled(hosts.split(',').map(async host => {
+      const { data } = await api.ecState(host, controller.signal);
+      return [host, data?.code] as const;
+    }));
+    if (!controller.signal.aborted) {
+      const states: Record<string, number> = {};
+      for (const entry of entries) {
+        if (entry.status === 'fulfilled' && entry.value[1] !== undefined) states[entry.value[0]] = entry.value[1];
+      }
+      ecStates.value = states;
+    }
+    checking = false;
+  }
+  const poll = setInterval(() => void readStates(), 10000);
+  onCleanup(() => { controller.abort(); clearInterval(poll); });
+  void readStates();
 });
 watch(() => route.params.dashboardId, load);
 watch([range, () => dashboardSettings.value.timezone], () => {

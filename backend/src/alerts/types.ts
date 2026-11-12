@@ -2,7 +2,7 @@ import { HttpError, text } from '../users/types';
 export type AlertState = 'Normal' | 'Pending' | 'Firing' | 'No data' | 'Error' | 'Paused';
 export type Source = { kind: 'device_age' | 'wifi' | 'output_on' | 'cpu_temperature' | 'disk_usage' | 'metric' | 'metric_age' | 'pump_driver'; host: string; gpio?: number; pump?: number; condition?: 'failure' | 'missing' | 'short' | 'temperature' | 'supply'; device?: string; path?: string; measurement?: string; field?: string; unit?: string; scale?: number; topic?: string; freshnessSeconds: number };
 export interface Rule { id: number; name: string; source: Source; operator: '>' | '<'; threshold: number; recovery: number; pendingSeconds: number; intervalSeconds: number; repeatSeconds: number; severity: 'Warning' | 'Critical'; contactIds: number[]; enabled: boolean; state: AlertState; since: number | null; latched: boolean; incidentOpen: boolean; value: number | null; sampleAt: number | null; evaluatedAt: number | null; reason: string; revision: number; nextAt: number; lastNotifiedAt: number | null; createdAt: number; }
-export interface Sample { health: 'ok' | 'missing' | 'error'; value?: number; at?: number; reason?: string; }
+export interface Sample { health: 'ok' | 'missing' | 'error'; value?: number; at?: number; reason?: string; suppressNotification?: boolean; }
 export interface Contact { id: number; name: string; kind: 'email' | 'telegram'; recipients: string[]; enabled: boolean; consent: boolean; }
 export const now = () => Date.now();
 export const json = <T>(value: string): T => JSON.parse(value);
@@ -32,6 +32,8 @@ export const unitFor = (source: Source) => ({ device_age:'sec',wifi:'dBm',output
 export function transition(rule: Rule, sample: Sample, time: number): { state: AlertState; since: number | null; latched: boolean; incidentOpen: boolean; notify: string | null; reason: string } {
  let state: AlertState, since = rule.since, latched = rule.latched, reason = sample.reason || '';
  if (!rule.enabled) return { state:'Paused',since:null,latched,incidentOpen:rule.incidentOpen,notify:null,reason:'Evaluation paused.' };
+ if (sample.suppressNotification) return { state:'No data', since:null, latched:false,
+  incidentOpen:rule.incidentOpen, notify:null, reason };
  if (sample.health !== 'ok' || !Number.isFinite(sample.value)) { state = sample.health === 'error' ? 'Error' : 'No data'; since = null; }
  else {
   const value = sample.value!;

@@ -3,6 +3,7 @@ import type { ChartPanelDefinition } from '@/composables/dashboardPanelTypes';
 import type { DashboardDocument, DashboardSummary, DashboardWrite } from '@/composables/dashboardStateTypes';
 
 export default {
+  ecState: (host: string, signal: AbortSignal) => http.get<{ code: number; at: number } | null>('/dashboards/ec-state/' + encodeURIComponent(host), { signal, timeout: 8000 }),
   list: () => http.get<DashboardSummary[]>('/dashboards/library'),
   get: (id: string) => http.get<DashboardDocument>('/dashboards/library/' + encodeURIComponent(id)),
   save: (dashboard: DashboardWrite) => dashboard._id

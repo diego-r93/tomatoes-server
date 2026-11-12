@@ -10,6 +10,7 @@ import { InfluxDB } from '@influxdata/influxdb-client';
 import { access, all, get, run } from '../users/database';
 import { alertsReady } from './database';
 import { Source, Sample } from './types';
+import { ecMeasurementHost, latestEcState } from '../database/influxdb/ecState';
 interface DeviceRow { host:string; payload:string; received_at:number; outputs:string; }
 interface Output { state:boolean|null; since:number|null; }
 export const sourceHealth = { mqttConnected:false, lastDiscovery:null as number|null, lastSample:null as number|null };
@@ -152,6 +153,14 @@ export async function readSource(source:Source,time=Date.now()):Promise<Sample> 
  if(!influxConfigured())return {health:'error',reason:'InfluxDB access is not configured for the backend.'};
  try {
   const influx=new InfluxDB({url:`http://${process.env.DOCKER_INFLUXDB_INIT_HOST}:${process.env.DOCKER_INFLUXDB_INIT_PORT}`,token:process.env.DOCKER_INFLUXDB_INIT_ADMIN_TOKEN,timeout:10000});
+  const ecHost = source.kind === 'metric' && source.measurement === 'mqtt_consumer'
+   ? ecMeasurementHost(source.topic) : undefined;
+  if (ecHost) {
+   const state = await latestEcState(ecHost, time);
+   if (state && state.code !== 1) {
+    return {health:'missing', reason:'The conductivity probe is not measuring.', at:state.at, suppressNotification:true};
+   }
+  }
   const rows=await influx.getQueryApi(process.env.DOCKER_INFLUXDB_INIT_ORG!).collectRows<{_time:string;_value:number}>(metricQuery(source));
   return metricSample(source,rows,time);
  } catch {return {health:'error',reason:'The InfluxDB query failed. Check connectivity and backend credentials.'};}

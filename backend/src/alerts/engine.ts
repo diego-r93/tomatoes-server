@@ -16,7 +16,7 @@ export async function evaluate(rule:Rule,sample:Sample,time=Date.now()) {
   await run('UPDATE alert_rules SET state=?,since=?,latched=?,incident_open=?,value=?,sample_at=?,evaluated_at=?,reason=?,next_at=? WHERE id=?',[next.state,next.since,Number(next.latched),Number(next.incidentOpen),sample.health==='ok'?sample.value??null:null,sample.at??null,time,next.reason,time+rule.intervalSeconds*1000,rule.id]);
   if(rule.state!==next.state)await event(rule.id,rule.name,next.state,`${rule.state} → ${next.state}. ${next.reason}`,time);
   const updated=await ruleRow(rule.id);
-  const repeat=active(next.state)&&(!rule.lastNotifiedAt||time-rule.lastNotifiedAt>=rule.repeatSeconds*1000);
+  const repeat=!sample.suppressNotification&&active(next.state)&&(!rule.lastNotifiedAt||time-rule.lastNotifiedAt>=rule.repeatSeconds*1000);
   if((next.notify||repeat)&&await enqueueNotification(updated,next.notify||next.state,time))await run('UPDATE alert_rules SET last_notified_at=? WHERE id=?',[time,rule.id]);
  },true);
 }

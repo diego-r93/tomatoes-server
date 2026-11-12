@@ -18,6 +18,7 @@ interface SetupReport {
   online?: boolean;
   receivedAt?: number | null;
   caps?: string[];
+  probeState?: { ec?: unknown };
   probes?: Partial<Record<'ph' | 'ec', unknown>>;
   sensors?: Partial<Record<SetupSensor, unknown>>;
   ports?: Record<string, { name?: string; pumperName?: string; gpio?: number | string | null }>;
@@ -39,7 +40,21 @@ export function chipPresence(report: SetupReport | null, sensor: SetupSensor) {
   const value = report?.sensors?.[sensor];
   return value === true ? 'Detected' : value === false ? 'Not detected' : 'Not reported';
 }
+const ecProbeLabels: Record<number, string> = {
+  1: 'Measuring',
+  2: 'Probe out of solution or below its measurement range',
+  3: 'Probe disconnected',
+  4: 'EC chip not responding',
+  5: 'Cell shorted',
+};
+
+export function ecProbeStateLabel(value: unknown) {
+  return typeof value === 'number' ? ecProbeLabels[value] : undefined;
+}
+
 export function reportedProbeValidity(report: SetupReport | null, sensor: SetupSensor) {
+  const state = sensor === 'ec' ? ecProbeStateLabel(report?.probeState?.ec) : undefined;
+  if (state) return report?.online === false ? 'Not reported' : state;
   const value = sensor === 'sht35' ? undefined : report?.probes?.[sensor];
   return value === true ? 'Valid' : value === false ? 'Invalid or absent' : 'Not reported';
 }

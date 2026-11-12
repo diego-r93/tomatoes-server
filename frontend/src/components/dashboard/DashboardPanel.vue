@@ -5,7 +5,8 @@
       <div class="app-action-row"><v-menu><template #activator="{props}"><v-btn v-bind="props" icon="mdi-dots-vertical" size="small" variant="text" :aria-label="t('Panel menu: {name}',{name:chart.options.chartTitle})" /></template><v-list density="compact"><v-list-item v-if="showView" :title="t('View')" prepend-icon="mdi-eye-outline" @click="emit('view')"/><v-list-item :title="t('Inspect')" prepend-icon="mdi-magnify" @click="emit('inspect')"/><v-list-item v-if="editing" :title="t('Edit')" prepend-icon="mdi-square-edit-outline" @click="emit('edit')"/><v-list-item v-if="editing" :title="t('Move earlier')" prepend-icon="mdi-arrow-left" @click="emit('move')"/><v-divider v-if="editing"/><v-list-item v-if="editing" :title="t('Remove')" prepend-icon="mdi-trash-can-outline" @click="emit('remove')"/></v-list></v-menu></div>
     </header>
     <p v-if="chart.options.description" class="chart-description">{{ chart.options.description }}</p>
-    <div class="chart-content"><PanelVisualization v-if="result?.data?.[0]?.length || (result?.updated && !result?.loading && !result?.error && ['stat', 'table', 'bar-gauge'].includes(chart.visualization?.type ?? ''))" :chart="chart" :raw-rows="result?.rawRows" :data="result?.data || [[],[]]" :labels="result?.labels || []" :timezone="timezone"/><div v-else class="chart-empty"><v-progress-circular v-if="result?.loading || (!result?.updated && !result?.error)" indeterminate size="28"/><span>{{ t(result?.loading || (!result?.updated && !result?.error) ? 'Loading data…' : result?.error || 'No numeric data in this time range') }}</span></div></div>
+    <div v-if="probeStatus" class="chart-warning" role="status">{{ t(probeStatus.label) }}<template v-if="probeStatus.diagnostic"> · {{ t('Diagnostic reading') }}</template></div>
+    <div class="chart-content"><PanelVisualization v-if="(!probeStatus || probeStatus.diagnostic || !['stat', 'gauge', 'bar-gauge'].includes(chart.visualization?.type ?? '')) && (result?.data?.[0]?.length || (result?.updated && !result?.loading && !result?.error && ['stat', 'table', 'bar-gauge'].includes(chart.visualization?.type ?? '')))" :chart="chart" :raw-rows="result?.rawRows" :data="result?.data || [[],[]]" :labels="result?.labels || []" :timezone="timezone"/><div v-else class="chart-empty"><v-progress-circular v-if="result?.loading || (!result?.updated && !result?.error)" indeterminate size="28"/><span>{{ t(result?.loading || (!result?.updated && !result?.error) ? 'Loading data…' : result?.error || (probeStatus ? '' : 'No numeric data in this time range')) }}</span></div></div>
     <div v-if="result?.error && (result?.data?.[0]?.length || result?.rawRows?.length)" class="chart-warning" role="status">{{ t(result.error) }} {{ t("· previous samples shown") }}</div>
   </article>
 </template>
@@ -19,6 +20,7 @@ withDefaults(defineProps<{
   chart: ChartPanelDefinition;
   result?: PanelInspectionResult;
   editing?: boolean;
+  probeStatus?: { label: string; diagnostic: boolean };
   showView?: boolean;
   timezone?: string;
 }>(), { result: () => ({}), showView: true, timezone: 'Browser' });
