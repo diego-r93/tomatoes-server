@@ -11,7 +11,6 @@ Updated 2026-11-11. Completed features are documented in the commit report and t
 | Partial | ESP32 diagnostic views (T5) | Both boards now have real diagnostic panels. Bench dashboard includes CPU/peaks, heap/PSRAM, MQTT/SPI counters, cpu_other and reported per-task CPU; second-board controller dashboard covers core diagnostics. Consider equivalent per-task views on the second board if needed. Debug-only or below-threshold per-task samples may be absent; absence is not zero. |
 | To review | Server account and sudo policy | Audit current MQTT service identities and the Linux sudo policy before proposing changes; the peer handoff may describe an earlier migration state. Preserve SSH/VS Code access. |
 | In progress | Email password reset and alerts | Resend SMTP is active. The test recipient confirmed delivery, invitation link, registration and sign-in. Test password reset with the new account, then confirm delivery of an alert email. |
-| In progress | Telegram notifications | Bot and private contact configured on the Pi. The authenticated test endpoint submitted one message, and the recipient confirmed receipt. Attach the contact to an alert rule and validate an automatic notification. |
 | Pending | Alert threshold review | Confirm crop pH/EC/temperature limits and low battery charge threshold before enabling those rules. Review and resume the paused esp32s3-1C1250 rules after validating the installed greenhouse board. Existing server/driver/BMS rules were validated with current observations. |
 | Planned | User/group board permissions | Define board-level access policies beyond the existing Admin/User roles. |
 | Planned | MongoDB replacement or upgrade | Choose a supported database path and data migration before moving away from MongoDB 4.4 compatibility. |
@@ -53,6 +52,8 @@ Review references: [LGPD, consolidated text](https://www2.camara.leg.br/legin/fe
 - Greenhouse and battery checks need physical validation. Firmware publication, pull-based OTA and the next PCB require separate coordination.
 
 ### Recently completed
+
+- **Automatic Telegram notifications.** The monitor evaluated a temporary CPU temperature rule, queued one Firing notification and received Telegram API acceptance on the first attempt. The temporary rule was removed. Ceres Grow Alerts is linked to the existing Raspberry Pi CPU temperature rule with its original trigger and recovery limits. The recipient previously confirmed receipt of the manual test.
 
 - **Historical MQTT disconnect review closed as inconclusive (T6).** The available Mosquitto logs start on November 6 and do not cover the seven November 3 disconnects. See the [investigation record](mqtt-disconnect-review.md).
 
