@@ -4,9 +4,9 @@ Updated 2026-11-11. Completed features are documented in the commit report and t
 
 | Status | Item | Next step |
 | --- | --- | --- |
-| Awaiting bench validation | Board setup: sensors and calibration | The admin preparation page is deployed. Claude reports local firmware changes for probe validity and revisioned storage with readback. Validate on the bench. The agreed first pilot is the EC probe label. Its MQTT transport and backend-only write permissions are still proposed. See bridge message 57 and board-setup-stage1.md. |
+| Firmware serial validated | Board setup: sensors and calibration | Claude validated setup.v1 on the bench over serial, including EC label readback, revision conflicts, duplicate requests and persistence after reboot. Next, add the broker ACL and backend request/reply handling, then verify the pilot over MQTT. Real probe-absence and solution-based calibration tests remain open. The greenhouse firmware does not yet support setup.v1. |
 | In progress | Greenhouse battery validation | esp32s3-1C1250 is installed. On November 9 the portal confirmed the board online and the driver reported actuation for outputs #01–#03 around 15:02 local time. The latest #04 record was from November 8. Continue checking battery operation, scheduled pulses, physical pump operation, driver start/end and recovery. Review the greenhouse alerts after monitoring. |
-| Waiting for user | Firmware repository and publication | Claude reports local main 3e9bb1b. The bench board runs the pre-commit E1/pH build and the second board remains on 16a5c1c. VMUV retry, pulse telemetry, R9 fixes and the T2 supervisor test were previously completed. Publication waits for the intended GitHub repository and explicit user authorization; do not push firmware meanwhile. |
+| Waiting for user | Firmware repository and publication | Claude reports local main bda68f5, including probe validity, revisioned NVS settings and the release USB fix. The bench has a separate setup.v1 test build and the greenhouse board remains on 16a5c1c. Firmware publication awaits the destination repository and authorization. |
 | Pending | Battery Bluetooth stability | Repeat a prolonged read-only test with better signal. The collector and Energy dashboard work, but timeouts occurred near -83 dBm. |
 | Partial | ESP32 diagnostic views (T5) | Both boards now have real diagnostic panels. Bench dashboard includes CPU/peaks, heap/PSRAM, MQTT/SPI counters, cpu_other and reported per-task CPU; second-board controller dashboard covers core diagnostics. Consider equivalent per-task views on the second board if needed. Debug-only or below-threshold per-task samples may be absent; absence is not zero. |
 | To review | Server account and sudo policy | Audit current MQTT service identities and the Linux sudo policy before proposing changes; the peer handoff may describe an earlier migration state. Preserve SSH/VS Code access. |
@@ -48,10 +48,12 @@ Review references: [LGPD, consolidated text](https://www2.camara.leg.br/legin/fe
 
 ### Waiting on a test or external input
 
-- Calibration awaits firmware bench results. The EC label pilot needs the MQTT request, response, and revision checks coordinated with Claude.
+- The EC label pilot passed serial validation. The MQTT pilot needs broker ACLs, backend transport and request/reply validation with Claude. Physical probe-absence and calibration tests are still pending.
 - Greenhouse and battery checks need physical validation. Firmware publication, pull-based OTA and the next PCB require separate coordination.
 
 ### Recently completed
+
+- **Release USB write timeout fixed in bench testing.** Claude reports firmware commit 0d65346 starts the command ports at the beginning of setup. Eight of eight writes received replies after the fix, compared with one of eight before it. The greenhouse board was not reflashed for this test.
 
 - **Automatic Telegram notifications.** The monitor evaluated a temporary CPU temperature rule, queued one Firing notification and received Telegram API acceptance on the first attempt. The temporary rule was removed. Ceres Grow Alerts is linked to the existing Raspberry Pi CPU temperature rule with its original trigger and recovery limits. The recipient previously confirmed receipt of the manual test.
 
