@@ -2,6 +2,16 @@ import type { RegisteredBoard } from './deviceReportTypes';
 
 export type SetupSensor = 'ph' | 'ec' | 'sht35';
 
+export interface BoardSetupSettings {
+  revision: number;
+  label: string;
+  cellConstant: number | null;
+  temperatureCoefficient: number | null;
+  tdsFactor: number | null;
+  phCalibrated: boolean | null;
+  outcome?: 'verified' | 'reconciled' | 'unchanged';
+}
+
 interface SetupReport {
   host: string;
   online?: boolean;

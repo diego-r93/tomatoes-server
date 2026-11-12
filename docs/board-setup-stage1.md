@@ -43,6 +43,12 @@ The backend publishes a non-retained QoS 1 request on <host>/setup/req and reads
 
 Live Pi validation on esp32s3-07945C read revision 0, verified a temporary name at revision 1, rejected invalid input with 400 and a stale revision with 409, then restored the original label at revision 2. The greenhouse board returned 409 for setup. Unauthenticated access returned 401; isolated API tests also verified 403 for non-admin users. Mosquitto ACL reload and topic isolation passed in a test broker. The live broker kept its start time after SIGHUP. Backend and frontend production builds, ESLint, 67 backend tests and 55 frontend tests passed.
 
+## Reported sensor settings
+
+The pH card displays whether the firmware uses saved calibration or its theoretical Nernst response. The conductivity card displays the cell constant, temperature coefficient in percent per degree Celsius, and TDS factor. All values come from the same board readback used by the label editor and are marked with its revision. Unsupported or unread values are never interpreted as defaults.
+
+Claude flashed the bench and validated ec.params.set, ph.cal.set and ph.cal.clear over serial. These operations remain to be integrated and verified through the portal.
+
 ## Next calibration milestone
 
 Verify missing-probe behavior on the assembled bench board. Agree on raw sample capture, stability checks and revisioned coefficient readback with the firmware before testing the pH buffers and Akso 1413 µS/cm solution. Sensor validity comes from reported probe flags. Chip presence alone cannot validate a calibration point.

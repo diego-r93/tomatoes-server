@@ -24,11 +24,11 @@ import { isAxiosError } from 'axios';
 import { onBeforeUnmount, ref } from 'vue';
 import { useLanguage } from '@/composables/useLanguage';
 import { http } from '@/services/http-common';
+import type { BoardSetupSettings } from '@/composables/boardSetupInventory';
 
 const props = defineProps<{ host: string; supported: boolean; online: boolean }>();
 const { t } = useLanguage();
-type Settings = { revision: number; label: string; outcome?: 'verified' | 'reconciled' | 'unchanged' };
-const settings = ref<Settings | null>(null);
+const settings = defineModel<BoardSetupSettings | null>({ required: true });
 const label = ref('');
 const busy = ref<'read' | 'save' | null>(null);
 const notice = ref('');
@@ -45,8 +45,8 @@ async function request(mode: 'read' | 'save') {
   const options = { signal: controller.signal, timeout: 22000 };
   try {
     const response = mode === 'read'
-      ? await http.get<Settings>(path, options)
-      : await http.put<Settings>(path + '/ec-label', { revision: settings.value?.revision, label: label.value }, options);
+      ? await http.get<BoardSetupSettings>(path, options)
+      : await http.put<BoardSetupSettings>(path + '/ec-label', { revision: settings.value?.revision, label: label.value }, options);
     settings.value = response.data;
     label.value = response.data.label;
     if (mode === 'save') notice.value = response.data.outcome === 'unchanged' ? 'The label is already saved.' : 'Probe label verified on the board.';

@@ -1,5 +1,12 @@
 export const boardSetupMessages = {
   "pt-BR": {
+    "Cell constant": "Constante de célula",
+    "Temperature coefficient": "Coeficiente de temperatura",
+    "TDS factor": "Fator TDS",
+    "Saved calibration": "Calibração salva",
+    "Theoretical Nernst response": "Resposta teórica de Nernst",
+    "Read board settings to see the reported values.": "Leia as configurações da placa para ver os valores informados.",
+    "Last read from the board \u00b7 revision {revision}": "Última leitura da placa · revisão {revision}",
     "Calibration is available as a guide. Supported boards can save a conductivity probe label.": "A calibração está disponível como guia. Placas compatíveis podem salvar o nome da sonda de condutividade.",
     "Valid": "Válida",
     "Invalid or absent": "Inválida ou ausente",
@@ -83,6 +90,13 @@ export const boardSetupMessages = {
     "Future records will include the operator, probe, reference solutions, quality, coefficients and device-confirmed revision. Saving on the server alone will not count as applied.": "Os registros futuros incluirão operador, sonda, soluções de referência, qualidade, coeficientes e revisão confirmada pela placa. Salvar somente no servidor não contará como aplicado."
   },
   "es": {
+    "Cell constant": "Constante de celda",
+    "Temperature coefficient": "Coeficiente de temperatura",
+    "TDS factor": "Factor TDS",
+    "Saved calibration": "Calibración guardada",
+    "Theoretical Nernst response": "Respuesta teórica de Nernst",
+    "Read board settings to see the reported values.": "Lee la configuración de la placa para ver los valores informados.",
+    "Last read from the board \u00b7 revision {revision}": "Última lectura de la placa · revisión {revision}",
     "Calibration is available as a guide. Supported boards can save a conductivity probe label.": "La calibración está disponible como guía. Las placas compatibles pueden guardar el nombre de la sonda de conductividad.",
     "Valid": "Válida",
     "Invalid or absent": "No válida o ausente",
