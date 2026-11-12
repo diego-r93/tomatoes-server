@@ -6,7 +6,6 @@ Updated 2026-11-12. Completed features are documented in the commit report and t
 | --- | --- | --- |
 | Pending | Guided pH and EC calibration | The bench firmware supports raw samples and reports stability. Build the guided capture flow, coefficient calculation, and calibration history with solution lot and expiry. Validate on the bench with pH 7 and 4, an optional pH 10 check, and the AKSO 1413 µS/cm standard. |
 | To verify on the bench | EC probe state transitions | State 2 was verified in the dashboard and Board setup. Exercise the return to measuring with a valid solution and verify the other hardware states when reproducible. Automated testing verified suppression of range notifications while a recent probe state is invalid. |
-| Pending | Server GitHub publication | The server branch is ahead of the tracked GitHub branch. Publish the local changes when authorized. |
 | Pending | Raspberry Pi Wi-Fi at the greenhouse | The portal was verified from the main LAN with the Pi on Wi-Fi near the router. Compare signal, packet loss and reconnects after moving the Pi to its intended location. The dashboard already shows RSSI and its history. |
 | In progress | Greenhouse battery validation | esp32s3-1C1250 is installed. On November 9 the portal confirmed the board online and the driver reported actuation for outputs #01–#03 around 15:02 local time. The latest #04 record was from November 8. Continue checking battery operation, scheduled pulses, physical pump operation, driver start/end and recovery. Review the greenhouse alerts after monitoring. |
 | Waiting for user | Firmware repository and publication | Claude reports local main 6e87a84, with the EC state update running on bench board esp32s3-07945C. The greenhouse board remains on 16a5c1c. Select the destination repository and authorize publication. |
@@ -56,6 +55,8 @@ Review references: [LGPD, consolidated text](https://www2.camara.leg.br/legin/fe
 - Greenhouse and battery checks need physical validation. Firmware publication, pull-based OTA and the next PCB require separate coordination.
 
 ### Recently completed
+
+- **Server branch published.** GitHub confirmed the 18 commits from `c14d277` through `823df24` on `codex/frontend-schedules-refactor`.
 
 - **EC probe state deployed** (`a9d47d8`). The bench reported state 2 over MQTT and the portal displayed it in the dashboard and Board setup. Range alerts suppress notifications for recent invalid states.
 
