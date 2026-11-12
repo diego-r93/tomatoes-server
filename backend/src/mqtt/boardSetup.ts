@@ -5,11 +5,12 @@ import type { AuthContext } from '../users/http';
 import { activity } from '../users/store';
 import { HttpError } from '../users/types';
 import { deviceAdmission, isFactoryHostname } from './deviceRegistry';
-import { parseEcParameters, readSetup, setEcParameters, setProbeLabel, setupTransport, validProbeLabel, validRevision } from './setupTransport';
+import { clearPhCalibration, parseEcParameters, parsePhCalibration, readSetup, setEcParameters, setPhCalibration, setProbeLabel, setupTransport, validProbeLabel, validRevision } from './setupTransport';
 import type { SetupOperation } from './setupTransport';
 
 const operations = new Set<string>();
 const ecParametersCapability = 'setup.ec-params.v1';
+const phCalibrationCapability = 'setup.ph-cal.v1';
 
 async function withSetup<T>(host: string, action: (exchange: Parameters<typeof readSetup>[0]) => Promise<T>, capability?: string) {
   if (!isFactoryHostname(host)) throw new HttpError(404, 'Board not found.');
@@ -24,7 +25,9 @@ async function withSetup<T>(host: string, action: (exchange: Parameters<typeof r
         throw new HttpError(409, 'This board firmware does not support setup.');
       }
       if (capability && !device.caps.includes(capability)) {
-        throw new HttpError(409, 'This board firmware does not support editing conductivity parameters.');
+        throw new HttpError(409, capability === phCalibrationCapability
+          ? 'This board firmware does not support editing pH calibration.'
+          : 'This board firmware does not support editing conductivity parameters.');
       }
       return setupTransport.request(host, id, op, rev, args);
     }
@@ -68,4 +71,15 @@ export function updateBoardEcParameters(host: string, input: { parameters?: unkn
   const parameters = parseEcParameters(input?.parameters);
   return auditSetupWrite(host, input?.revision, actor, 'EC parameter change',
     (exchange, id, rev) => setEcParameters(exchange, id, rev, parameters), ecParametersCapability);
+}
+
+export function updateBoardPhCalibration(host: string, input: { calibration?: unknown; revision?: unknown } | undefined, actor: AuthContext['user']) {
+  const calibration = parsePhCalibration(input?.calibration);
+  return auditSetupWrite(host, input?.revision, actor, 'pH coefficient change',
+    (exchange, id, rev) => setPhCalibration(exchange, id, rev, calibration), phCalibrationCapability);
+}
+
+export function clearBoardPhCalibration(host: string, input: { revision?: unknown } | undefined, actor: AuthContext['user']) {
+  return auditSetupWrite(host, input?.revision, actor, 'pH calibration reset',
+    clearPhCalibration, phCalibrationCapability);
 }

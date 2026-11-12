@@ -55,7 +55,15 @@ Administrators can edit the cell constant (0.01–10 cm⁻¹), temperature coeff
 
 The server and frontend are deployed. The portal refused EC writes before the bench reported setup.ec-params.v1. After the capability was added, Claude verified the portal changed k to 1.05 at revision 3 and restored k to 1 at revision 4. The server then confirmed the factory values at revision 4 via a read. The bench also advertises setup.ph-cal.v1. A scoped MQTT bench test changed k from 1 to 1.05 at revision 1 and restored k to 1 at revision 2. Alpha 0.0214 and TDS factor 0.47 were preserved. The live API rejected invalid input (400), unauthenticated access (401) and a greenhouse write (409). Backend and frontend production builds, lint, 68 backend tests and 55 frontend tests passed.
 
-The pH write operations and physical calibration remain pending.
+## pH calibration coefficients
+
+In **Board setup → Sensors**, administrators can read, set or clear the pH coefficients on an approved board that reports both setup.v1 and setup.ph-cal.v1. This is manual coefficient entry for bench use. The offset accepts ±30 mV with up to two decimals. Acid and base slope factors accept 0.85–1.05 with up to four decimals. Clearing restores the firmware's theoretical Nernst response.
+
+PUT /mqtt/setup/:host/ph-calibration and POST /mqtt/setup/:host/ph-calibration/clear use the same revision check, audit and independent readback as the EC editor. The form reloads the reported settings on a conflict. An unconfirmed write requires a new read before saving again.
+
+On esp32s3-07945C, the live API set test coefficients at revision 5 from revision 4 and cleared them at revision 6. The readback confirmed factory pH and EC settings. The firmware acknowledged a repeated request without applying it again and rejected stale and out-of-range requests. The API rejected an invalid offset (400), a stale write (409), a write for the unsupported greenhouse board (409) and a request without a session (401). Both production builds, ESLint, 69 backend tests and 55 frontend tests passed. The browser still needs a manual check of the form.
+
+Guided calibration with the pH 7, 4 and 10 buffers and Akso 1413 µS/cm solution remains pending.
 
 ## Next calibration milestone
 

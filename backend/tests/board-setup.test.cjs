@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { createSetupTransport, parseEcParameters, setEcParameters, setProbeLabel, validProbeLabel } = require('../src/mqtt/setupTransport');
+const { clearPhCalibration, createSetupTransport, parseEcParameters, parsePhCalibration, readSetup, setEcParameters, setPhCalibration, setProbeLabel, validProbeLabel } = require('../src/mqtt/setupTransport');
 
 const host = 'esp32s3-A00001';
 const message = data => Buffer.from(JSON.stringify(data));
@@ -88,4 +88,37 @@ test('EC edits validate wire values and verify omitted fields stayed unchanged',
   return current;
  };
  await assert.rejects(setEcParameters(inconsistentExchange, 'write', 1, { alpha: 0.02 }), { status: 504 });
+});
+
+test('pH requires all coefficients and confirms set and clear through independent readback', async () => {
+ const coefficients = { off: -12.5, acid: 0.97, base: 0.95 };
+ assert.deepEqual(parsePhCalibration(coefficients), coefficients);
+ for (const invalid of [{ off: 0, acid: 1 }, { ...coefficients, extra: 1 }, { ...coefficients, off: 40 },
+  { ...coefficients, acid: 1.2 }, { ...coefficients, off: 0.001 }, { ...coefficients, base: '0.95' }]) {
+  assert.throws(() => parsePhCalibration(invalid), { status: 400 });
+ }
+ let rev = 4;
+ let readback = { label: '', phCalibrated: false };
+ const sent = [];
+ const exchange = async (_id, op, revision, args) => {
+  if (op === 'setup.get') return { ok: true, rev, readback };
+  assert.equal(revision, rev);
+  sent.push({ op, args });
+  readback = op === 'ph.cal.set'
+   ? { label: '', phCalibrated: true, ph: args }
+   : { label: '', phCalibrated: false };
+  return { ok: true, rev: ++rev };
+ };
+ assert.equal((await readSetup(exchange)).ph, null);
+ await assert.rejects(setPhCalibration(exchange, 'test', 3, coefficients), { status: 409 });
+ const saved = await setPhCalibration(exchange, 'test', 4, coefficients);
+ assert.equal(saved.revision, 5);
+ assert.equal(saved.outcome, 'verified');
+ assert.deepEqual(saved.ph, coefficients);
+ const cleared = await clearPhCalibration(exchange, 'test-clear', 5);
+ assert.equal(cleared.revision, 6);
+ assert.equal(cleared.phCalibrated, false);
+ assert.equal(cleared.ph, null);
+ assert.equal((await clearPhCalibration(exchange, 'test-clear', 6)).outcome, 'unchanged');
+ assert.deepEqual(sent, [{ op: 'ph.cal.set', args: coefficients }, { op: 'ph.cal.clear', args: undefined }]);
 });

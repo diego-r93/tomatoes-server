@@ -13,6 +13,7 @@
         <dt>{{ t('Temperature coefficient') }}</dt><dd>{{ numberLabel(settings.temperatureCoefficient == null ? null : settings.temperatureCoefficient * 100) }}<template v-if="settings.temperatureCoefficient != null"> %/°C</template></dd>
         <dt>{{ t('TDS factor') }}</dt><dd>{{ numberLabel(settings.tdsFactor) }}</dd>
       </dl>
+      <PhCalibrationEditor v-if="sensor.key === 'ph'" v-model="settings" :host="board.host" :online="online" :editable="phEditable" />
       <p v-if="sensor.key !== 'sht35' && supported && !settings" class="setup-muted mt-4">{{ t('Read board settings to see the reported values.') }}</p>
       <p v-else-if="sensor.key !== 'sht35' && settings" class="setup-muted mt-4">{{ t('Last read from the board · revision {revision}', { revision: settings.revision }) }}</p>
     </section>
@@ -24,6 +25,7 @@ import { computed, ref, watch } from 'vue';
 import type { BoardSetupSettings, SetupBoard } from '@/composables/boardSetupInventory';
 import { useLanguage } from '@/composables/useLanguage';
 import ProbeLabelEditor from './ProbeLabelEditor.vue';
+import PhCalibrationEditor from './PhCalibrationEditor.vue';
 import { chipPresence, reportedProbeValidity } from '@/composables/boardSetupInventory';
 const props = defineProps<{ board: SetupBoard; online: boolean }>();
 const { language, t } = useLanguage();
@@ -33,6 +35,7 @@ const supported = computed(() => {
   return Array.isArray(caps) && caps.includes('setup.v1');
 });
 const ecEditable = computed(() => supported.value && props.board.report?.caps?.includes('setup.ec-params.v1') === true);
+const phEditable = computed(() => supported.value && props.board.report?.caps?.includes('setup.ph-cal.v1') === true);
 watch(supported, value => { if (!value) settings.value = null; });
 const phCalibration = computed(() => {
   const calibrated = settings.value?.phCalibrated;

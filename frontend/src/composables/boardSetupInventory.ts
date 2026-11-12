@@ -9,6 +9,7 @@ export interface BoardSetupSettings {
   temperatureCoefficient: number | null;
   tdsFactor: number | null;
   phCalibrated: boolean | null;
+  ph: { off: number; acid: number; base: number } | null;
   outcome?: 'verified' | 'reconciled' | 'unchanged';
 }
 

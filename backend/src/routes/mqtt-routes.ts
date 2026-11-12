@@ -1,7 +1,7 @@
 import { pipeline } from 'node:stream/promises';
 import { pulseHistoryCursor, pumpHistoryCsv, pumpHistoryImported, readHistoryRetention, updateHistoryRetention } from '../mqtt/pumpHistory';
 import { HttpError } from '../users/types';
-import { boardSetupSettings, updateBoardEcParameters, updateBoardProbeLabel } from '../mqtt/boardSetup';
+import { boardSetupSettings, clearBoardPhCalibration, updateBoardEcParameters, updateBoardPhCalibration, updateBoardProbeLabel } from '../mqtt/boardSetup';
 import { pumpDriverSnapshots } from '../mqtt/pumpDrivers';
 import { changeRegistration, deviceAdmission, listRegisteredDevices } from '../mqtt/deviceRegistry';
 import { queueScheduleSync } from "../mqtt/schedules";
@@ -59,6 +59,13 @@ const mqttRoutes = (app: Express) => {
 
     router.put("/setup/:host/ec-parameters", authenticate, requireAdmin, endpoint(async (req, res) => {
         res.set('Cache-Control', 'no-store').json(await updateBoardEcParameters(req.params.host as string, req.body, context(res).user));
+    }));
+
+    router.put("/setup/:host/ph-calibration", authenticate, requireAdmin, endpoint(async (req, res) => {
+        res.set('Cache-Control', 'no-store').json(await updateBoardPhCalibration(req.params.host as string, req.body, context(res).user));
+    }));
+    router.post("/setup/:host/ph-calibration/clear", authenticate, requireAdmin, endpoint(async (req, res) => {
+        res.set('Cache-Control', 'no-store').json(await clearBoardPhCalibration(req.params.host as string, req.body, context(res).user));
     }));
 
     router.get("/registry", authenticate, requireAdmin, endpoint(async (_req, res) => { res.json(await listRegisteredDevices()); }));

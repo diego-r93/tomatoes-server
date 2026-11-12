@@ -67,6 +67,15 @@ const error = ref('');
 const controller = new AbortController();
 onBeforeUnmount(() => controller.abort());
 
+function applyReadback(data: BoardSetupSettings) {
+  settings.value = data;
+  label.value = data.label;
+  const { cellConstant, temperatureCoefficient, tdsFactor } = data;
+  ecDraft.k = cellConstant == null ? '' : String(cellConstant);
+  ecDraft.alpha = temperatureCoefficient == null ? '' : String(Number((temperatureCoefficient * 100).toFixed(3)));
+  ecDraft.tdsFactor = tdsFactor == null ? '' : String(tdsFactor);
+}
+
 async function request(mode: 'read' | 'label' | 'ec') {
   if (busy.value || !props.online || !props.supported || (mode !== 'read' && !settings.value)) return;
   if (mode === 'ec' && (!props.ecEditable || !ecAvailable.value || !Object.keys(changedEc.value).length)) return;
@@ -83,12 +92,8 @@ async function request(mode: 'read' | 'label' | 'ec') {
         path + (mode === 'label' ? '/ec-label' : '/ec-parameters'),
         mode === 'label' ? { revision, label: label.value } : { revision, parameters: changedEc.value }, options);
     if (!props.supported || controller.signal.aborted) return;
-    settings.value = response.data;
-    label.value = response.data.label;
-    const { cellConstant, temperatureCoefficient, tdsFactor, outcome } = response.data;
-    ecDraft.k = cellConstant == null ? '' : String(cellConstant);
-    ecDraft.alpha = temperatureCoefficient == null ? '' : String(Number((temperatureCoefficient * 100).toFixed(3)));
-    ecDraft.tdsFactor = tdsFactor == null ? '' : String(tdsFactor);
+    applyReadback(response.data);
+    const { outcome } = response.data;
     if (mode === 'label') notice.value = outcome === 'unchanged' ? 'The label is already saved.' : 'Probe label verified on the board.';
     if (mode === 'ec') notice.value = outcome === 'unchanged' ? 'The conductivity parameters are already saved.' : 'Conductivity parameters verified on the board.';
   } catch (issue) {
@@ -97,6 +102,13 @@ async function request(mode: 'read' | 'label' | 'ec') {
     if (status !== 400) settings.value = null;
     error.value = (isAxiosError<{ message?: string }>(issue) && issue.response?.data?.message)
       || (mode !== 'read' ? 'The change could not be verified. Read the settings before saving again.' : 'Could not read board settings.');
+    if (status === 409 && error.value === 'Board settings changed. Read them again before saving.') {
+      const current = await http.get<BoardSetupSettings>(path, options).catch(() => null);
+      if (current && props.supported && !controller.signal.aborted) {
+        applyReadback(current.data);
+        error.value = 'The board settings changed. Review the values just read from the board.';
+      }
+    }
   } finally {
     busy.value = null;
   }

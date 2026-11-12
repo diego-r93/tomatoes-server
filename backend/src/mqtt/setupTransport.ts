@@ -5,7 +5,7 @@ const maxRevision = 0xffffffff;
 const timeoutMessage = 'The board did not reply to setup.';
 const unknownMessage = 'The change could not be verified. Read the settings before saving again.';
 
-export type SetupOperation = 'setup.get' | 'ec.label.set' | 'ec.params.set';
+export type SetupOperation = 'setup.get' | 'ec.label.set' | 'ec.params.set' | 'ph.cal.set' | 'ph.cal.clear';
 type SetupArguments = Record<string, string | number>;
 
 const ecFields = {
@@ -31,6 +31,30 @@ export function parseEcParameters(input: unknown): EcParameters {
   }
   return Object.fromEntries(entries);
 }
+const phFields = {
+  off: { min: -30, max: 30, decimals: 2 },
+  acid: { min: 0.85, max: 1.05, decimals: 4 },
+  base: { min: 0.85, max: 1.05, decimals: 4 },
+} as const;
+type PhKey = keyof typeof phFields;
+type PhCalibration = Record<PhKey, number>;
+
+function isPhCalibration(value: unknown): value is PhCalibration {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length !== 3) return false;
+  const coefficients = value as Record<string, unknown>;
+  return (Object.keys(phFields) as PhKey[]).every(key => {
+    const { min, max, decimals } = phFields[key];
+    const number = coefficients[key];
+    return typeof number === 'number' && Number.isFinite(number) && number >= min && number <= max &&
+      Number(number.toFixed(decimals)) === number;
+  });
+}
+
+export function parsePhCalibration(value: unknown) {
+  if (!isPhCalibration(value)) throw new HttpError(400, 'Check all three pH coefficients and their decimal places.');
+  return value;
+}
+
 type Publisher = (topic: string, payload: string) => Promise<unknown>;
 type Reply = { ok: boolean; rev: number; error?: unknown; readback?: unknown };
 type Pending = {
@@ -97,22 +121,29 @@ type Exchange = (id: string, op: SetupOperation, rev?: number, args?: SetupArgum
 
 export async function readSetup(exchange: Exchange) {
   const reply = await exchange(randomUUID(), 'setup.get');
-  const readback = reply.readback as { label?: unknown; k?: unknown; alpha?: unknown; tdsFactor?: unknown; phCalibrated?: unknown } | undefined;
+  const readback = reply.readback as { label?: unknown; k?: unknown; alpha?: unknown; tdsFactor?: unknown; phCalibrated?: unknown; ph?: unknown } | undefined;
   if (!reply.ok || !validProbeLabel(readback?.label)) throw new HttpError(502, 'The board did not return valid setup settings.');
-  const { label, k, alpha, tdsFactor, phCalibrated } = readback!;
+  const { label, k, alpha, tdsFactor, phCalibrated, ph } = readback!;
   return {
     revision: reply.rev, label: label as string,
     cellConstant: typeof k === 'number' && Number.isFinite(k) ? k : null,
     temperatureCoefficient: typeof alpha === 'number' && Number.isFinite(alpha) ? alpha : null,
     tdsFactor: typeof tdsFactor === 'number' && Number.isFinite(tdsFactor) ? tdsFactor : null,
     phCalibrated: typeof phCalibrated === 'boolean' ? phCalibrated : null,
+    ph: phCalibrated === true && isPhCalibration(ph) ? ph : null,
   };
 }
 
 type SetupSettings = Awaited<ReturnType<typeof readSetup>>;
+const writeRejected = {
+  'ec.label.set': 'The board rejected the label change.',
+  'ec.params.set': 'The board rejected the conductivity parameters.',
+  'ph.cal.set': 'The board rejected the pH calibration.',
+  'ph.cal.clear': 'The board rejected the pH calibration reset.',
+} as const;
 
 async function writeSetup(exchange: Exchange, id: string, revision: number,
-  op: Exclude<SetupOperation, 'setup.get'>, args: SetupArguments,
+  op: Exclude<SetupOperation, 'setup.get'>, args: SetupArguments | undefined,
   matches: (observed: SetupSettings, previous: SetupSettings) => boolean) {
   const current = await readSetup(exchange);
   if (current.revision !== revision) throw new HttpError(409, 'Board settings changed. Read them again before saving.');
@@ -124,7 +155,7 @@ async function writeSetup(exchange: Exchange, id: string, revision: number,
   if (reply && !reply.ok) {
     if (reply.error === 'revision conflict') throw new HttpError(409, 'Board settings changed. Read them again before saving.');
     if (reply.error !== 'readback mismatch') {
-      throw new HttpError(502, op === 'ec.label.set' ? 'The board rejected the label change.' : 'The board rejected the conductivity parameters.');
+      throw new HttpError(502, writeRejected[op]);
     }
   }
   const observed = await readSetup(exchange).catch(() => {
@@ -147,4 +178,14 @@ export function setEcParameters(exchange: Exchange, id: string, revision: number
       const field = ecFields[key].readback;
       return observed[field] === (parameters[key] ?? previous[field]);
     }));
+}
+
+export function setPhCalibration(exchange: Exchange, id: string, revision: number, calibration: PhCalibration) {
+  return writeSetup(exchange, id, revision, 'ph.cal.set', calibration, observed =>
+    observed.phCalibrated === true && observed.ph?.off === calibration.off &&
+    observed.ph.acid === calibration.acid && observed.ph.base === calibration.base);
+}
+
+export function clearPhCalibration(exchange: Exchange, id: string, revision: number) {
+  return writeSetup(exchange, id, revision, 'ph.cal.clear', undefined, observed => observed.phCalibrated === false);
 }
