@@ -61,7 +61,7 @@ In **Board setup → Sensors**, administrators can read, set or clear the pH coe
 
 PUT /mqtt/setup/:host/ph-calibration and POST /mqtt/setup/:host/ph-calibration/clear use the same revision check, audit and independent readback as the EC editor. The form reloads the reported settings on a conflict. An unconfirmed write requires a new read before saving again.
 
-On esp32s3-07945C, the live API set test coefficients at revision 5 from revision 4 and cleared them at revision 6. The readback confirmed factory pH and EC settings. The firmware acknowledged a repeated request without applying it again and rejected stale and out-of-range requests. The API rejected an invalid offset (400), a stale write (409), a write for the unsupported greenhouse board (409) and a request without a session (401). Both production builds, ESLint, 69 backend tests and 55 frontend tests passed. The browser still needs a manual check of the form.
+On esp32s3-07945C, the live API set test coefficients at revision 5 from revision 4 and cleared them at revision 6. The readback confirmed factory pH and EC settings. The firmware acknowledged a repeated request without applying it again and rejected stale and out-of-range requests. The API rejected an invalid offset (400), a stale write (409), a write for the unsupported greenhouse board (409) and a request without a session (401). Both production builds, ESLint, 69 backend tests and 55 frontend tests passed. The browser verified saving a test offset at revision 7 and clearing it at revision 8, with the theoretical response restored.
 
 Guided calibration with the pH 7, 4 and 10 buffers and Akso 1413 µS/cm solution remains pending.
 

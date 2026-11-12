@@ -127,6 +127,8 @@ services:
       - ${TELEGRAF_CFG_PATH}:/etc/telegraf/telegraf.conf:rw
       # Bleak uses the host BlueZ service through D-Bus.
       - ${BATTERY_DBUS_PATH:-/run/dbus}:/run/dbus:ro
+      # Read host Wi-Fi statistics from the host network namespace.
+      - /proc/1/net/wireless:/host-proc/net/wireless:ro
       # Use the Raspberry Pi utility without modifying the host executable.
       - /usr/bin/vcgencmd:/usr/bin/vcgencmd:ro
     devices:
