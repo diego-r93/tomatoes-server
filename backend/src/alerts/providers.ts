@@ -1,24 +1,54 @@
 import { emailSettings, sendAlertEmail } from '../users/mail';
-import { Contact } from './types';
-export function whatsappSettings() {
- const enabled=process.env.WHATSAPP_ENABLED==='true';
- const configured=enabled&&/^v[0-9]+\.[0-9]+$/.test(process.env.WHATSAPP_API_VERSION||'')&&/^[0-9]+$/.test(process.env.WHATSAPP_PHONE_NUMBER_ID||'')&&Boolean(process.env.WHATSAPP_ACCESS_TOKEN&&!process.env.WHATSAPP_ACCESS_TOKEN.startsWith('CHANGE_ME'));
- return {enabled,configured:Boolean(configured)};
+import type { Contact } from './types';
+
+export function telegramSettings() {
+ const enabled = process.env.TELEGRAM_ENABLED === 'true';
+ const token = process.env.TELEGRAM_BOT_TOKEN || '';
+ return { enabled, configured: enabled && /^\d+:[A-Za-z0-9_-]+$/.test(token) };
 }
-export const providerReady=(kind:Contact['kind'])=>kind==='email'?emailSettings().configured:whatsappSettings().configured;
-export interface Message {name:string;phase:string;severity:string;target:string;reading:string;condition:string;}
-export function templateBody(contact:Contact,recipient:string,message:Message) {
- return {messaging_product:'whatsapp',to:recipient.replace(/^\+/,''),type:'template',template:{name:contact.template,language:{code:contact.language},components:[{type:'body',parameters:[message.name,message.phase,message.severity,message.target,message.reading,message.condition].map(value=>({type:'text',text:value.replace(/[\r\n\t]/g,' ').slice(0,180)||'Not available'}))}]}};
+
+export const providerReady = (kind: Contact['kind']) =>
+ kind === 'email' ? emailSettings().configured : telegramSettings().configured;
+
+export interface Message {
+ name: string;
+ phase: string;
+ severity: string;
+ target: string;
+ reading: string;
+ condition: string;
 }
-export async function deliver(contact:Contact,recipient:string,message:Message):Promise<string> {
- if(!providerReady(contact.kind))throw new Error('Provider not configured.');
- if(contact.kind==='email') {
-  await sendAlertEmail(recipient,`Tomatoes: ${message.phase} - ${message.name}`,`${message.severity} | ${message.target}\nState: ${message.phase}\nReading: ${message.reading}\nCondition: ${message.condition}`);
+
+export async function deliver(contact: Contact, recipient: string, message: Message): Promise<string> {
+ if (!providerReady(contact.kind)) throw new Error('Provider not configured.');
+ const title = 'Tomatoes: ' + message.phase + ' - ' + message.name;
+ const details = [
+  message.severity + ' | ' + message.target,
+  'State: ' + message.phase,
+  'Reading: ' + message.reading,
+  'Condition: ' + message.condition,
+ ].join('\n');
+
+ if (contact.kind === 'email') {
+  await sendAlertEmail(recipient, title, details);
   return 'Accepted by SMTP server';
  }
- const response=await fetch(`https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,{method:'POST',headers:{Authorization:`Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,'Content-Type':'application/json'},body:JSON.stringify(templateBody(contact,recipient,message)),signal:AbortSignal.timeout(10000)});
- if(!response.ok)throw new Error(`WhatsApp provider rejected the request (HTTP ${response.status}).`);
- const body=await response.json() as {messages?:{id?:string}[]};
- if(!body.messages?.[0]?.id)throw new Error('WhatsApp acceptance could not be confirmed.');
- return body.messages[0].id.slice(0,200);
+
+ // Do not pass transport errors upstream: the request URL contains the bot token.
+ try {
+  const response = await fetch('https://api.telegram.org/bot' + process.env.TELEGRAM_BOT_TOKEN + '/sendMessage', {
+   method: 'POST',
+   headers: { 'Content-Type': 'application/json' },
+   body: JSON.stringify({ chat_id: Number(recipient), text: title + '\n' + details }),
+   redirect: 'error',
+   signal: AbortSignal.timeout(10000),
+  });
+  if (!response.ok) throw new Error();
+  const body = await response.json() as { ok?: boolean; result?: { message_id?: number } };
+  const messageId = body.result?.message_id;
+  if (body.ok && Number.isSafeInteger(messageId)) return String(messageId);
+ } catch {
+  throw new Error('Telegram request failed. Check the bot configuration, chat ID and connectivity.');
+ }
+ throw new Error('Telegram acceptance could not be confirmed.');
 }

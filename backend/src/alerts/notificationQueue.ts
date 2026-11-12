@@ -9,7 +9,7 @@ export async function enqueueNotification(rule:Rule,phase:string,time:number) {
  let queued=false;
  for(const id of rule.contactIds) {
   const contact=await contactRow(id);
-  if(!contact.enabled||(contact.kind==='whatsapp'&&!contact.consent)||!providerReady(contact.kind))continue;
+  if(!contact.enabled||(contact.kind==='telegram'&&!contact.consent)||!providerReady(contact.kind))continue;
   for(const recipient of contact.recipients) {
    const pending=await get("SELECT id FROM alert_outbox WHERE rule_id=? AND revision=? AND contact_id=? AND recipient=? AND phase=? AND status IN ('pending','sending')",[rule.id,rule.revision,id,recipient,phase]);
    if(!pending){await run('INSERT INTO alert_outbox(rule_id,revision,contact_id,recipient,phase,next_at,created_at) VALUES (?,?,?,?,?,?,?)',[rule.id,rule.revision,id,recipient,phase,time,time]);queued=true;}
@@ -28,7 +28,7 @@ export async function dispatchOne(transport=deliver,time=Date.now()) {
   const phase=rule.state==='Normal'?'Resolved':rule.state;
   let reason='';
   if(!rule.enabled||rule.revision!==row.revision||phase!==row.phase||!rule.contactIds.includes(contact.id))reason='Rule changed or this incident is no longer current.';
-  else if(!contact.enabled||!contact.recipients.includes(row.recipient)||(contact.kind==='whatsapp'&&!contact.consent))reason='The contact point or recipient is no longer enabled.';
+  else if(!contact.enabled||!contact.recipients.includes(row.recipient)||(contact.kind==='telegram'&&!contact.consent))reason='The contact point or recipient is no longer enabled.';
   else if(await silenced(rule.id,time))reason='Notifications are silenced.';
   else if(!providerReady(contact.kind))reason='Provider is not configured.';
   if(reason){await run("UPDATE alert_outbox SET status='cancelled',reason=? WHERE id=?",[reason,row.id]);return null;}
@@ -41,7 +41,7 @@ export async function dispatchOne(transport=deliver,time=Date.now()) {
   await access(()=>run("UPDATE alert_outbox SET status='submitted',provider_id=?,reason='Accepted by provider; delivery is not confirmed.' WHERE id=?",[providerId,job.row.id]));
  } catch {
   const attempts=job.row.attempts+1;
-  await access(()=>run('UPDATE alert_outbox SET status=?,next_at=?,reason=? WHERE id=?',[attempts>=3?'failed':'pending',Date.now()+60000*Math.pow(2,attempts-1),'Provider request failed. Check credentials, template approval and connectivity.',job.row.id]));
+  await access(()=>run('UPDATE alert_outbox SET status=?,next_at=?,reason=? WHERE id=?',[attempts>=3?'failed':'pending',Date.now()+60000*Math.pow(2,attempts-1),'Provider request failed. Check the provider configuration and connectivity.',job.row.id]));
  }
  return true;
 }

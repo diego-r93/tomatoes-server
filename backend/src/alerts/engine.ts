@@ -3,7 +3,7 @@ import { alertsReady } from './database';
 import { ruleRow, event, listRules } from './store';
 import { Sample, Rule, transition } from './types';
 import { readSource, startDiscovery, sourceHealth, influxConfigured } from './sources';
-import { whatsappSettings } from './providers';
+import { telegramSettings } from './providers';
 import { dispatchOne, enqueueNotification } from './notificationQueue';
 import { emailSettings } from '../users/mail';
 export const monitor={running:false,lastTick:null as number|null,error:''};
@@ -20,7 +20,7 @@ export async function evaluate(rule:Rule,sample:Sample,time=Date.now()) {
   if((next.notify||repeat)&&await enqueueNotification(updated,next.notify||next.state,time))await run('UPDATE alert_rules SET last_notified_at=? WHERE id=?',[time,rule.id]);
  },true);
 }
-export const alertSettings=()=>({monitor:{...monitor},mqtt:{...sourceHealth},influxConfigured:influxConfigured(),email:emailSettings().configured,whatsapp:whatsappSettings(),historyDays:90});
+export const alertSettings=()=>({monitor:{...monitor},mqtt:{...sourceHealth},influxConfigured:influxConfigured(),email:emailSettings().configured,telegram:telegramSettings(),historyDays:90});
 export async function startAlerts() {
  await alertsReady;
  if(process.env.ALERTING_ENABLED==='false')return ()=>{};

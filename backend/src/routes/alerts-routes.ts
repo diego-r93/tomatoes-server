@@ -4,6 +4,9 @@ import * as store from '../alerts/store';
 import { alertSettings } from '../alerts/engine';
 import { knownDevices } from '../alerts/sources';
 import { integer } from '../alerts/types';
+import { alertsReady } from '../alerts/database';
+import { deliver, telegramSettings } from '../alerts/providers';
+import { HttpError } from '../users/types';
 export default function setupAlerts(app:Express) {
  const router=Router();router.use(authenticate);
  const id=(value:unknown)=>integer(value,1,Number.MAX_SAFE_INTEGER,'ID');
@@ -21,6 +24,24 @@ export default function setupAlerts(app:Express) {
  router.delete('/rules/:id',endpoint(async(req,res)=>{await store.removeRule(id(req.params.id),actor(res));res.sendStatus(204);}));
  router.post('/contacts',endpoint(async(req,res)=>{res.status(201).json(await store.saveContact(null,req.body,actor(res)));}));
  router.put('/contacts/:id',endpoint(async(req,res)=>{res.json(await store.saveContact(id(req.params.id),req.body,actor(res)));}));
+ router.post('/contacts/:id/test',endpoint(async(req,res)=>{
+  await alertsReady;
+  const contact = await store.contactRow(id(req.params.id));
+  if (contact.kind !== 'telegram' || !contact.consent || !contact.recipients.length) {
+   throw new HttpError(400,'Save a Telegram contact with confirmed recipient permission first.');
+  }
+  if (!telegramSettings().configured) throw new HttpError(409,'Telegram needs setup');
+  const results = await Promise.allSettled(contact.recipients.map(recipient => deliver(contact, recipient, {
+   name: contact.name,
+   phase: 'Test notification',
+   severity: 'Info',
+   target: 'Telegram contact point',
+   reading: 'Not applicable',
+   condition: 'This is a test from Tomatoes.',
+  })));
+  const accepted = results.filter(result => result.status === 'fulfilled').length;
+  res.json({ accepted, total: results.length });
+ }));
  router.delete('/contacts/:id',endpoint(async(req,res)=>{await store.removeContact(id(req.params.id),actor(res));res.sendStatus(204);}));
  router.post('/silences',endpoint(async(req,res)=>{await store.createSilence(req.body,actor(res));res.sendStatus(201);}));
  router.delete('/silences/:id',endpoint(async(req,res)=>{await store.endSilence(id(req.params.id),actor(res));res.sendStatus(204);}));

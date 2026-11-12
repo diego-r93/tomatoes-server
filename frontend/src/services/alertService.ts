@@ -4,7 +4,7 @@ import { http } from './http-common';
 
 export type AlertState = 'Normal' | 'Pending' | 'Firing' | 'No data' | 'Error' | 'Paused';
 export type Severity = 'Warning' | 'Critical';
-export type ContactKind = 'email' | 'whatsapp';
+export type ContactKind = 'email' | 'telegram';
 export type NotificationKind = ContactKind | 'inapp';
 export type SourceKind = 'device_age' | 'wifi' | 'output_on' | 'cpu_temperature' | 'disk_usage' | 'metric' | 'metric_age' | 'pump_driver';
 type DriverCondition = 'failure' | 'missing' | 'short' | 'temperature' | 'supply';
@@ -67,8 +67,6 @@ export interface Contact {
   recipients: string[];
   enabled: boolean;
   consent: boolean;
-  template: string;
-  language: string;
 }
 
 export type ContactDraft = Omit<Contact, 'id'> & { id?: number };
@@ -76,7 +74,7 @@ export interface AlertDevice { host: string; received_at: number }
 export interface AlertSettings {
   canManage: boolean;
   email: boolean;
-  whatsapp: { configured: boolean };
+  telegram: { configured: boolean };
   monitor: { running: boolean; error: string; lastTick: number | null };
   mqtt: { mqttConnected: boolean };
   influxConfigured: boolean;
@@ -132,6 +130,7 @@ export const alertService = {
   },
   saveRule: (item: RuleDraft) => saveItem<Rule>('rules', item),
   saveContact: (item: ContactDraft) => saveItem<Contact>('contacts', item),
+  testTelegram: (id: number) => http.post<{ accepted: number; total: number }>(root + '/contacts/' + id + '/test', {}, { timeout: 15000 }).then(response => response.data),
   saveSilence: (item: { ruleId: number | null; minutes: NumericInput; reason: string }) => http.post<unknown>(`${root}/silences`, item),
   remove: (path: 'rules' | 'contacts' | 'silences', id: number) => http.delete<unknown>(`${root}/${path}/${id}`),
   enabled: (id: number, enabled: boolean) => http.patch<Rule>(`${root}/rules/${id}`, { enabled }),

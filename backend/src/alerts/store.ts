@@ -29,16 +29,15 @@ export const removeRule=(id:number,actor:string)=>access(async()=>{const rule=aw
 export const enableRule=(id:number,enabled:unknown,actor:string)=>access(async()=>{if(typeof enabled!=='boolean')throw new HttpError(400,'Invalid status.');const rule=await ruleRow(id);const config={...rule,enabled};await run('UPDATE alert_rules SET config=?,state=?,since=NULL,next_at=0,revision=revision+1 WHERE id=?',[JSON.stringify(config),enabled?'No data':'Paused',id]);await run("UPDATE alert_outbox SET status='cancelled',reason='Evaluation status changed.' WHERE rule_id=? AND status IN ('pending','blocked')",[id]);await event(id,rule.name,'Rule',`${actor} ${enabled?'resumed':'paused'} evaluation.`);return ruleRow(id);},true);
 export function saveContact(id:number|null,input:Record<string,unknown>,actor:string) {
  return access(async()=>{
-  if(id)await contactRow(id);else if((await get<{count:number}>('SELECT COUNT(*) AS count FROM alert_contacts'))!.count>=100)throw new HttpError(400,'Limit of 100 contact points reached.');if(!['email','whatsapp'].includes(String(input.kind)))throw new HttpError(400,'Choose email or WhatsApp.');
+  if(id)await contactRow(id);else if((await get<{count:number}>('SELECT COUNT(*) AS count FROM alert_contacts'))!.count>=100)throw new HttpError(400,'Limit of 100 contact points reached.');if(input.kind!=='email'&&input.kind!=='telegram')throw new HttpError(400,'Choose email or Telegram.');
   if(!Array.isArray(input.recipients)||!input.recipients.length||input.recipients.length>20)throw new HttpError(400,'Enter 1–20 recipients.');
   const recipients=[...new Set(input.recipients.map(value=>input.kind==='email'?emailAddress(value):String(value).trim()))];
-  if(input.kind==='whatsapp'&&recipients.some(value=>!/^\+[1-9][0-9]{7,14}$/.test(value)))throw new HttpError(400,'Use international phone numbers, including + and country code.');
+  if(input.kind==='telegram'&&recipients.some(value=>!/^-?[1-9]\d{0,15}$/.test(value)||!Number.isSafeInteger(Number(value))))throw new HttpError(400,'Enter valid numeric Telegram chat IDs.');
   if(typeof input.enabled!=='boolean'||typeof input.consent!=='boolean')throw new HttpError(400,'Invalid contact settings.');
-  if(input.kind==='whatsapp'&&input.enabled&&!input.consent)throw new HttpError(400,'Recipient permission is required for WhatsApp notifications.');
-  const template=text(input.template||'tomatoes_alert_status',100,true),language=text(input.language||'en_US',20,true);
-  if(!/^[a-z0-9_]+$/.test(template)||!/^[a-z]{2,3}(?:_[A-Za-z]{2,4})?$/.test(language))throw new HttpError(400,'Invalid WhatsApp template name or language.');
-  const config={name:text(input.name,80,true),kind:input.kind,recipients,enabled:input.enabled,consent:input.consent,template,language};
+  if(input.kind==='telegram'&&input.enabled&&!input.consent)throw new HttpError(400,'Recipient permission is required for Telegram notifications.');
+  const config={name:text(input.name,80,true),kind:input.kind,recipients,enabled:input.enabled,consent:input.consent};
   if(id)await run('UPDATE alert_contacts SET config=? WHERE id=?',[JSON.stringify(config),id]);else id=(await run('INSERT INTO alert_contacts(config) VALUES (?)',[JSON.stringify(config)])).id;
+  await run("UPDATE alert_outbox SET status='cancelled',reason='Contact point updated.' WHERE contact_id=? AND status='pending'",[id]);
   await event(null,config.name,'Contact point',`${actor} saved the contact point.`);return contactRow(id);
  },true);
 }

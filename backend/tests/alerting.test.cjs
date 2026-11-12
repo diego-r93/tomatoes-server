@@ -8,15 +8,15 @@ process.env.JWT_SECRET=crypto.randomBytes(32).toString('hex');
 process.env.APP_PUBLIC_URL='http://tomatoes.example';
 process.env.SMTP_HOST='127.0.0.1';process.env.SMTP_FROM='monitor@example.com';process.env.SMTP_AUTH_TYPE='login';
 delete process.env.SMTP_USER;delete process.env.SMTP_PASS;
-process.env.WHATSAPP_ENABLED='false';
+process.env.TELEGRAM_ENABLED='false';
 const {transition,sourceInput}=require('../src/alerts/types');
-const {alertsReady}=require('../src/alerts/database');
+const {alertsReady,migrateTelegramContacts}=require('../src/alerts/database');
 const {access,run,get,all}=require('../src/users/database');
 const store=require('../src/alerts/store');
 const {evaluate}=require('../src/alerts/engine');
 const {dispatchOne}=require('../src/alerts/notificationQueue');
 const {observedOutputs,ingestDevice,readSource,sourceHealth,metricQuery,metricSample,startDiscovery,parseDeviceReport}=require('../src/alerts/sources');
-const {templateBody,whatsappSettings}=require('../src/alerts/providers');
+const {deliver,telegramSettings}=require('../src/alerts/providers');
 const input={name:'Device not responding',source:{kind:'device_age',host:'esp32-test',freshnessSeconds:180},operator:'>',threshold:120,recovery:60,pendingSeconds:60,intervalSeconds:30,repeatSeconds:900,severity:'Critical',contactIds:[],enabled:true};
 test('alert state machine, persistence, outbox and authenticated API',async t=>{
  await alertsReady;
@@ -42,8 +42,8 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
  await t.test('validation rejects ambiguous targets and invalid thresholds or recipients',async()=>{
   assert.throws(()=>sourceInput({kind:'metric',host:'host',measurement:'x") |> drop()',field:'value'}));
   await assert.rejects(store.saveRule(null,{...input,recovery:130},'admin'),{status:400});
-  await assert.rejects(store.saveContact(null,{name:'Invalid',kind:'whatsapp',recipients:['5511'],enabled:true,consent:false},'admin'),{status:400});
-  await assert.rejects(store.saveContact(null,{name:'Invalid',kind:'whatsapp',recipients:['+5511999999999'],enabled:true,consent:false},'admin'),{status:400});
+  await assert.rejects(store.saveContact(null,{name:'Invalid',kind:'telegram',recipients:['+5511'],enabled:true,consent:false},'admin'),{status:400});
+  await assert.rejects(store.saveContact(null,{name:'Invalid',kind:'telegram',recipients:['-1001234567890'],enabled:true,consent:false},'admin'),{status:400});
   const s={...input.source,kind:'disk_usage',path:'/") |> die(msg: "test'};assert(metricQuery(s).includes(JSON.stringify(s.path)));
  });
  await t.test('observed GPIO duration resets for OFF, missing reports and restarts',()=>{
@@ -134,10 +134,37 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
   delete process.env.SMTP_FROM;rule=(await store.listRules())[0];await evaluate(rule,{health:'error'},Date.now()+2000000);
   assert.equal((await store.getDeliveries()).filter(row=>row.status==='pending').length,0);
  });
- await t.test('WhatsApp payload uses six approved-template parameters with no token in body',()=>{
-  assert.equal(whatsappSettings().configured,false);
-  const body=templateBody({template:'tomatoes_alert_status',language:'en_US'},'+5511999999999',{name:'Rule',phase:'Firing',severity:'Critical',target:'esp32',reading:'130 sec',condition:'> 120 sec'});
-  assert.equal(body.to,'5511999999999');assert.equal(body.type,'template');assert.equal(body.template.components[0].parameters.length,6);assert(!JSON.stringify(body).includes('ACCESS_TOKEN'));
+ await t.test('Telegram sends plain text to a numeric chat ID and sanitizes transport failures',async test=>{
+  assert.equal(telegramSettings().configured,false);
+  process.env.TELEGRAM_ENABLED='true';
+  process.env.TELEGRAM_BOT_TOKEN='12345:test-token';
+  test.after(()=>{process.env.TELEGRAM_ENABLED='false';delete process.env.TELEGRAM_BOT_TOKEN;});
+  const contact=await store.saveContact(null,{name:'Greenhouse',kind:'telegram',recipients:['-1001234567890'],enabled:true,consent:true},'admin');
+  const message={name:'Rule',phase:'Firing',severity:'Critical',target:'esp32',reading:'130 sec',condition:'> 120 sec'};
+  const request=test.mock.method(globalThis,'fetch',async (url,options)=>{
+   assert.equal(url,'https://api.telegram.org/bot12345:test-token/sendMessage');
+   const body=JSON.parse(options.body);
+   assert.equal(body.chat_id,-1001234567890);
+   assert.match(body.text,/Rule.*\nCritical \| esp32/s);
+   assert.ok(!options.body.includes('test-token'));
+   return Response.json({ok:true,result:{message_id:17}});
+  });
+  assert.equal(await deliver(contact,contact.recipients[0],message),'17');
+  request.mock.mockImplementation(async url=>{throw new Error('Connection failed for '+url);});
+  await assert.rejects(deliver(contact,contact.recipients[0],message),error=>error.message.startsWith('Telegram request failed')&&!error.message.includes('test-token'));
+ });
+ await t.test('legacy WhatsApp contacts migrate once and stale deliveries are cancelled',async()=>{
+  const legacy=await access(async()=>{
+   const {id}=await run('INSERT INTO alert_contacts(config) VALUES (?)',[JSON.stringify({name:'Legacy',kind:'whatsapp',enabled:true,consent:true,recipients:['+5511999999999'],template:'old',language:'en_US'})]);
+   await run('INSERT INTO alert_outbox(contact_id,recipient,phase,next_at,created_at) VALUES (?,?,?,?,?)',[id,'+5511999999999','Firing',0,0]);
+   return id;
+  },true);
+  await access(migrateTelegramContacts,true);
+  assert.deepEqual(await store.contactRow(legacy),{id:legacy,name:'Legacy',kind:'telegram',enabled:false,consent:false,recipients:[]});
+  assert.equal((await store.getDeliveries()).find(row=>row.contact_id===legacy).status,'cancelled');
+  await store.saveContact(legacy,{name:'Legacy',kind:'telegram',enabled:true,consent:true,recipients:['123456789']},'admin');
+  await access(migrateTelegramContacts,true);
+  assert.deepEqual((await store.contactRow(legacy)).recipients,['123456789']);
  });
  await t.test('API rejects anonymous writes and member management; administrators can CRUD',async apiTest=>{
   const app=express();app.use(express.json());require('../src/routes/users-routes').default(app);require('../src/routes/alerts-routes').default(app);const setupOta = require('../src/routes/ota-routes').default;
@@ -171,6 +198,27 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
   assert.equal((await req('GET','/api/alerts/rules',undefined,member.accessToken)).status,200);
   assert.equal((await req('GET','/api/alerts/contacts',undefined,member.accessToken)).status,403);
   assert.equal((await req('POST','/api/alerts/rules',input,member.accessToken)).status,403);
+  const telegram=(await store.listContacts()).find(contact=>contact.kind==='telegram');
+  const testPath='/api/alerts/contacts/'+telegram.id+'/test';
+  assert.equal((await req('POST',testPath,{})).status,401);
+  assert.equal((await req('POST',testPath,{},member.accessToken)).status,403);
+  assert.equal((await req('POST',testPath,{},admin.accessToken)).status,409);
+  await apiTest.test('administrator can test a saved Telegram contact without changing rules',async test=>{
+   const fetchHttp=globalThis.fetch;
+   const delivered=[];
+   test.mock.method(globalThis,'fetch',async (url,options)=>{
+    if(!String(url).startsWith('https://api.telegram.org/')) return fetchHttp(url,options);
+    delivered.push(JSON.parse(options.body));
+    return Response.json({ok:true,result:{message_id:1}});
+   });
+   process.env.TELEGRAM_ENABLED='true';
+   process.env.TELEGRAM_BOT_TOKEN='12345:test-token';
+   test.after(()=>{process.env.TELEGRAM_ENABLED='false';delete process.env.TELEGRAM_BOT_TOKEN;});
+   const before=await store.listRules();
+   assert.deepEqual(await req('POST',testPath,{recipients:['99999']},admin.accessToken),{status:200,body:{accepted:1,total:1}});
+   assert.equal(delivered[0].chat_id,Number(telegram.recipients[0]));
+   assert.deepEqual(await store.listRules(),before);
+  });
   await apiTest.test('bulk OFF uses only discovered GPIOs and permits authenticated operators', async () => {
    const path = '/mqtt/esp32-test-bulk/outputs/off';
    const connected = sourceHealth.mqttConnected;

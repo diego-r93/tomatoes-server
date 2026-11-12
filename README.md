@@ -142,7 +142,7 @@ See [Users, groups and invitations](docs/user-management.md) for account migrati
 
 ### Alerting
 
-See [Alerting setup and rule behavior](docs/alerting.md) for background monitoring, sources, contact points and optional WhatsApp Cloud API configuration.
+See [Alerting setup and rule behavior](docs/alerting.md) for background monitoring, sources, contact points and optional Telegram bot configuration.
 
 
 ## Automatic startup after a reboot

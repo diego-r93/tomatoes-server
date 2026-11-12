@@ -1,9 +1,9 @@
 <template>
- <v-dialog :model-value="true" max-width="650" scrollable @update:model-value="$emit('close')"><v-card class="message-dialog"><v-card-title tag="h2">{{ t(kind==='whatsapp'?'WhatsApp notification preview':'Notification preview') }}</v-card-title><v-card-text>
+ <v-dialog :model-value="true" max-width="650" scrollable @update:model-value="$emit('close')"><v-card class="message-dialog"><v-card-title tag="h2">{{ t(kind==='telegram'?'Telegram notification preview':'Notification preview') }}</v-card-title><v-card-text>
   <p class="preview-note">{{ t(rules.length?'Preview only':'Example message') }} · {{ t('No message will be sent.') }}</p>
   <v-select v-if="rules.length" v-model="ruleId" :label="t('Alert rule')" :items="rules" item-title="name" item-value="id" variant="outlined" class="mt-5" />
   <v-select v-model="phase" :label="t('Message state')" :items="phaseOptions" variant="outlined" class="mt-4" />
-  <p v-if="kind!=='inapp'" class="preview-note mb-3">{{ t('Recipient: {recipient}', { recipient: contact?.recipients?.join(', ') || t('Not set') }) }}<template v-if="kind==='whatsapp'"> · {{ t('Template: {template}', { template: contact?.template || 'tomatoes_alert_status' }) }} · {{ contact?.language||'en_US' }}</template></p>
+  <p v-if="kind!=='inapp'" class="preview-note mb-3">{{ t('Recipient: {recipient}', { recipient: contact?.recipients?.join(', ') || t('Not set') }) }}</p>
   <article class="message-body"><h3>Tomatoes: {{ t(phase) }} — {{ ruleName }}</h3><dl><div><dt>{{ t('State') }}</dt><dd>{{ t(phase) }}</dd></div><div><dt>{{ t('Severity') }}</dt><dd>{{ t(rule.severity) }}</dd></div><div><dt>{{ t('Target') }}</dt><dd>{{ target }}</dd></div><div><dt>{{ t('Reading') }}</dt><dd>{{ t(reading) }}</dd></div><div><dt>{{ t('Condition') }}</dt><dd>{{ condition }}</dd></div></dl></article>
   <div class="callout">{{ t(rules.length?'This preview uses the selected rule configuration. Changing the preview state does not change the rule.':'No rules exist yet. The message above uses clearly illustrative values and does not create an alert.') }}</div>
   <p class="preview-note">{{ t('Recovery notifications identify the incident as Resolved. External delivery requires an enabled contact point and a configured sender.') }}</p>

@@ -32,7 +32,7 @@ Influx queries search the last 24 hours and apply the rule's freshness limit (de
 
 ## Notifications
 
-In-app means current rule state and event history; it does not include operating-system push notifications. External notifications are queued on incident state changes, recovery and unresolved repeats (default one hour, minimum 15 minutes). Disabled or unconfigured providers are skipped; in-app monitoring still works. Configuration changes alone do not send test messages. Queued messages are rechecked against rule revision, current state, silence, contact enabled state, recipient list and WhatsApp permission before dispatch.
+In-app means current rule state and event history; it does not include operating-system push notifications. External notifications are queued on incident state changes, recovery and unresolved repeats (default one hour, minimum 15 minutes). Disabled or unconfigured providers are skipped; in-app monitoring still works. Configuration changes alone do not send test messages. Queued messages are rechecked against rule revision, current state, silence, contact enabled state, recipient list and Telegram recipient permission before dispatch.
 
 The durable worker retries failed requests up to three times with one- and two-minute delays. A provider acceptance is recorded as **submitted**, not delivered or read. Stale jobs are cancelled. An in-flight request cannot be recalled. A crash after acceptance but before recording it can cause a duplicate after restart; delivery is best effort with at-least-once retries. When a silence ends or a provider becomes ready, an unresolved incident is eligible for its next repeat; an incident that recovered while silenced does not send a delayed recovery.
 
@@ -42,37 +42,48 @@ Event history is retained for 90 days; completed attempts for 30 days, cleaned o
 
 Uses the existing `SMTP_*` variables and `APP_PUBLIC_URL` described in [user-management.md](user-management.md). Personal Outlook/Hotmail requires the existing OAuth2 setup. SMTP sender and credentials must be completed before email is available. Do not put credentials in the frontend. Invite and password-reset email behavior is preserved.
 
-### WhatsApp setup (optional)
+### Telegram setup (optional)
 
-This implementation uses Meta's official WhatsApp Cloud API. No personal WhatsApp Web session or QR-code bridge is used. You still need a Meta developer/business setup, a registered sender, the necessary messaging permissions and a production access token from Meta. Follow the account-specific verification and token guidance shown in your Meta dashboard.
+1. Create a bot with `@BotFather` and copy the token directly to the private `.env` in the project root. Set `TELEGRAM_ENABLED=true` and `TELEGRAM_BOT_TOKEN` to the token.
+2. Recreate the backend to load the updated environment: `sudo docker compose up -d --no-deps --force-recreate --pull never backend`.
+3. In Telegram, open the bot and press **Start**, or add it to a private group and send `/start@YourBotUsername` there.
+4. From the project directory, use this command to show only the chat types and IDs from pending Telegram updates. Run it soon after starting the chat.
 
-1. Configure your WhatsApp Business Platform sender in Meta and obtain its **Phone Number ID**. This is a numeric API ID, not the visible phone number.
-2. Select a currently supported Graph API version from that app's documentation/dashboard.
-3. Create and get approval for a template named `tomatoes_alert_status` (or choose your own name in the contact point), language `en_US` (or the exact approved language). The body must contain exactly these six positional text parameters, in this order:
-   1. Rule name
-   2. State (`Firing`, `No data`, `Error` or `Resolved`)
-   3. Severity
-   4. Target hostname / GPIO
-   5. Latest reading
-   6. Trigger and recovery condition
+```sh
+sudo docker compose exec -T backend node --input-type=module - <<'JS'
+try {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) throw new Error();
+  const response = await fetch('https://api.telegram.org/bot' + token + '/getUpdates', {
+    redirect: 'error', signal: AbortSignal.timeout(10000),
+  });
+  const data = await response.json();
+  if (!response.ok || !data.ok) throw new Error();
+  const chats = new Map();
+  for (const update of data.result) {
+    const chat = update.message?.chat;
+    if (chat) chats.set(chat.id, chat.type);
+  }
+  if (!chats.size) console.log('No recent chats. Send /start and try again.');
+  for (const [id, type] of chats) console.log(type, id);
+} catch {
+  console.error('Could not read Telegram updates. Check the bot token and internet connection.');
+  process.exitCode = 1;
+}
+JS
+```
 
-   Example body: `Tomatoes alert: {{1}}. State: {{2}}. Severity: {{3}}. Target: {{4}}. Reading: {{5}}. Condition: {{6}}.`
+5. In **Alerting → Contact points**, add a **Telegram** contact point, enter the numeric chat ID, and confirm recipient permission. Save and use **Send test notification**. Check the chat, then enable the contact and select it in a rule for automatic delivery.
 
-   No header, button or URL parameters are sent. Template approval and category are determined by Meta. Sample parameter values are required during approval.
-4. Fill the private `.env`: `WHATSAPP_API_VERSION`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`. Set `WHATSAPP_ENABLED=true` only after setup. Never commit tokens. The example file intentionally leaves the version and credentials blank.
-5. Recreate the backend container to load changed environment values (a restart alone does not reload Compose `env_file`). From the project directory, run `sudo docker compose up -d --no-deps --force-recreate --pull never backend`.
-6. In Alerting / Contact points, create a WhatsApp contact with international recipients such as `+<country code><number>`, exact approved template/language and confirmed recipient permission. Enable it and select it in your rule.
+The Raspberry Pi needs outbound HTTPS access. The portal can stay on the local network. The test reports API acceptance, which can be verified by checking the chat. Alerts are plain text and work without an inbound webhook. Keep the bot token in `.env` and out of logs, URLs pasted into a browser, and Git.
 
-The page's provider-ready flag checks local configuration only; it does not validate credentials or template approval with Meta. Provider rejection appears under History / Notification attempts. No inbound webhook or delivery/read receipt processing is implemented. Outbound HTTPS internet access is required on the Pi. Invite links still point to your configured local Tomatoes address, which is reachable only on your LAN. WhatsApp message recipients do not need access to the LAN to receive the text.
+Existing WhatsApp contact points become disabled Telegram contacts with empty destinations. Rule links are preserved. Old queued sends are cancelled and the existing delivery history is retained.
 
-Meta requires appropriate recipient permission and approved templates for business-initiated messages. Platform charges and eligibility depend on Meta's current policy; consult the official documentation before enabling production delivery:
-- [WhatsApp Business Platform](https://whatsappbusiness.com/products/business-platform/)
-- [Business Messaging Policy](https://whatsappbusiness.com/policy/)
-- [Platform pricing](https://whatsappbusiness.com/products/platform-pricing/)
+See the [Telegram bot setup guide](https://core.telegram.org/bots/tutorial) and [Bot API](https://core.telegram.org/bots/api).
 
 ## Validation
 
-`cd backend && node --test -r ts-node/register tests/alerting.test.cjs` runs against a temporary SQLite database and mocked transports, with no real email, WhatsApp or GPIO writes. `yarn build` checks backend TypeScript. The frontend uses the project's Node 24 runtime and its normal build and ESLint commands.
+`cd backend && node --import tsx --test tests/alerting.test.cjs` runs against a temporary SQLite database and mocked transports, with no real email, Telegram messages or GPIO writes. `yarn build` checks backend TypeScript. The frontend uses the project's Node 24 runtime and its normal build and ESLint commands.
 
 
 ## Driver and battery rules (2026-11-08)

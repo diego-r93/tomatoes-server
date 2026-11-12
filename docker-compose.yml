@@ -50,6 +50,7 @@ services:
     environment:
       OTA_MASTER_KEY: ""
       CLOUDFLARE_DNS_API_TOKEN: ""
+      TELEGRAM_BOT_TOKEN: ""
     depends_on:
       - backend
       - grafana
@@ -112,6 +113,7 @@ services:
     environment:
       OTA_MASTER_KEY: ""
       CLOUDFLARE_DNS_API_TOKEN: ""
+      TELEGRAM_BOT_TOKEN: ""
     entrypoint: [ "./entrypoint.sh" ]
 
   telegraf:
@@ -143,6 +145,7 @@ services:
     environment:
       OTA_MASTER_KEY: ""
       CLOUDFLARE_DNS_API_TOKEN: ""
+      TELEGRAM_BOT_TOKEN: ""
     depends_on:
       - influxdb
 
@@ -159,6 +162,7 @@ services:
     environment:
       OTA_MASTER_KEY: ""
       CLOUDFLARE_DNS_API_TOKEN: ""
+      TELEGRAM_BOT_TOKEN: ""
       GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-https://192.168.1.30/grafana/}
       GF_SERVER_SERVE_FROM_SUB_PATH: "true"
       GF_AUTH_ANONYMOUS_ENABLED: "false"
