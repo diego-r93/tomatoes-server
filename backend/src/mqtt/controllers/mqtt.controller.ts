@@ -18,6 +18,10 @@ export function startMqttPublisher(): void {
 export const publishMQTTMessage = async (req: Request, res: Response): Promise<void> => {
     try {
         const topic: string = req.body.topic;
+        if (typeof topic !== 'string' || topic.endsWith('/setup/req')) {
+            res.status(400).json({ message: 'Use the board setup endpoint for setup commands.' });
+            return;
+        }
         const message: string = req.body.message;
 
         console.log(`Request Topic :: ${topic}`);

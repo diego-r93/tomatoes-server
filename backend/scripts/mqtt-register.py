@@ -45,15 +45,16 @@ def password_hash(password):
 def acl_for(legacy, users, prepare_explorer=False):
     blocks = []
     if legacy in users:
-        blocks.append(f'user {legacy}\ntopic readwrite #\ntopic read $SYS/#')
+        blocks.append(f'user {legacy}\ntopic deny +/setup/req\ntopic deny devices/+/setup\ntopic readwrite #\ntopic read $SYS/#')
     if BACKEND in users:
         blocks.append(
             'user tomatoes-backend\ntopic read sensors/#\ntopic read devices/+\ntopic read +/status\n'
-            'topic write getdevices\ntopic write +/output\ntopic write +/config/#'
+            'topic write getdevices\ntopic write +/output\ntopic write +/config/#\n'
+            'topic write +/setup/req\ntopic read devices/+/setup'
         )
     readers = 'topic read sensors/#\ntopic read devices/+'
     services = {
-        'tomatoes-monitor': readers + '\ntopic read +/status',
+        'tomatoes-monitor': readers + '\ntopic read +/status\ntopic read devices/+/setup',
         'tomatoes-bench': readers + '\ntopic write esp32s3-07945C/output\ntopic write esp32s3-07945C/config/#',
         TELEGRAF: 'topic read sensors/#',
         EXPLORER: 'topic read #\ntopic read $SYS/#',

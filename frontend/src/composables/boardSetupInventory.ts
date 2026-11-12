@@ -6,6 +6,8 @@ interface SetupReport {
   host: string;
   online?: boolean;
   receivedAt?: number | null;
+  caps?: string[];
+  probes?: Partial<Record<'ph' | 'ec', unknown>>;
   sensors?: Partial<Record<SetupSensor, unknown>>;
   ports?: Record<string, { name?: string; pumperName?: string; gpio?: number | string | null }>;
 }
@@ -25,6 +27,10 @@ export function approvedSetupBoards(registry: RegisteredBoard[], reports: unknow
 export function chipPresence(report: SetupReport | null, sensor: SetupSensor) {
   const value = report?.sensors?.[sensor];
   return value === true ? 'Detected' : value === false ? 'Not detected' : 'Not reported';
+}
+export function reportedProbeValidity(report: SetupReport | null, sensor: SetupSensor) {
+  const value = sensor === 'sht35' ? undefined : report?.probes?.[sensor];
+  return value === true ? 'Valid' : value === false ? 'Invalid or absent' : 'Not reported';
 }
 export function reportedPumpChannels(board: SetupBoard) {
   return Object.entries(board?.report?.ports || {}).filter(([code]) =>

@@ -198,6 +198,12 @@ test('alert state machine, persistence, outbox and authenticated API',async t=>{
   assert.equal((await req('GET','/api/alerts/rules',undefined,member.accessToken)).status,200);
   assert.equal((await req('GET','/api/alerts/contacts',undefined,member.accessToken)).status,403);
   assert.equal((await req('POST','/api/alerts/rules',input,member.accessToken)).status,403);
+  const setupPath='/mqtt/setup/esp32s3-A00001';
+  assert.equal((await req('GET',setupPath)).status,401);
+  assert.equal((await req('GET',setupPath,undefined,member.accessToken)).status,403);
+  assert.equal((await req('PUT',setupPath+'/ec-label',{revision:0,label:'new'},member.accessToken)).status,403);
+  assert.equal((await req('PUT',setupPath+'/ec-label',{revision:0,label:' invalid '},admin.accessToken)).status,400);
+  assert.equal((await req('POST','/mqtt/',{topic:'esp32s3-A00001/setup/req',message:'{}'},admin.accessToken)).status,400);
   const telegram=(await store.listContacts()).find(contact=>contact.kind==='telegram');
   const testPath='/api/alerts/contacts/'+telegram.id+'/test';
   assert.equal((await req('POST',testPath,{})).status,401);

@@ -33,45 +33,16 @@ No calibration, output command, firmware flash, broker/ACL change or backend res
 
 Validation: 49 frontend tests passed; ESLint passed; production image built with Vite 8.3.6 and deployed by recreating nginx only. Browser: both real boards Online, all four bench channels, disabled calibration actions, history-unavailable state, /mdd redirect and 390px one-column layout verified. Unauthenticated HTTPS GET /server/mqtt/registry returned 401. No real calibration or firmware validation performed.
 
-## Next integration milestone
+## EC probe label pilot (2026-11-11)
 
-Claude reported E1 and the floating-point pH fix on firmware local main
-(`f9c4cb3`, merge `3e9bb1b`). The bench board `esp32s3-07945C` runs the
-pre-commit build with those changes. The second board remains on `16a5c1c`.
-With the same solution, Claude measured 267.9 and 268.1 uS/cm in the three
-minutes before and after the change. The comparison supports continuity of
-the previous EC readings under that setup. Absolute accuracy still needs
-verification against the Akso 1413 uS/cm standard. Auto-ranging and the
-assumed 7-ohm front-end offset remain separate issues.
+In **Board setup → Sensors**, select an approved board, use **Read board settings**, and save the conductivity probe label. The UI enables this only for recent reports with the setup.v1 capability. The server validates the approved hostname, recent discovery and explicit capability before each exchange. The label accepts 0–32 printable ASCII characters without leading or trailing spaces. An empty label clears it.
 
-The first proposed setting is an **EC probe label**. It identifies the probe
-for the operator and leaves the calculation path untouched. The setting is
-offered only when firmware explicitly advertises support. Probe validity
-is a separate observation and is required for capturing calibration points.
+The admin HTTP API exposes GET /mqtt/setup/:host and PUT /mqtt/setup/:host/ec-label with the displayed revision and label. The backend reads the current revision before writing, rejects stale writes, and verifies the value and new revision with a separate read. If the acknowledgement is missing, it attempts a read to reconcile the outcome. If the read cannot confirm the change, it tells the operator to read again before saving. The backend does not retry the write automatically. User activity records actor, host, request ID, revision and outcome.
 
-- Proposed label format for this pilot is 0 to 32 printable ASCII characters.
-  An empty value clears the label. Reject invalid characters, leading or
-  trailing spaces, and oversized values with an explicit reason.
-- A write carries a unique request ID and the expected current configuration
-  revision. Firmware checks the revision and persists the label, incremented
-  revision, and last applied request ID as one record. Retry of the same
-  request and payload returns the recorded result. Reusing an ID with a
-  different payload is rejected.
-- An authenticated read returns the capability, stored label and revision.
-  After a successful write acknowledgement, the server verifies a separate
-  readback. Report the change as applied only once it sees the matching
-  revision and value. An acknowledgement loss leaves an unknown outcome
-  until readback reconciles it.
-- Server access is restricted to administrators and approved boards. Audit
-  actor, board, request ID, revisions and outcome. Executable commands are
-  non-retained. MQTT topic ownership, expiry and reconnect behavior must be
-  agreed with firmware before integration.
-- Bench acceptance covers saving and clearing, readback after reboot,
-  duplicate delivery, stale revision, invalid input, failed persistence,
-  loss of reply, and a board without the capability. Compare the reported
-  label and revision with the expected state in each case.
+The backend publishes a non-retained QoS 1 request on <host>/setup/req and reads non-retained replies on devices/<host>/setup. A reply must match hostname, operation and request ID. This uses the existing MQTT discovery connection with the dedicated backend identity. The backend identity can publish requests; the approved factory listener grants each board read access to its own request topic and write access to its own reply topic. The pending listener has no setup permissions. The generic publish API rejects setup request topics.
 
-This proposal is under review in bridge message 29. Wire format and
-implementation await firmware alignment. The operational calibration
-milestone still requires validated probe checks and raw samples, persistent
-coefficients, and user-present trials with the reference solutions.
+Live Pi validation on esp32s3-07945C read revision 0, verified a temporary name at revision 1, rejected invalid input with 400 and a stale revision with 409, then restored the original label at revision 2. The greenhouse board returned 409 for setup. Unauthenticated access returned 401; isolated API tests also verified 403 for non-admin users. Mosquitto ACL reload and topic isolation passed in a test broker. The live broker kept its start time after SIGHUP. Backend and frontend production builds, ESLint, 67 backend tests and 55 frontend tests passed.
+
+## Next calibration milestone
+
+Verify missing-probe behavior on the assembled bench board. Agree on raw sample capture, stability checks and revisioned coefficient readback with the firmware before testing the pH buffers and Akso 1413 µS/cm solution. Sensor validity comes from reported probe flags. Chip presence alone cannot validate a calibration point.

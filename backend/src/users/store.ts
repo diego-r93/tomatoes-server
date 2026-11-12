@@ -26,7 +26,7 @@ async function publicUser(user: UserRow) {
     groups: (await groupsForUser(user.id)).map(publicGroup),
   };
 }
-async function activity(actor: UserRow, action: string, description: string, subject: number | null = actor.id, client?: ClientInfo) {
+export async function activity(actor: UserRow, action: string, description: string, subject: number | null = actor.id, client?: ClientInfo) {
   await run('INSERT INTO user_activity (subject_id,actor_id,actor_login,action,description,ip,created_at) VALUES (?,?,?,?,?,?,?)', [subject, actor.id, actor.username, action, description, client?.ip || '', now()]);
 }
 async function validateGroups(ids: number[], allowBuiltin = false) {

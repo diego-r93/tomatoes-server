@@ -4,3 +4,5 @@ pattern write devices/%u
 pattern write sensors/%u/#
 pattern read %u/output
 pattern read %u/config/#
+pattern read %u/setup/req
+pattern write devices/%u/setup

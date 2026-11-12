@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { approvedSetupBoards, chipPresence, reportedPumpChannels } from '../src/composables/boardSetupInventory.ts';
+import { approvedSetupBoards, chipPresence, reportedProbeValidity, reportedPumpChannels } from '../src/composables/boardSetupInventory.ts';
 import { boardSetupMessages } from '../src/locales/boardSetup.ts';
 
 test('only approved registry boards appear, including offline boards with no discovery report', () => {
@@ -16,6 +16,12 @@ test('only approved registry boards appear, including offline boards with no dis
 test('chip flags never infer absent probe or false readings from missing telemetry', () => {
  assert.equal(chipPresence({sensors:{ec:false}},'ec'),'Not detected');
  for(const report of [null,{}, {sensors:{ec:'true'}}, {sensors:{ec:1}}]) assert.equal(chipPresence(report,'ec'),'Not reported');
+});
+test('probe validity comes only from explicit firmware probe flags', () => {
+ assert.equal(reportedProbeValidity({ probes: { ec: true } }, 'ec'), 'Valid');
+ assert.equal(reportedProbeValidity({ probes: { ec: false } }, 'ec'), 'Invalid or absent');
+ assert.equal(reportedProbeValidity({ sensors: { ec: true } }, 'ec'), 'Not reported');
+ assert.equal(reportedProbeValidity({ probes: { ec: 'false' } }, 'ec'), 'Not reported');
 });
 test('channel identity comes only from the selected board report', () => {
  const board={host:'esp32s3-A00001',report:{ports:{'esp32s3-A00001#01':{gpio:0,name:'Bench'},'esp32s3-A00002#01':{gpio:1},'esp32s3-A00001#05':{gpio:2}}}};

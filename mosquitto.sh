@@ -22,7 +22,7 @@ if [ ! -f "$ACL_FILE" ]; then
     case "${MQTT_USER_NAME}" in
         ''|*[!a-zA-Z0-9._-]*) exit 1 ;;
     esac
-    printf 'user %s\ntopic readwrite #\ntopic read $SYS/#\n' "${MQTT_USER_NAME}" > "$ACL_FILE"
+    printf 'user %s\ntopic deny +/setup/req\ntopic deny devices/+/setup\ntopic readwrite #\ntopic read $SYS/#\n' "${MQTT_USER_NAME}" > "$ACL_FILE"
 fi
 
 # Mosquitto drops privileges before reading these files.

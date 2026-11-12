@@ -4,7 +4,7 @@ Updated 2026-11-11. Completed features are documented in the commit report and t
 
 | Status | Item | Next step |
 | --- | --- | --- |
-| Firmware serial validated | Board setup: sensors and calibration | Claude validated setup.v1 on the bench over serial, including EC label readback, revision conflicts, duplicate requests and persistence after reboot. Next, add the broker ACL and backend request/reply handling, then verify the pilot over MQTT. Real probe-absence and solution-based calibration tests remain open. The greenhouse firmware does not yet support setup.v1. |
+| Pilot deployed and tested | Board setup: sensors and calibration | EC probe label is readable and editable over setup.v1 from the admin portal. Bench verified via live API and MQTT, including rejected invalid input and stale revision, then the original label was restored. Next validate missing probes on hardware and agree on raw sample capture and coefficient operations for pH and EC before solution-based trials. The greenhouse firmware does not yet support setup.v1. |
 | In progress | Greenhouse battery validation | esp32s3-1C1250 is installed. On November 9 the portal confirmed the board online and the driver reported actuation for outputs #01–#03 around 15:02 local time. The latest #04 record was from November 8. Continue checking battery operation, scheduled pulses, physical pump operation, driver start/end and recovery. Review the greenhouse alerts after monitoring. |
 | Waiting for user | Firmware repository and publication | Claude reports local main bda68f5, including probe validity, revisioned NVS settings and the release USB fix. The bench has a separate setup.v1 test build and the greenhouse board remains on 16a5c1c. Firmware publication awaits the destination repository and authorization. |
 | Pending | Battery Bluetooth stability | Repeat a prolonged read-only test with better signal. The collector and Energy dashboard work, but timeouts occurred near -83 dBm. |
@@ -48,7 +48,7 @@ Review references: [LGPD, consolidated text](https://www2.camara.leg.br/legin/fe
 
 ### Waiting on a test or external input
 
-- The EC label pilot passed serial validation. The MQTT pilot needs broker ACLs, backend transport and request/reply validation with Claude. Physical probe-absence and calibration tests are still pending.
+- The EC label pilot passed serial and live server-to-board MQTT validation. Physical probe-absence, raw sample capture and calibration with reference solutions remain pending.
 - Greenhouse and battery checks need physical validation. Firmware publication, pull-based OTA and the next PCB require separate coordination.
 
 ### Recently completed

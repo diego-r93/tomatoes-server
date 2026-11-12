@@ -3,18 +3,19 @@
   <div class="setup-grid">
     <section v-for="sensor in sensors" :key="sensor.key" class="setup-panel">
       <h2>{{ t(sensor.title) }}</h2><p class="setup-muted">{{ sensor.chip }}</p>
-      <dl><dt>{{ t('Chip detection') }}</dt><dd>{{ t(chipPresence(board.report, sensor.key)) }}</dd><dt>{{ t('Probe validity') }}</dt><dd>{{ t('Not verified by this firmware') }}</dd></dl>
+      <dl><dt>{{ t('Chip detection') }}</dt><dd>{{ t(chipPresence(board.report, sensor.key)) }}</dd><dt>{{ t('Probe validity') }}</dt><dd>{{ t(reportedProbeValidity(board.report, sensor.key)) }}</dd></dl>
       <p class="setup-muted">{{ t(sensor.note) }}</p>
       <p class="mt-4">{{ t('Applied calibration') }}: {{ t('Not reported') }}</p>
     </section>
-    <section class="setup-panel"><h2>{{ t('Probe profiles') }}</h2><p>{{ t('Probe identity, cell constant, temperature coefficients and calibration records will be editable after firmware readback is available.') }}</p><p class="setup-muted mt-3">{{ t('Existing readings and settings have not been changed.') }}</p></section>
+    <ProbeLabelEditor :host="board.host" :online="online" :supported="board.report?.caps?.includes('setup.v1') === true" />
   </div>
 </template>
 <script setup lang="ts">
 import type { SetupBoard } from '@/composables/boardSetupInventory';
 import { useLanguage } from '@/composables/useLanguage';
-import { chipPresence } from '@/composables/boardSetupInventory';
-defineProps<{ board: SetupBoard }>();
+import ProbeLabelEditor from './ProbeLabelEditor.vue';
+import { chipPresence, reportedProbeValidity } from '@/composables/boardSetupInventory';
+defineProps<{ board: SetupBoard; online: boolean }>();
 const { t } = useLanguage();
 const sensors = [
  { key: 'ph', title: 'pH probe', chip: 'CN0326 · AD7793', note: 'PT1000 validity is required for the current pH circuit. Internal ADC temperature is a separate diagnostic.' },

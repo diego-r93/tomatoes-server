@@ -5,7 +5,7 @@
       <div><h1>{{ t('Board setup') }}</h1><p>{{ t('Sensors, reference solutions and calibration preparation.') }}</p></div>
       <v-btn variant="outlined" prepend-icon="mdi-refresh" :loading="loading" @click="refresh">{{ t('Refresh') }}</v-btn>
     </header>
-    <v-alert type="info" variant="tonal" class="mb-5">{{ t('Preparation only. Device calibration and parameter changes require firmware support and are not enabled yet.') }}</v-alert>
+    <v-alert type="info" variant="tonal" class="mb-5">{{ t('Calibration is available as a guide. Supported boards can save a conductivity probe label.') }}</v-alert>
     <v-alert v-if="error" type="error" variant="tonal" class="mb-4" role="alert">{{ t(error) }}</v-alert>
     <div class="setup-selector">
       <v-select v-model="host" :items="boards" item-title="host" item-value="host" :label="t('Approved board')" variant="outlined" hide-details :disabled="loading || !boards.length" />
@@ -18,7 +18,7 @@
       <v-tabs v-model="tab" class="mb-5" :aria-label="t('Board setup sections')">
         <v-tab v-for="item in tabs" :key="item.id" :value="item.id">{{ t(item.title) }}</v-tab>
       </v-tabs>
-      <SensorsTab v-if="tab === 'sensors'" :board="board" />
+      <SensorsTab v-if="tab === 'sensors'" :key="board.host" :board="board" :online="online" />
       <CalibrationGuide v-else-if="tab === 'calibration'" :key="board.host" />
       <PumpChannelsTab v-else-if="tab === 'pumps'" :board="board" />
       <SetupHistory v-else />

@@ -1,4 +1,5 @@
 import { driverSample } from './driverSource';
+import { setupTransport } from '../mqtt/setupTransport';
 import { observePumpDriver, observePumpOutputs, pumpDriverSnapshots } from '../mqtt/pumpDrivers';
 import { setTimeout as delay } from 'node:timers/promises';
 import { installedDeviceInventory, observeDeviceDiscovery, observeDeviceStatus } from '../mqtt/deviceRegistry';
@@ -59,9 +60,25 @@ export function startDiscovery(connect=mqtt.connect) {
   sourceHealth.mqttConnected = !error && Boolean(grants?.length === 3 && grants.every(grant => grant.qos <= 2));
   if (sourceHealth.mqttConnected) discover();
  }));
- client.on('close',()=>{sourceHealth.mqttConnected=false;});
- client.on('error',()=>{sourceHealth.mqttConnected=false;});
+ const connection = client;
+ if (process.env.MQTT_DEDICATED_BACKEND === 'true') connection.on('connect', () => {
+  connection.subscribe('devices/+/setup', (error, grants) => {
+   if (!error && connection.connected && grants?.length === 1 && grants[0].qos <= 2) {
+    setupTransport.setPublisher((topic, payload) => {
+     if (!connection.connected) return Promise.reject(new Error('MQTT is disconnected.'));
+     return connection.publishAsync(topic, payload, { qos: 1, retain: false });
+    });
+   }
+  });
+ });
+ const offline = () => {
+  sourceHealth.mqttConnected = false;
+  setupTransport.setPublisher();
+ };
+ client.on('close', offline);
+ client.on('error', offline);
  client.on('message', (topic, payload, packet) => {
+  if (/^devices\/[^/]+\/setup$/.test(topic)) return setupTransport.receive(topic, payload, packet.retain);
   const time = Date.now();
   void (async () => {
    if (topic.startsWith('sensors/')) return observePumpDriver(topic, payload, packet.retain, time);
@@ -75,7 +92,7 @@ export function startDiscovery(connect=mqtt.connect) {
   })().catch(error => console.warn('Device observation failed:', error instanceof Error ? error.name : 'Unknown error'));
  });
  const timer=setInterval(discover,30000);timer.unref();
- return ()=>{clearInterval(timer);client?.end(true);sourceHealth.mqttConnected=false;};
+ return ()=>{clearInterval(timer);connection.end(true);offline();};
 }
 let discoveryRequest: Promise<Record<string, unknown>[]> | undefined;
 export function discoverDevices() {
@@ -144,6 +161,6 @@ export const knownDevices=()=>access(()=>all<{host:string;received_at:number}>('
 export async function recentDevice(host: string) {
   const row = await access(() => get<DeviceRow>('SELECT * FROM alert_devices WHERE host=?', [host]));
   if (!sourceHealth.mqttConnected || !row || row.received_at < processStarted || Date.now() - row.received_at >= deviceFreshnessMs) return null;
-  const payload = JSON.parse(row.payload) as { ip?: string; model?: unknown; uptime?: unknown; ports?: Record<string, { gpio?: unknown; state?: unknown }> };
+  const payload = JSON.parse(row.payload) as { ip?: string; model?: unknown; uptime?: unknown; caps?: unknown; ports?: Record<string, { gpio?: unknown; state?: unknown }> };
   return { ...payload, receivedAt: row.received_at };
 }
